@@ -59,7 +59,7 @@ export default function SetupPage({ state, onStart }: Props) {
   return (
     <div className="wrap setup">
       <header>
-        <h1>サボると、やつれる。</h1>
+        <h1>がんばり畑</h1>
         <p>
           やることを細かく決めなくていい。1日5分でも机に向かえば、その日は達成。手を止めた日数だけ、アバターは痩せていく。
         </p>

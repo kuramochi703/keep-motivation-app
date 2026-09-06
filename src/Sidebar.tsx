@@ -1,3 +1,5 @@
+import Logo from './Logo'
+
 export type NavItem = { id: string; label: string }
 
 type Props = {
@@ -9,7 +11,10 @@ type Props = {
 export default function Sidebar({ items, current, onSelect }: Props) {
   return (
     <aside className="sidebar">
-      <p className="brand">サボると、やつれる。</p>
+      <div className="brand">
+        <Logo width={26} />
+        <span>がんばり畑</span>
+      </div>
       <nav className="nav">
         {items.map((it) => (
           <button
