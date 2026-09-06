@@ -3,8 +3,11 @@ import Calendar from '../Calendar'
 import {
   DECAY,
   SESSION,
+  daysUntil,
   fmtClock,
+  freqLabel,
   isDone,
+  isExpired,
   levelOf,
   streak,
   today,
@@ -22,10 +25,23 @@ type Props = {
   onRecordOnly: () => void
   onNextDay: () => void
   onEditGoal: () => void
+  onNewGoal: () => void
+  onExtend: () => void
   onReset: () => void
 }
 
-export default function MainPage({ state, elapsed, running, onToggleTimer, onRecordOnly, onNextDay, onEditGoal, onReset }: Props) {
+export default function MainPage({
+  state,
+  elapsed,
+  running,
+  onToggleTimer,
+  onRecordOnly,
+  onNextDay,
+  onEditGoal,
+  onNewGoal,
+  onExtend,
+  onReset,
+}: Props) {
   const t = today(state)
   const doneToday = isDone(state, t)
   const vital = state.vitality
@@ -34,11 +50,14 @@ export default function MainPage({ state, elapsed, running, onToggleTimer, onRec
   const st = streak(state)
   const best = Math.max(state.best, st)
 
-  const daysLeft = Math.ceil((vital - 19) / DECAY)
+  const expired = isExpired(state)
+  const daysToDeadline = daysUntil(state)
+
+  const daysToWreck = Math.ceil((vital - 19) / DECAY)
   const forecast =
     vital < 20
       ? { text: 'これ以上は落ちない。ここから戻すしかない。', warn: true }
-      : { text: `このまま手を止めれば、${daysLeft}日でボロボロになる。`, warn: daysLeft <= 2 }
+      : { text: `このまま手を止めれば、${daysToWreck}日でボロボロになる。`, warn: daysToWreck <= 2 }
 
   return (
     <div className="wrap">
@@ -55,7 +74,8 @@ export default function MainPage({ state, elapsed, running, onToggleTimer, onRec
             <i />
             <span>{L.name}</span>
           </span>
-          <Avatar lv={L.lv} />
+          <Avatar lv={L.lv} variant={state.avatarId} />
+          <p className="owner">{state.name}</p>
           <p className="speech">{L.say}</p>
           <div className="meter">
             <div className="row">
@@ -73,85 +93,119 @@ export default function MainPage({ state, elapsed, running, onToggleTimer, onRec
         </section>
 
         <section className="card">
-          <div className="goal">
-            <span className="goal-text" title={state.goal}>
-              {state.goal}
-            </span>
-            <button className="btn ghost" onClick={onEditGoal}>
-              目標を変える
-            </button>
-          </div>
-          <p className="sub">
-            {t.getMonth() + 1}月{t.getDate()}日 ・ {doneToday ? '今日は達成ずみ' : '今日はまだ手つかず'}
-          </p>
-
-          <div className="timer">
-            <div className="ring">
-              <svg viewBox="0 0 120 120">
-                <circle className="track" cx="60" cy="60" r="52" />
-                <circle
-                  className="prog"
-                  cx="60"
-                  cy="60"
-                  r="52"
-                  strokeDasharray={DASH}
-                  strokeDashoffset={(DASH * (1 - Math.min(elapsed / SESSION, 1))).toFixed(1)}
-                />
-              </svg>
-              <div className="num">
-                <span>{fmtClock(elapsed)}</span>
-                <em>{running ? '集中中' : '最低ライン'}</em>
+          {expired ? (
+            <div className="done">
+              <h2>目標の期間が終わりました</h2>
+              <p className="sub">「{state.goal}」の振り返り</p>
+              <div className="stats">
+                <div>
+                  <b>{state.done.length}</b>
+                  <span>達成日数</span>
+                </div>
+                <div>
+                  <b>{st}</b>
+                  <span>今の連続日数</span>
+                </div>
+                <div>
+                  <span>最長記録</span>
+                  <b>{best}日</b>
+                </div>
+              </div>
+              <div className="acts done-acts">
+                <button className="btn" onClick={onNewGoal}>
+                  新しい目標をはじめる
+                </button>
+                <button className="btn sec" onClick={onExtend}>
+                  期限を1ヶ月伸ばす
+                </button>
               </div>
             </div>
-            <div className="acts">
-              {doneToday ? (
-                <>
-                  <div className="donemsg">今日はもう積んだ。あとは自由時間。</div>
-                  <button className="btn sec" onClick={onToggleTimer}>
-                    {running ? '一時停止' : elapsed > 0 ? '再開する' : '計測をはじめる'}
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button className="btn" onClick={onToggleTimer}>
-                    {running ? '一時停止' : elapsed > 0 ? '再開する' : '5分はじめる'}
-                  </button>
-                  <button className="btn sec" onClick={onRecordOnly}>
-                    もうやった（記録だけつける）
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
+          ) : (
+            <>
+              <div className="goal">
+                <span className="goal-text" title={state.goal}>
+                  {state.goal}
+                </span>
+                <button className="btn ghost" onClick={onEditGoal}>
+                  目標を変える
+                </button>
+              </div>
+              <p className="sub">
+                {t.getMonth() + 1}月{t.getDate()}日 ・ {doneToday ? '今日は達成ずみ' : '今日はまだ手つかず'}
+              </p>
+              <p className="meta">
+                期限まで {daysToDeadline !== null ? `${daysToDeadline}日` : '—'} ・ 頻度：{freqLabel(state.frequency)}
+              </p>
 
-          <div className="stats">
-            <div>
-              <span>連続日数</span>
-              <b>{st}日</b>
-            </div>
-            <div>
-              <span>最長記録</span>
-              <b>{best}日</b>
-            </div>
-            <div>
-              <span>累積達成日数</span>
-              <b>{state.done.length}日</b>
-            </div>
-          </div>
+              <div className="timer">
+                <div className="ring">
+                  <svg viewBox="0 0 120 120">
+                    <circle className="track" cx="60" cy="60" r="52" />
+                    <circle
+                      className="prog"
+                      cx="60"
+                      cy="60"
+                      r="52"
+                      strokeDasharray={DASH}
+                      strokeDashoffset={(DASH * (1 - Math.min(elapsed / SESSION, 1))).toFixed(1)}
+                    />
+                  </svg>
+                  <div className="num">
+                    <span>{fmtClock(elapsed)}</span>
+                    <em>{running ? '集中中' : '最低ライン'}</em>
+                  </div>
+                </div>
+                <div className="acts">
+                  {doneToday ? (
+                    <>
+                      <div className="donemsg">今日はもう積んだ。あとは自由時間。</div>
+                      <button className="btn sec" onClick={onToggleTimer}>
+                        {running ? '一時停止' : elapsed > 0 ? '再開する' : '計測をはじめる'}
+                      </button>
+                    </>
+                  ) : (
+                    <>
+                      <button className="btn" onClick={onToggleTimer}>
+                        {running ? '一時停止' : elapsed > 0 ? '再開する' : '5分はじめる'}
+                      </button>
+                      <button className="btn sec" onClick={onRecordOnly}>
+                        もうやった（記録だけつける）
+                      </button>
+                    </>
+                  )}
+                </div>
+              </div>
 
-          <Calendar state={state} />
+              <div className="stats">
+                <div>
+                  <span>連続日数</span>
+                  <b>{st}日</b>
+                </div>
+                <div>
+                  <span>最長記録</span>
+                  <b>{best}日</b>
+                </div>
+                <div>
+                  <span>累積達成日数</span>
+                  <b>{state.done.length}日</b>
+                </div>
+              </div>
 
-          <footer>
-            <p>やった日は活力+12、やらなかった日は-20。1日サボると、取り戻すのに2日かかる。</p>
-            <div className="tools">
-              <button className="btn ghost" onClick={onNextDay}>
-                翌日にする（お試し）
-              </button>
-              <button className="btn ghost" onClick={onReset}>
-                最初から
-              </button>
-            </div>
-          </footer>
+              <Calendar state={state} />
+
+              <footer>
+                <p>やった日は活力+12、やらなかった日は-20。1日サボると、取り戻すのに2日かかる。</p>
+                <div className="tools">
+                  <button className="btn ghost" onClick={onNextDay}>
+                    翌日にする（お試し）
+                  </button>
+                  <button className="btn ghost" onClick={onReset}>
+                    最初から
+                  </button>
+                </div>
+              </footer>
+            </>
+          )}
         </section>
       </div>
     </div>

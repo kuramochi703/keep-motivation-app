@@ -1,7 +1,7 @@
-export const STORAGE_KEY = 'yatsure:state:v3'
+export const STORAGE_KEY = 'yatsure:state:v4'
 export const GAIN = 12
 export const DECAY = 20
-export const SESSION = 300 // 達成に必要な秒数
+export const SESSION = 300 // 秒
 
 export type Level = {
   min: number
@@ -20,18 +20,56 @@ export const LEVELS: Level[] = [
   { min: 90, lv: 4, name: '絶好調', say: '絶好調。今日もいける。', h: 156, s: 68 },
 ]
 
+export type Frequency = 'everyday' | 'week3' | 'week1' | 'any'
+
+export const FREQUENCIES: { id: Frequency; label: string }[] = [
+  { id: 'everyday', label: '毎日' },
+  { id: 'week3', label: '週3回' },
+  { id: 'week1', label: '週1回' },
+  { id: 'any', label: '決めてない' },
+]
+
+export const freqLabel = (f: Frequency) =>
+  FREQUENCIES.find((x) => x.id === f)?.label ?? ''
+
+export type AvatarId = 0 | 1 | 2
+
+export const AVATARS: { id: AvatarId; name: string; desc: string }[] = [
+  { id: 0, name: 'もりお', desc: 'みどりの野草タイプ' },
+  { id: 1, name: 'だいち', desc: 'あおの力持ちタイプ' },
+  { id: 2, name: 'こむぎ', desc: 'ピンクのいやしタイプ' },
+]
+
+export const avatarName = (id: AvatarId) => AVATARS[id].name
+
 export type State = {
   vitality: number
   goal: string
+  deadline: string | null // YYYY-MM-DD（目標の期限）
+  frequency: Frequency
+  avatarId: AvatarId
+  name: string
   lastDate: string | null
   dayOffset: number
   done: string[]
   best: number
 }
 
+export type SetupInput = {
+  goal: string
+  deadline: string
+  frequency: Frequency
+  avatarId: AvatarId
+  name: string
+}
+
 export const initialState = (): State => ({
   vitality: 62,
   goal: '資格の勉強',
+  deadline: null,
+  frequency: 'any',
+  avatarId: 0,
+  name: 'もりお',
   lastDate: null,
   dayOffset: 0,
   done: [],
@@ -54,6 +92,12 @@ export const shift = (d: Date, n: number) => {
   return x
 }
 
+export const addMonths = (d: Date, n: number) => {
+  const x = new Date(d)
+  x.setMonth(x.getMonth() + n)
+  return x
+}
+
 export const today = (s: State) => shift(new Date(), s.dayOffset)
 
 export const isDone = (s: State, d: Date) => s.done.includes(key(d))
@@ -63,6 +107,19 @@ export const levelOf = (v: number) =>
 
 export const fmtClock = (sec: number) =>
   `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`
+
+/** 期限までの残り日数（負なら期限切れ） */
+export const daysUntil = (s: State): number | null => {
+  if (!s.deadline) return null
+  const t0 = parseKey(key(today(s))).getTime()
+  return Math.round((parseKey(s.deadline).getTime() - t0) / 86400000)
+}
+
+/** 期限切れかどうか */
+export const isExpired = (s: State) => {
+  const d = daysUntil(s)
+  return d !== null && d < 0
+}
 
 /** 連続日数 */
 export function streak(s: State) {
@@ -102,6 +159,15 @@ export function markDone(s: State): State {
   }
   return { ...next, best: Math.max(next.best, streak(next)) }
 }
+
+/** 新しい目標に切り替える（アバターと活力は引き継ぐ） */
+export const resetGoal = (s: State): State => ({
+  ...initialState(),
+  vitality: s.vitality,
+  avatarId: s.avatarId,
+  name: s.name,
+  lastDate: key(today(s)),
+})
 
 export function load(): State {
   try {

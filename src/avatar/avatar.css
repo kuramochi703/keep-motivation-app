@@ -1,10 +1,13 @@
 .avatar{position:relative;display:block;width:100%;max-width:300px;margin:2px auto 0}
 .avatar{--skin:#F2C4A5;--cloth:#34A98A;--hair:#2F3A45;--edge:#1A2028;--gold:#F0B429}
-.lv4{--skin:#F7CBAA;--cloth:#0FB07E;--hair:#2B3440}
-.lv3{--skin:#F2C4A5;--cloth:#34A98A;--hair:#2F3A45}
-.lv2{--skin:#DEC1AC;--cloth:#8098A4;--hair:#3B454E;--gold:#C9B98A}
-.lv1{--skin:#CBB5A6;--cloth:#98A3AB;--hair:#4A535A;--gold:#B4AE9C}
-.lv0{--skin:#B5ACA6;--cloth:#8C9298;--hair:#575E63;--gold:#A8A5A0}
+.av0{--cloth:#34A98A;--gold:#F0B429;--edge:#1A2028}
+.av1{--cloth:#3D6FBF;--gold:#F5C94B;--edge:#18243A}
+.av2{--cloth:#D96087;--gold:#F2B14E;--edge:#3A2331}
+.lv4{--skin:#F7CBAA;--hair:#2B3440}
+.lv3{--skin:#F2C4A5;--hair:#2F3A45}
+.lv2{--skin:#DEC1AC;--hair:#3B454E;--gold:#C9B98A}
+.lv1{--skin:#CBB5A6;--hair:#4A535A;--gold:#B4AE9C}
+.lv0{--skin:#B5ACA6;--hair:#575E63;--gold:#A8A5A0}
 .avatar [data-show]{display:none}
 .lv4 [data-show~="4"],.lv3 [data-show~="3"],.lv2 [data-show~="2"],
 .lv1 [data-show~="1"],.lv0 [data-show~="0"]{display:inline}

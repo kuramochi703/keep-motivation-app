@@ -11,7 +11,7 @@ const NAV: NavItem[] = [
 ]
 
 export default function App() {
-  const { state, screen, go, start, reset, elapsed, running, toggleTimer, recordOnly, nextDay } = useApp()
+  const { state, screen, go, start, reset, extendDeadline, newGoal, elapsed, running, toggleTimer, recordOnly, nextDay } = useApp()
 
   const select = (id: string) => {
     if (id === 'top' || id === 'setup' || id === 'main') go(id)
@@ -22,9 +22,9 @@ export default function App() {
       <Sidebar items={NAV} current={screen} onSelect={select} />
       <main className="content">
         {screen === 'top' ? (
-          <TopPage onStart={() => go('setup')} />
+          <TopPage onStart={() => go('setup')} variant={state.avatarId} />
         ) : screen === 'setup' ? (
-          <SetupPage goal={state.goal} onStart={start} />
+          <SetupPage state={state} onStart={start} />
         ) : (
           <MainPage
             state={state}
@@ -34,6 +34,8 @@ export default function App() {
             onRecordOnly={recordOnly}
             onNextDay={nextDay}
             onEditGoal={() => go('setup')}
+            onNewGoal={newGoal}
+            onExtend={extendDeadline}
             onReset={reset}
           />
         )}
