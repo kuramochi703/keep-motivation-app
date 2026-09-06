@@ -1,3 +1,5 @@
+# はじめてのためのガイド
+
 「サボると、やつれる。」— 机に向かった日を記録すると、サボった日数だけアバターがやつれていく習慣化アプリ。
 
 ---
@@ -7,7 +9,7 @@
 このアプリは **いまのところブラウザだけで完結** します。サーバーもデータベースもありません。
 （将来的に保存先を Supabase へ移す予定です → [INFRA.md](./INFRA.md)）
 
-```
+```text
 ソースコード (src/)  ──[Vite]──▶  ブラウザで表示
 記録データ            ──────────▶  ブラウザの localStorage に保存
 ```
@@ -59,11 +61,11 @@ npm run dev
 
 こう表示されたら成功です：
 
-```
+```text
   ➜  Local:   http://localhost:5173/
 ```
 
-ブラウザで **http://localhost:5173/** を開いてください。
+ブラウザで **<http://localhost:5173/>** を開いてください。
 止めるときはターミナルで `Ctrl + C`。
 
 ---
@@ -87,7 +89,7 @@ git push            # ④ 共有する
 ## 4. コマンド一覧
 
 | コマンド | 何をするか | いつ使うか |
-|---|---|---|
+| --- | --- | --- |
 | `npm install` | ライブラリを入れる | 初回 / `package.json` が変わった時 |
 | `npm run dev` | 開発サーバー起動（自動リロード付き） | 開発中ずっと |
 | `npm run build` | 本番用に書き出し＋型チェック | push する前の確認 |
@@ -99,7 +101,7 @@ git push            # ④ 共有する
 
 ## 5. ファイルの役割
 
-```
+```text
 index.html          入口のHTML（基本さわらない）
 src/
   main.tsx          Reactの起動処理（基本さわらない）
@@ -115,7 +117,7 @@ test.html           元になった1ファイル版のプロトタイプ（参�
 ### ゲームのルール（`logic.ts` の定数）
 
 | 定数 | 値 | 意味 |
-|---|---|---|
+| --- | --- | --- |
 | `GAIN` | 12 | 達成した日に増える活力 |
 | `DECAY` | 20 | サボった日に減る活力 |
 | `SESSION` | 300 | タイマーの秒数（5分） |
@@ -143,7 +145,7 @@ git push -u origin feat/やること名
 ## 7. 困ったときは
 
 | 症状 | 対処 |
-|---|---|
+| --- | --- |
 | `npm: command not found` | Node.js が未インストール → 2-1 へ |
 | `Cannot find module 'react'` など | `npm install` を実行し忘れ |
 | ポート 5173 が使用中 | 別のターミナルで起動しっぱなし。`Ctrl+C` で止めるか `npm run dev -- --port 5174` |
@@ -151,4 +153,6 @@ git push -u origin feat/やること名
 | 保存した記録を消したい | 画面下の「最初から」ボタン、または `F12` → Application → Local Storage を削除 |
 | どうにもならない | `rm -rf node_modules package-lock.json && npm install` で入れ直し |
 
-**WSL / Windows の人へ**: WSL 内で `npm run dev` した場合、通常は Windows 側のブラウザから `http://localhost:5173/` で開けます。開けない場合は `npm run dev -- --host` で起動し、表示された Network アドレスを使ってください。
+**WSL / Windows の人へ**: WSL 内で `npm run dev` した場合、通常は
+Windows 側のブラウザから `<http://localhost:5173/>` で開けます。
+開けない場合は `npm run dev -- --host` で起動し、表示された Network アドレスを使ってください。
