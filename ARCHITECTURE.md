@@ -23,7 +23,7 @@ flowchart TD
   TP[TopPage.tsx トップ]
   SP[SetupPage.tsx 目標設定]
   MP[MainPage.tsx ダッシュボード]
-  AV[Avatar.tsx アバターの絵]
+  AV[avatar/ アバターの絵 3D]
   UI[ui/ デザイン]
 
   U --> B

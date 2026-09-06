@@ -1,61 +1,87 @@
-import { useId } from 'react'
+import { Component, Suspense, lazy, type ReactNode, useEffect, useState } from 'react'
+import AvatarSvg from './AvatarSvg'
+import { lookOf } from './look'
 
-export default function Avatar({ lv, variant = 0 }: { lv: number; variant?: number }) {
-  const labelId = useId()
-  const v = Math.min(2, Math.max(0, variant))
+// three.js は gzip でも 300KB 近くある。初回表示をこれに待たせたくないので
+// 別チャンクに切り出し、読み込み終わるまでは SVG を出しておく。
+const AvatarCanvas = lazy(() => import('./AvatarCanvas'))
+
+type Props = {
+  /** 活力レベル 0〜4（logic.ts の levelOf が返す lv） */
+  lv: number
+  /** どのアバターか。logic.ts の AvatarId（0:もりお 1:だいち 2:こむぎ） */
+  variant?: number
+  /** 活力 0〜100。色と姿勢を連続的に変えるのに使う */
+  vitality?: number
+  /** のべ達成日数。成長ステージはここから決まる */
+  days?: number
+}
+
+/**
+ * アバターの入口。
+ *
+ * 中身は react-three-fiber の 3D だが、WebGL が使えない環境（古い端末、
+ * ソフトウェア描画を切った状態など）では従来のインライン SVG に落とす。
+ * ここで落ちてもアプリの他の部分は動く、という状態を保つのが目的。
+ */
+export default function Avatar({ lv, variant = 0, vitality, days = 0 }: Props) {
+  const look = lookOf(days, vitality ?? 0, lv, variant)
+  const animate = useAnimationAllowed()
+  const fallback = <AvatarSvg lv={lv} variant={variant} />
+
+  if (!hasWebGL()) return fallback
+
   return (
-    <svg
-      className={`avatar av${v} lv${lv}`}
-      viewBox="0 0 240 250"
-      role="img"
-      aria-labelledby={labelId}
-    >
-      <title id={labelId}>アバターの状態</title>
-      <g fill="var(--gold)" data-show="4">
-        <path className="sparkle" d="M46 70l4 10 10 4-10 4-4 10-4-10-10-4 10-4z" />
-        <path className="sparkle" d="M196 96l3 8 8 3-8 3-3 8-3-8-8-3 8-3z" />
-        <path className="sparkle" d="M180 40l3 7 7 3-7 3-3 7-3-7-7-3 7-3z" />
-      </g>
-      <g data-show="0" stroke="#9CA3AA" fill="none" strokeWidth="2" strokeLinecap="round">
-        <path d="M182 86q8-8 16-2M186 96q9-6 16 1" />
-        <circle cx="196" cy="72" r="3" fill="#7E858B" stroke="none" />
-        <path d="M192 68q-6-4-9 0M200 68q6-4 9 0" />
-      </g>
-      <ellipse cx="120" cy="236" rx="56" ry="8" fill="#0F141A" opacity=".08" />
-      <g className="figure">
-        <path data-show="4" d="M86 152l-30 74q64 11 128 0l-30-74z" fill="var(--gold)" opacity=".9" />
-        <rect x="98" y="198" width="15" height="34" rx="7" fill="var(--skin)" />
-        <rect x="127" y="198" width="15" height="34" rx="7" fill="var(--skin)" />
-        <path data-show="4 3 2 1" d="M84 152q36-15 72 0l10 56H74z" fill="var(--cloth)" />
-        <path
-          data-show="0"
-          d="M84 152q36-15 72 0l10 56-13-9-10 11-12-10-11 10-13-11-11 9-13-10z"
-          fill="var(--cloth)"
-        />
-        <g data-show="1 0">
-          <rect x="128" y="170" width="24" height="21" rx="3" fill="#A7ADB3" transform="rotate(8 140 180)" />
-          <path d="M128 178h26M140 168v24" stroke="#7C838A" strokeWidth="1.4" transform="rotate(8 140 180)" />
-        </g>
-        <path d="M86 158q-16 16-14 40" stroke="var(--skin)" strokeWidth="14" strokeLinecap="round" fill="none" />
-        <path d="M154 158q16 16 14 40" stroke="var(--skin)" strokeWidth="14" strokeLinecap="round" fill="none" />
-        <rect x="110" y="132" width="20" height="20" fill="var(--skin)" />
-        <circle cx="120" cy="104" r="38" fill="var(--skin)" />
-        <path d="M82 96q6-44 38-44t38 44q-14-20-38-20t-38 20z" fill="var(--hair)" />
-        <path data-show="4" d="M97 54l-3-20 12 9 8-15 8 15 12-9-3 20z" fill="var(--gold)" />
-        <g data-show="4 3 2">
-          <circle cx="106" cy="105" r="5" fill="var(--edge)" />
-          <circle cx="134" cy="105" r="5" fill="var(--edge)" />
-          <circle data-show="4" cx="108" cy="103" r="1.8" fill="#fff" />
-          <circle data-show="4" cx="136" cy="103" r="1.8" fill="#fff" />
-        </g>
-        <g data-show="1 0" stroke="var(--edge)" strokeWidth="3" fill="none" strokeLinecap="round">
-          <path d="M100 108q6-7 12 0M128 108q6-7 12 0" />
-        </g>
-        <path data-show="4 3" d="M109 120q11 12 22 0" stroke="var(--edge)" strokeWidth="3" fill="none" strokeLinecap="round" />
-        <path data-show="2" d="M111 124h18" stroke="var(--edge)" strokeWidth="3" fill="none" strokeLinecap="round" />
-        <path data-show="1 0" d="M109 128q11-10 22 0" stroke="var(--edge)" strokeWidth="3" fill="none" strokeLinecap="round" />
-        <path data-show="1" d="M162 96q6 9 6 13a6 6 0 01-12 0q0-4 6-13z" fill="#5FA8D3" />
-      </g>
-    </svg>
+    <WebGLBoundary fallback={fallback}>
+      <Suspense fallback={fallback}>
+        <AvatarCanvas look={look} animate={animate} />
+      </Suspense>
+    </WebGLBoundary>
   )
+}
+
+/** OS の「視差効果を減らす」設定を尊重する */
+function useAnimationAllowed() {
+  const [ok, setOk] = useState(true)
+  useEffect(() => {
+    const mq = window.matchMedia('(prefers-reduced-motion: reduce)')
+    const apply = () => setOk(!mq.matches)
+    apply()
+    mq.addEventListener('change', apply)
+    return () => mq.removeEventListener('change', apply)
+  }, [])
+  return ok
+}
+
+/** WebGL が使えるか。結果は変わらないので一度だけ調べる */
+let webgl: boolean | null = null
+function hasWebGL() {
+  if (webgl !== null) return webgl
+  try {
+    const c = document.createElement('canvas')
+    webgl = !!(c.getContext('webgl2') || c.getContext('webgl'))
+  } catch {
+    webgl = false
+  }
+  return webgl
+}
+
+/**
+ * 3D の初期化に失敗したときに SVG へ切り替えるための境界。
+ * React のエラー境界はクラスでしか書けないので、ここだけクラス。
+ */
+class WebGLBoundary extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
+  state = { failed: false }
+
+  static getDerivedStateFromError() {
+    return { failed: true }
+  }
+
+  componentDidCatch(error: unknown) {
+    console.warn('[avatar] 3D の描画に失敗したので SVG で表示します。', error)
+  }
+
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children
+  }
 }

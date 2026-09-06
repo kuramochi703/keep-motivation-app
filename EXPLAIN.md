@@ -52,7 +52,7 @@ src/
 │   ├─ TopPage.tsx      ─ 1枚目：トップ
 │   ├─ SetupPage.tsx    ─ 2枚目：目標設定
 │   └─ MainPage.tsx     ─ 3枚目：ダッシュボード（メイン画面）
-├─ avatar/         ─ アバター（絵と見た目のルール）
+├─ avatar/         ─ アバター（3Dのひよこ。README.md に触り方あり）
 └─ ui/             ─ 配色やボタンのデザインルール
 ```
 
@@ -118,7 +118,7 @@ MainPage（画面）→ 新しい画面を表示
 3. サボった日が 1 日あった
    → `logic.ts` のルールで **体力を 20 引く**
 4. 体力が減る
-   → `Avatar.tsx` が「体が小さく、顔色が悪い」絵に切り替える
+   → `avatar/look.ts` が「顔色が悪く、うつむいた」見た目に切り替える
 
 **「体力という数字」⇔「絵の変化」** がルールブック 1 つでつながっています。
 これがこのアプリの心臓部です。
@@ -160,5 +160,5 @@ MainPage（画面）→ 新しい画面を表示
 | ゲームのルール | `src/logic.ts` |
 | 目標設定の画面 | `src/pages/SetupPage.tsx` |
 | ダッシュボード | `src/pages/MainPage.tsx` |
-| アバターの絵 | `src/avatar/Avatar.tsx` |
+| アバターの絵 | `src/avatar/`（色や表情は `look.ts`、形は `Chick.tsx`） |
 | 見た目のデザイン | `src/ui/styles.css` |
