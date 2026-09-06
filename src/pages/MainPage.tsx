@@ -1,4 +1,5 @@
 import Avatar from '../avatar/Avatar'
+import Calendar from '../Calendar'
 import {
   DECAY,
   SESSION,
@@ -7,9 +8,7 @@ import {
   freqLabel,
   isDone,
   isExpired,
-  key,
   levelOf,
-  shift,
   streak,
   today,
   type State,
@@ -60,10 +59,6 @@ export default function MainPage({
       ? { text: 'これ以上は落ちない。ここから戻すしかない。', warn: true }
       : { text: `このまま手を止めれば、${daysToWreck}日でボロボロになる。`, warn: daysToWreck <= 2 }
 
-  // カレンダー（直近5週間）
-  const end = shift(t, 6 - t.getDay())
-  const cells = Array.from({ length: 35 }, (_, i) => shift(end, -(34 - i)))
-
   return (
     <div className="wrap">
       <header>
@@ -112,8 +107,8 @@ export default function MainPage({
                   <span>今の連続日数</span>
                 </div>
                 <div>
-                  <b>{best}</b>
                   <span>最長記録</span>
+                  <b>{best}日</b>
                 </div>
               </div>
               <div className="acts done-acts">
@@ -183,32 +178,20 @@ export default function MainPage({
 
               <div className="stats">
                 <div>
-                  <b>{st}</b>
                   <span>連続日数</span>
+                  <b>{st}日</b>
                 </div>
                 <div>
-                  <b>{best}</b>
                   <span>最長記録</span>
+                  <b>{best}日</b>
                 </div>
                 <div>
-                  <b>{state.done.length}</b>
-                  <span>のべ日数</span>
+                  <span>累積達成日数</span>
+                  <b>{state.done.length}日</b>
                 </div>
               </div>
 
-              <div className="cal">
-                <h3>この5週間</h3>
-                <div className="cells">
-                  {cells.map((d) => (
-                    <i
-                      key={key(d)}
-                      title={key(d)}
-                      className={`${isDone(state, d) ? 'on' : ''}${key(d) === key(t) ? ' today' : ''}`}
-                      style={d > t ? { opacity: 0.35 } : undefined}
-                    />
-                  ))}
-                </div>
-              </div>
+              <Calendar state={state} />
 
               <footer>
                 <p>やった日は活力+12、やらなかった日は-20。1日サボると、取り戻すのに2日かかる。</p>
