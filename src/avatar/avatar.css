@@ -1,0 +1,17 @@
+.avatar{position:relative;display:block;width:100%;max-width:300px;margin:2px auto 0}
+.avatar{--skin:#F2C4A5;--cloth:#34A98A;--hair:#2F3A45;--edge:#1A2028;--gold:#F0B429}
+.lv4{--skin:#F7CBAA;--cloth:#0FB07E;--hair:#2B3440}
+.lv3{--skin:#F2C4A5;--cloth:#34A98A;--hair:#2F3A45}
+.lv2{--skin:#DEC1AC;--cloth:#8098A4;--hair:#3B454E;--gold:#C9B98A}
+.lv1{--skin:#CBB5A6;--cloth:#98A3AB;--hair:#4A535A;--gold:#B4AE9C}
+.lv0{--skin:#B5ACA6;--cloth:#8C9298;--hair:#575E63;--gold:#A8A5A0}
+.avatar [data-show]{display:none}
+.lv4 [data-show~="4"],.lv3 [data-show~="3"],.lv2 [data-show~="2"],
+.lv1 [data-show~="1"],.lv0 [data-show~="0"]{display:inline}
+.figure{transition:transform .7s ease}
+.lv1 .figure{transform:translateY(5px) rotate(-2deg)}
+.lv0 .figure{transform:translateY(9px) rotate(-4deg)}
+.sparkle{animation:tw 2.6s ease-in-out infinite}
+.sparkle:nth-of-type(2){animation-delay:.9s}
+.sparkle:nth-of-type(3){animation-delay:1.7s}
+@keyframes tw{0%,100%{opacity:.2;transform:scale(.72)}50%{opacity:1;transform:scale(1)}}
