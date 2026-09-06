@@ -18,7 +18,7 @@
 | --- | --- | --- |
 | **A：ロジック係** | `src/logic.ts` | 活力の増減ルール、連続日数、保存/読込 |
 | **B：画面係** | `src/App.tsx` | 画面の構成、ボタン・タイマーの動き |
-| **C：見た目係** | `src/styles.css`, `src/Avatar.tsx` | 配色・レイアウト、アバターの絵 |
+| **C：見た目係** | `src/ui/styles.css`, `src/avatar/` | 配色・レイアウト、アバターの絵（3D。[`src/avatar/README.md`](./src/avatar/README.md)） |
 
 **得意/不得意ではなく、まずランダムでも構いません。** 数週間ごとに交代すると全員が全体を触れます。
 
@@ -28,7 +28,7 @@
 
 ```text
 logic.ts ──[ State型 / levelOf() / streak() など ]──▶ App.tsx
-App.tsx  ──▶  Avatar.tsx / styles.css
+App.tsx  ──▶  avatar/ / ui/styles.css
 ```
 
 **A が関数名や型を変えると B が壊れます。** 変える時は必ず先にチームへ共有してください（後述の「相談が必要な変更」）。
