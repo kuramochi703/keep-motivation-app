@@ -106,13 +106,16 @@ index.html          入口のHTML（基本さわらない）
 src/
   main.tsx          Reactの起動処理（基本さわらない）
   App.tsx           画面の中身と、ボタン・タイマーの動き  ← UI変更はここ
-  Avatar.tsx        アバターのSVG（見た目の絵そのもの）    ← 絵の変更はここ
+  avatar/           アバター（3D のひよこ）                ← 絵の変更はここ
+                    look.ts   … 色・表情・ステージごとの中身
+                    Chick.tsx … 形そのもの
+                    README.md … 触り方の説明
   logic.ts          活力の計算・連続日数・保存/読込        ← ルール変更はここ
-  styles.css        全体の見た目                          ← 色やレイアウトはここ
+  ui/styles.css     全体の見た目                          ← 色やレイアウトはここ
 test.html           元になった1ファイル版のプロトタイプ（参照用）
 ```
 
-**迷ったら**: 「見た目を変えたい」→ `styles.css` か `App.tsx`。「ルール（活力の増減など）を変えたい」→ `logic.ts`。
+**迷ったら**: 「見た目を変えたい」→ `ui/styles.css` か `App.tsx`。「ルール（活力の増減など）を変えたい」→ `logic.ts`。
 
 ### ゲームのルール（`logic.ts` の定数）
 
