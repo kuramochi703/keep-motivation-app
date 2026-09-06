@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { SESSION, STORAGE_KEY, initialState, load, markDone, rollover, save, type State } from './logic'
+import { SESSION, STORAGE_KEY, addMonths, initialState, key, load, markDone, parseKey, resetGoal, rollover, save, type SetupInput, type State } from './logic'
 
 export type Screen = 'top' | 'setup' | 'main'
 
@@ -31,9 +31,16 @@ export function useApp() {
     if (hasStarted) save(state)
   }, [state, hasStarted])
 
-  const start = (goal: string) => {
+  const start = (input: SetupInput) => {
     setHasStarted(true)
-    setState((s) => ({ ...s, goal }))
+    setState((s) => ({
+      ...s,
+      goal: input.goal,
+      deadline: input.deadline,
+      frequency: input.frequency,
+      avatarId: input.avatarId,
+      name: input.name,
+    }))
     setScreen('main')
   }
 
@@ -68,5 +75,19 @@ export function useApp() {
     setState((s) => rollover({ ...s, dayOffset: s.dayOffset + 1 }))
   }
 
-  return { state, screen, go, start, reset, elapsed, running, toggleTimer, recordOnly, nextDay }
+  const extendDeadline = () => {
+    setState((s) =>
+      s.deadline ? { ...s, deadline: key(addMonths(parseKey(s.deadline), 1)) } : s
+    )
+  }
+
+  const newGoal = () => {
+    setRunning(false)
+    setElapsed(0)
+    doneRef.current = false
+    setState((s) => resetGoal(s))
+    setScreen('setup')
+  }
+
+  return { state, screen, go, start, reset, extendDeadline, newGoal, elapsed, running, toggleTimer, recordOnly, nextDay }
 }
