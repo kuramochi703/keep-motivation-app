@@ -7,9 +7,10 @@ const PRESET = 50
 
 type Props = {
   onStart: () => void
+  variant?: number
 }
 
-export default function TopPage({ onStart }: Props) {
+export default function TopPage({ onStart, variant = 0 }: Props) {
   const [vital, setVital] = useState(PRESET)
   const L = levelOf(vital)
   useAccent(L)
@@ -24,7 +25,7 @@ export default function TopPage({ onStart }: Props) {
       </header>
 
       <section className="card top-card">
-        <Avatar lv={L.lv} />
+        <Avatar lv={L.lv} variant={variant} />
         <p className="speech">{L.say}</p>
         <div className="meter">
           <div className="row">

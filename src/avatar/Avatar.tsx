@@ -1,7 +1,8 @@
-export default function Avatar({ lv }: { lv: number }) {
+export default function Avatar({ lv, variant = 0 }: { lv: number; variant?: number }) {
+  const v = Math.min(2, Math.max(0, variant))
   return (
     <svg
-      className={`avatar lv${lv}`}
+      className={`avatar av${v} lv${lv}`}
       viewBox="0 0 240 250"
       role="img"
       aria-labelledby="avatarLabel"
