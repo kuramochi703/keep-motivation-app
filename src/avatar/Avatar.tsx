@@ -1,13 +1,16 @@
+import { useId } from 'react'
+
 export default function Avatar({ lv, variant = 0 }: { lv: number; variant?: number }) {
+  const labelId = useId()
   const v = Math.min(2, Math.max(0, variant))
   return (
     <svg
       className={`avatar av${v} lv${lv}`}
       viewBox="0 0 240 250"
       role="img"
-      aria-labelledby="avatarLabel"
+      aria-labelledby={labelId}
     >
-      <title id="avatarLabel">アバターの状態</title>
+      <title id={labelId}>アバターの状態</title>
       <g fill="var(--gold)" data-show="4">
         <path className="sparkle" d="M46 70l4 10 10 4-10 4-4 10-4-10-10-4 10-4z" />
         <path className="sparkle" d="M196 96l3 8 8 3-8 3-3 8-3-8-8-3 8-3z" />

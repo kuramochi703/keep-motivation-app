@@ -18,7 +18,7 @@ export default function App() {
   }
 
   return (
-    <div className="shell">
+    <div className={`shell${screen === 'main' ? ' dashboard-shell' : ''}`}>
       <Sidebar items={NAV} current={screen} onSelect={select} />
       <main className="content">
         {screen === 'top' ? (

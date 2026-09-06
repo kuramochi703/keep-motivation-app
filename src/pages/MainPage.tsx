@@ -1,15 +1,16 @@
+import Calendar from '../Calendar'
 import Avatar from '../avatar/Avatar'
+import './main-page.css'
 import {
   DECAY,
+  LEVELS,
   SESSION,
   daysUntil,
   fmtClock,
   freqLabel,
   isDone,
   isExpired,
-  key,
   levelOf,
-  shift,
   streak,
   today,
   type State,
@@ -60,28 +61,40 @@ export default function MainPage({
       ? { text: 'これ以上は落ちない。ここから戻すしかない。', warn: true }
       : { text: `このまま手を止めれば、${daysToWreck}日でボロボロになる。`, warn: daysToWreck <= 2 }
 
-  // カレンダー（直近5週間）
-  const end = shift(t, 6 - t.getDay())
-  const cells = Array.from({ length: 35 }, (_, i) => shift(end, -(34 - i)))
-
   return (
-    <div className="wrap">
+    <div className="wrap dashboard">
       <header>
         <h1>サボると、やつれる。</h1>
         <p>
           やることを細かく決めなくていい。1日5分でも机に向かえば、その日は達成。手を止めた日数だけ、アバターは痩せていく。
         </p>
+        <aside className="header-note"><span aria-hidden="true">🌱</span>小さな一歩が<br />きっと明日の元気につながる。</aside>
+        <button className="settings-button" aria-label="目標設定を開く" onClick={onEditGoal}>⚙</button>
       </header>
 
       <div className="grid">
         <section className="card stage">
+          <div className="growth-panel">
+            <span>アバターの状態</span>
+            <h2>Level {L.lv + 1} <small>{L.name}</small></h2>
+            <div className="gauge"><i style={{ width: `${vital}%` }} /></div>
+            <p>{L.lv < 4 ? `次の状態まで 活力あと ${LEVELS[L.lv + 1].min - vital}` : '今日もいい調子。そのまま続けよう。'}<b>{vital}<small> /100</small></b></p>
+          </div>
+          <div className="avatar-room">
+            <p className="room-bubble">よし、<br />今日も少しずつ<br />やってみよう！</p>
+            <div className="room-window" aria-hidden="true" />
+            <div className="room-books" aria-hidden="true"><i /><i /><i /></div>
+            <div className="room-plant" aria-hidden="true">🪴</div>
+            <Avatar lv={L.lv} variant={state.avatarId} />
+          </div>
+          <div className="avatar-caption">
           <span className="badge">
             <i />
             <span>{L.name}</span>
           </span>
-          <Avatar lv={L.lv} variant={state.avatarId} />
-          <p className="owner">{state.name}</p>
           <p className="speech">{L.say}</p>
+          </div>
+          <p className="owner">{state.name}</p>
           <div className="meter">
             <div className="row">
               <span>活力</span>
@@ -95,6 +108,9 @@ export default function MainPage({
             </div>
           </div>
           <p className={`forecast${forecast.warn ? ' warn' : ''}`}>{forecast.text}</p>
+          <div className="level-line" aria-label="活力によるアバターの状態">
+            {LEVELS.map((level) => <div key={level.lv} className={L.lv === level.lv ? 'current' : ''} aria-current={L.lv === level.lv ? 'step' : undefined}><Avatar lv={level.lv} variant={state.avatarId} /><span>{level.name}</span></div>)}
+          </div>
         </section>
 
         <section className="card">
@@ -129,7 +145,7 @@ export default function MainPage({
             <>
               <div className="goal">
                 <span className="goal-text" title={state.goal}>
-                  {state.goal}
+                  <span aria-hidden="true">✎ </span>{state.goal}
                 </span>
                 <button className="btn ghost" onClick={onEditGoal}>
                   目標を変える
@@ -157,7 +173,7 @@ export default function MainPage({
                   </svg>
                   <div className="num">
                     <span>{fmtClock(elapsed)}</span>
-                    <em>{running ? '集中中' : '最低ライン'}</em>
+                    <em>{doneToday ? '今日の達成、おめでとう！' : <>あと {fmtClock(Math.max(0, SESSION - elapsed))} で<br />今日の達成！</>}</em>
                   </div>
                 </div>
                 <div className="acts">
@@ -171,7 +187,7 @@ export default function MainPage({
                   ) : (
                     <>
                       <button className="btn" onClick={onToggleTimer}>
-                        {running ? '一時停止' : elapsed > 0 ? '再開する' : '5分はじめる'}
+                        <span aria-hidden="true">{running ? 'Ⅱ' : '▶'}　</span>{running ? '一時停止' : elapsed > 0 ? '再開する' : '5分はじめる'}
                       </button>
                       <button className="btn sec" onClick={onRecordOnly}>
                         もうやった（記録だけつける）
@@ -183,32 +199,20 @@ export default function MainPage({
 
               <div className="stats">
                 <div>
-                  <b>{st}</b>
-                  <span>連続日数</span>
+                  <span>🔥　連続日数</span>
+                  <b>{st}<small>日</small></b>
                 </div>
                 <div>
-                  <b>{best}</b>
-                  <span>最長記録</span>
+                  <span>👑　最長記録</span>
+                  <b>{best}<small>日</small></b>
                 </div>
                 <div>
-                  <b>{state.done.length}</b>
-                  <span>のべ日数</span>
+                  <span>▥　累積達成日数</span>
+                  <b>{state.done.length}<small>日</small></b>
                 </div>
               </div>
 
-              <div className="cal">
-                <h3>この5週間</h3>
-                <div className="cells">
-                  {cells.map((d) => (
-                    <i
-                      key={key(d)}
-                      title={key(d)}
-                      className={`${isDone(state, d) ? 'on' : ''}${key(d) === key(t) ? ' today' : ''}`}
-                      style={d > t ? { opacity: 0.35 } : undefined}
-                    />
-                  ))}
-                </div>
-              </div>
+              <Calendar state={state} />
 
               <footer>
                 <p>やった日は活力+12、やらなかった日は-20。1日サボると、取り戻すのに2日かかる。</p>

@@ -1,0 +1,86 @@
+.dashboard-shell{background:radial-gradient(ellipse at 70% 15%,#f6fafc,transparent 65%),#edf3f7;}
+.dashboard-shell .content .dashboard{width:100%;max-width:1536px;padding:32px 3.3% 28px;--accent:#518d94;--accent-soft:#edf5f2;--muted:#6b7b93;--ink:#101b2d;color:var(--ink)}
+.dashboard header{position:relative;padding-right:320px;margin-bottom:28px;min-height:90px}
+.dashboard h1{font-size:clamp(28px,3vw,46px);letter-spacing:-.045em;margin-bottom:6px}
+.dashboard header>p{max-width:980px;font-size:14px}
+.header-note{position:absolute;right:50px;top:0;background:#fffaf0;border-radius:28px 24px 26px 6px;padding:13px 24px;font-size:14px;font-weight:600;transform:rotate(-2deg)}
+.header-note>span{position:absolute;font-size:40px;left:-46px;bottom:-15px}
+.settings-button{position:absolute;right:-6px;top:0;border:0;background:transparent;color:#8292a6;font-size:33px;cursor:pointer}
+.settings-button:focus-visible{outline:2px solid var(--accent);border-radius:8px}
+.dashboard .grid{grid-template-columns:minmax(0,43fr) minmax(0,57fr);gap:22px;align-items:start}
+.dashboard .card{border-radius:28px;padding:26px;background:rgba(255,255,255,.94);min-width:0}
+.dashboard .stage{box-shadow:none;padding:20px 24px;display:flex;flex-direction:column}
+.dashboard .stage::before{display:none}
+.growth-panel{background:linear-gradient(120deg,#f3f7f9,#f5f7f9);padding:16px 22px;border-radius:22px;position:relative;z-index:1}
+.growth-panel>span{font-size:14px;font-weight:600}
+.growth-panel h2{font-size:34px;line-height:1.35;margin:2px 0 10px;letter-spacing:-.025em}
+.growth-panel h2 small{font-size:20px;margin-left:8px}
+.growth-panel .gauge{height:11px}
+.growth-panel .gauge i{background:#66b8af}
+.growth-panel p{display:flex;justify-content:space-between;gap:8px;font-size:13px;margin:8px 0 0;color:var(--muted)}
+.growth-panel p b{color:var(--ink)}
+.growth-panel p small{font-weight:400;color:var(--muted)}
+.avatar-room{position:relative;isolation:isolate;min-height:285px;flex:1;background:radial-gradient(ellipse at 52% 60%,#fcf5e9,transparent 65%);margin:12px -24px 0;overflow:hidden;display:flex;align-items:flex-end;justify-content:center}
+.avatar-room::after{content:'';position:absolute;z-index:-1;bottom:-20px;left:-15%;width:130%;height:75px;border-radius:50%;background:#f7f4ef}
+.dashboard .avatar-room>.avatar{width:270px;max-width:60%;margin:0;z-index:1;filter:drop-shadow(0 8px 12px #bca78c12)}
+.room-bubble{position:absolute;top:0;left:22px;background:#edf3f6;border-radius:36px 36px 5px 36px;padding:18px 23px;font-size:16px;line-height:1.6;color:#5d7088;z-index:2;margin:0}
+.room-window{position:absolute;right:24px;top:10px;width:94px;height:156px;background:linear-gradient(140deg,#deeffb,#f0f9ff);border:10px solid #faf8f6;border-bottom:0;border-radius:70px 70px 0 0;z-index:-1}
+.room-window::after{content:'';position:absolute;width:48px;height:17px;top:45px;right:0;background:#ffffffa8;border-radius:50px 40px 0 0}
+.room-plant{position:absolute;right:10px;bottom:24px;font-size:86px;line-height:1.1}
+.room-books{position:absolute;left:30px;bottom:29px;width:90px;transform:rotate(-3deg)}
+.room-books i{display:block;height:19px;border:5px solid #e3c6a9;border-left-width:15px;background:#fffaf1;border-radius:5px;margin-top:1px}
+.room-books i:nth-child(2){border-color:#92aac2;transform:translateX(-5px)}
+.room-books i:first-child{border-color:#afc7a6;transform:translateX(8px)}
+.avatar-caption{display:flex;align-items:center;gap:14px;margin:8px 0}
+.dashboard .badge{font-size:14px;padding:7px 15px;white-space:nowrap}
+.dashboard .speech{margin:0;text-align:left;font-size:14px;min-height:0}
+.dashboard .owner{font-size:12px;color:var(--muted);text-align:left;margin:0 0 8px}
+.dashboard .meter .row b{font-size:30px}
+.dashboard .meter .row span{font-size:17px}
+.dashboard .gauge{height:12px}
+.dashboard .forecast{text-align:left;border-radius:18px;background:#f2f5f9;padding:12px 18px;font-size:13px;margin-top:12px}
+.level-line{display:flex;justify-content:space-between;gap:8px;margin-top:12px}
+.level-line>div{flex:1;min-width:0;text-align:center;border:1px solid transparent;border-radius:13px;padding:3px}
+.level-line>div.current{border-color:#a1cedc;background:#e9f3f7}
+.level-line .avatar{width:100%;max-width:64px;margin:0 auto;display:block}
+.level-line span{font-size:10px;color:var(--muted);white-space:nowrap}
+.dashboard .goal-text{font-size:25px;padding:0}
+.dashboard .goal-text>span{color:#b58a61}
+.dashboard .goal .btn{padding:8px 13px;white-space:nowrap}
+.dashboard .btn{border-radius:16px}
+.dashboard .sub{margin:8px 0 3px;font-size:14px}
+.dashboard .meta{font-size:12px;margin:0 0 18px}
+.dashboard .timer{gap:22px;flex-wrap:nowrap;margin:14px 0 24px}
+.dashboard .ring{width:clamp(180px,18vw,260px);height:clamp(180px,18vw,260px)}
+.dashboard .ring .track{stroke:#e4eaf2;stroke-width:9}
+.dashboard .ring .num{font-size:clamp(36px,4vw,60px)}
+.dashboard .ring .num em{font-size:clamp(12px,1.3vw,18px);line-height:1.5;margin-top:0;color:#5c6c84;max-width:150px}
+.dashboard .acts{min-width:0;gap:14px}
+.dashboard .acts>.btn{padding:17px 12px;font-size:19px;background:linear-gradient(125deg,#46818b,#538e93)}
+.dashboard .acts>.btn.sec{background:#f4f7fa;border-color:#dce4ee;color:var(--ink);font-size:14px}
+.dashboard .stats{gap:12px;margin-top:20px}
+.dashboard .stats>div{padding:15px 12px;background:linear-gradient(130deg,#f3f6fa,#f1f4f8);border-radius:20px}
+.dashboard .stats span{font-size:13px}
+.dashboard .stats b{font-size:30px;margin:5px 0 0 24px}
+.dashboard .stats b small{font-size:20px}
+.calendar-heading{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px;flex-wrap:wrap}
+.dashboard .cal h3{font-size:17px;color:var(--ink);margin:0}
+.dashboard .cal h3 small{font-size:12px;font-weight:400;color:var(--muted)}
+.calendar-heading .btn{font-size:12px;padding:8px 12px}
+.calendar-body{display:flex;align-items:flex-end;gap:24px}
+.dashboard .cells{flex:1;max-width:300px;gap:6px;min-width:140px}
+.dashboard .cells i{border-radius:7px;background:#e4e9f1}
+.dashboard .cells i.on{background:#70afbc}
+.dashboard .cells i.today{box-shadow:inset 0 0 0 2px #2c4f72}
+.weekday{font-size:11px;text-align:center;color:var(--muted)}
+.calendar-note{font-size:13px;background:#edf5f1;border-radius:17px;padding:15px;flex:1;color:#5a7186;margin:0}
+.calendar-note span{float:left;font-size:28px;margin-right:12px}
+.dashboard footer{margin-top:25px;padding-top:20px}
+.dashboard footer p{font-size:13px;max-width:480px}
+.dashboard .tools .btn{font-size:11px;padding:5px 10px}
+@media(min-width:1600px){.avatar-room{min-height:340px}}
+@media(max-width:1320px){.dashboard header{padding-right:0}.header-note{display:none}.dashboard .grid{grid-template-columns:minmax(0,42fr) minmax(0,58fr);gap:16px}.dashboard .card{padding:18px}.dashboard .timer{flex-wrap:wrap}.dashboard .ring{width:190px;height:190px}.room-bubble{font-size:13px;padding:13px}.calendar-body{gap:12px}.calendar-note{font-size:11px;padding:10px}.dashboard .stats span{font-size:11px}.dashboard .goal-text{font-size:20px}}
+@media(max-width:760px){.dashboard .grid{grid-template-columns:1fr}.dashboard header{min-height:0;margin-bottom:22px;padding-right:28px}.dashboard header>p{font-size:12px}.dashboard-shell .content .dashboard{padding:18px 16px 30px}.avatar-room{min-height:280px;flex:none}.dashboard .stage{padding:20px}.dashboard .timer{flex-wrap:nowrap}.dashboard .ring{width:175px;height:175px}.dashboard .acts>.btn{font-size:16px}.dashboard .level-line .avatar{max-width:54px}.dashboard .goal{flex-wrap:wrap}.dashboard .goal-text{min-width:180px}.dashboard .card{border-radius:23px}.dashboard .stats b{font-size:26px;margin-left:8px}}
+@media(max-width:420px){.dashboard .timer{flex-direction:column}.dashboard .acts{width:100%}.calendar-body{flex-direction:column;align-items:stretch}.dashboard .cells{max-width:none}.calendar-note{padding:12px}.dashboard .stats{gap:6px}.dashboard .stats>div{padding:12px 8px}.level-line span{font-size:9px}}
+
+@media(min-width:761px) and (max-width:1000px){.dashboard .grid{grid-template-columns:1fr}.avatar-room{min-height:285px;flex:none}.dashboard .timer{flex-wrap:wrap}}
