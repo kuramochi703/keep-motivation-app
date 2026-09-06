@@ -154,6 +154,7 @@ MainPage（画面）→ 新しい画面を表示
 
 | 見たいこと | ファイル |
 | --- | --- |
+| 仕組みの図（Mermaid） | `ARCHITECTURE.md` |
 | 画面の構成 | `src/App.tsx` |
 | 状態・画面切り替え | `src/useApp.ts` |
 | ゲームのルール | `src/logic.ts` |
