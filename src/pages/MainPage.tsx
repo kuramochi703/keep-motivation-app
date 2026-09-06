@@ -85,15 +85,13 @@ export default function MainPage({
             <div className="room-window" aria-hidden="true" />
             <div className="room-books" aria-hidden="true"><i /><i /><i /></div>
             <div className="room-plant" aria-hidden="true">🪴</div>
-            <Avatar lv={L.lv} variant={state.avatarId} />
+            <Avatar lv={L.lv} variant={state.avatarId} vitality={vital} days={state.done.length} />
           </div>
           <div className="avatar-caption">
           <span className="badge">
             <i />
             <span>{L.name}</span>
           </span>
-          <Avatar lv={L.lv} variant={state.avatarId} vitality={vital} days={state.done.length} />
-          <p className="owner">{state.name}</p>
           <p className="speech">{L.say}</p>
           </div>
           <p className="owner">{state.name}</p>
