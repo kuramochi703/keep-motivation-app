@@ -4,6 +4,8 @@ import { levelOf } from '../logic'
 import { useAccent } from '../ui/useAccent'
 
 const PRESET = 50
+/** 見本として見せるアバターの育ち具合。ステージ4「いっちょまえ」に当たる */
+const PRESET_DAYS = 14
 
 type Props = {
   onStart: () => void
@@ -25,7 +27,7 @@ export default function TopPage({ onStart, variant = 0 }: Props) {
       </header>
 
       <section className="card top-card">
-        <Avatar lv={L.lv} variant={variant} />
+        <Avatar lv={L.lv} variant={variant} vitality={vital} days={PRESET_DAYS} />
         <p className="speech">{L.say}</p>
         <div className="meter">
           <div className="row">

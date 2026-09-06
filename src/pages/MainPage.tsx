@@ -74,7 +74,7 @@ export default function MainPage({
             <i />
             <span>{L.name}</span>
           </span>
-          <Avatar lv={L.lv} variant={state.avatarId} />
+          <Avatar lv={L.lv} variant={state.avatarId} vitality={vital} days={state.done.length} />
           <p className="owner">{state.name}</p>
           <p className="speech">{L.say}</p>
           <div className="meter">
