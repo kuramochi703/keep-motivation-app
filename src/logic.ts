@@ -1,7 +1,7 @@
 export const STORAGE_KEY = 'yatsure:state:v3'
 export const GAIN = 12
 export const DECAY = 20
-export const SESSION = 300 // 秒
+export const SESSION = 300 // 達成に必要な秒数
 
 export type Level = {
   min: number

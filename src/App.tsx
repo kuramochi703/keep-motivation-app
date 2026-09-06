@@ -11,7 +11,7 @@ const NAV: NavItem[] = [
 ]
 
 export default function App() {
-  const { state, setState, screen, go, start, reset } = useApp()
+  const { state, screen, go, start, reset, elapsed, running, toggleTimer, recordOnly, nextDay } = useApp()
 
   const select = (id: string) => {
     if (id === 'top' || id === 'setup' || id === 'main') go(id)
@@ -28,7 +28,11 @@ export default function App() {
         ) : (
           <MainPage
             state={state}
-            setState={setState}
+            elapsed={elapsed}
+            running={running}
+            onToggleTimer={toggleTimer}
+            onRecordOnly={recordOnly}
+            onNextDay={nextDay}
             onEditGoal={() => go('setup')}
             onReset={reset}
           />
