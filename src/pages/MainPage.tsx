@@ -128,8 +128,8 @@ export default function MainPage({
                   <span>今の連続日数</span>
                 </div>
                 <div>
-                  <b>{best}</b>
                   <span>最長記録</span>
+                  <b>{best}日</b>
                 </div>
               </div>
               <div className="acts done-acts">
