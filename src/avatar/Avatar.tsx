@@ -2,7 +2,7 @@ import { Component, Suspense, lazy, type ReactNode, useEffect, useState } from '
 import AvatarSvg from './AvatarSvg'
 import { lookOf } from './look'
 
-// three.js は gzip でも 300KB 近くある。初回表示をこれに待たせたくないので
+// three.js は容量が大きい。初回表示をこれに待たせたくないので
 // 別チャンクに切り出し、読み込み終わるまでは SVG を出しておく。
 const AvatarCanvas = lazy(() => import('./AvatarCanvas'))
 

@@ -14,18 +14,18 @@ export type Stage = {
   /** 到達に必要な、のべ達成日数 */
   min: number
   name: string
-  /** そのステージで見た目に何が増えるか。README.md の表と対応 */
+  /** そのステージで見た目に何が増えるか。分岐の実体は look.ts / Chick.tsx */
   gains: string
 }
 
 export const STAGES: Stage[] = [
   { id: 0, min: 0, name: 'たまご', gains: 'まだ殻の中。ゆらゆら揺れるだけ' },
-  { id: 1, min: 1, name: 'ひよこ', gains: '殻を破って登場。小さなからだと足' },
+  { id: 1, min: 1, name: 'ひよこ', gains: '殻を破って登場。からだ・あし・くちばし' },
   { id: 2, min: 3, name: 'やんちゃひよこ', gains: 'つばさが生える' },
   { id: 3, min: 7, name: 'もふもふ', gains: 'からだが丸くなり、しっぽがつく' },
   { id: 4, min: 14, name: 'いっちょまえ', gains: 'とさかが立つ' },
   { id: 5, min: 30, name: 'りりしい', gains: 'マフラーを巻く' },
-  { id: 6, min: 60, name: 'まんまるの主', gains: '冠をかぶり、まわりが光る' },
+  { id: 6, min: 60, name: 'まんまるの主', gains: '冠をかぶる' },
 ]
 
 /** のべ達成日数から今のステージを返す */
