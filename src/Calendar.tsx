@@ -26,7 +26,6 @@ export default function Calendar({ state }: { state: State }) {
         <div><span className="summary-icon" aria-hidden="true">▣</span><p><small>今週</small><b>{completed}/7</b></p></div>
         <div><i className="rate-ring" style={{ '--rate': `${rate}%` } as CSSProperties} aria-hidden="true" /><p><small>今週の達成率</small><b>{rate}%</b></p></div>
         <div><span className="summary-icon blue" aria-hidden="true">▥</span><p><small>累計</small><b>{state.done.length}日</b></p></div>
-        <aside><span aria-hidden="true">🌱</span>{isDone(state, current) ? <>今日も一歩前進！<br />自分のペースで続けよう。</> : <>小さな一歩を、<br />今日の達成につなげよう。</>}</aside>
       </div>
       {view === 'month' ? <MonthlyCalendar state={state} /> : <>
         <div className="week-layout">
