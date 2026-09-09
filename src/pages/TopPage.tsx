@@ -26,7 +26,7 @@ export default function TopPage({ onStart, variant = 0 }: Props) {
       </header>
 
       <section className="card top-card">
-        <Avatar lv={L.lv} variant={variant} />
+        <Avatar lv={L.lv} variant={variant} vitality={PRESET} egg />
         <p className="speech">{L.say}</p>
         <p className="top-tag">— サボると、やつれる。 —</p>
         <div className="top-cta">

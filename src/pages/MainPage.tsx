@@ -109,7 +109,21 @@ export default function MainPage({
           </div>
           <p className={`forecast${forecast.warn ? ' warn' : ''}`}>{forecast.text}</p>
           <div className="level-line" aria-label="活力によるアバターの状態">
-            {LEVELS.map((level) => <div key={level.lv} className={L.lv === level.lv ? 'current' : ''} aria-current={L.lv === level.lv ? 'step' : undefined}><Avatar lv={level.lv} variant={state.avatarId} /><span>{level.name}</span></div>)}
+            {LEVELS.map((level) => (
+              <div
+                key={level.lv}
+                className={L.lv === level.lv ? 'current' : ''}
+                aria-current={L.lv === level.lv ? 'step' : undefined}
+              >
+                <Avatar
+                  lv={level.lv}
+                  variant={state.avatarId}
+                  vitality={level.min}
+                  days={state.done.length}
+                />
+                <span>{level.name}</span>
+              </div>
+            ))}
           </div>
         </section>
 

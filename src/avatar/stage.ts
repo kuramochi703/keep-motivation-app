@@ -9,7 +9,7 @@
  * 移して `days` の出どころだけ差し替えればいい。
  */
 export type Stage = {
-  /** 見た目の分岐に使う番号。0 が最小 */
+  /** 見た目の分岐に使う番号。1（ひよこ）から始まる */
   id: number
   /** 到達に必要な、のべ達成日数 */
   min: number
@@ -19,8 +19,7 @@ export type Stage = {
 }
 
 export const STAGES: Stage[] = [
-  { id: 0, min: 0, name: 'たまご', gains: 'まだ殻の中。ゆらゆら揺れるだけ' },
-  { id: 1, min: 1, name: 'ひよこ', gains: '殻を破って登場。からだ・あし・くちばし' },
+  { id: 1, min: 0, name: 'ひよこ', gains: '最初から、からだ・あし・くちばしがある' },
   { id: 2, min: 3, name: 'やんちゃひよこ', gains: 'つばさが生える' },
   { id: 3, min: 7, name: 'もふもふ', gains: 'からだが丸くなり、しっぽがつく' },
   { id: 4, min: 14, name: 'いっちょまえ', gains: 'とさかが立つ' },

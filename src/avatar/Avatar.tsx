@@ -15,6 +15,8 @@ type Props = {
   vitality?: number
   /** のべ達成日数。成長ステージはここから決まる */
   days?: number
+  /** トップページ用に卵の姿を表示する */
+  egg?: boolean
 }
 
 /**
@@ -24,10 +26,19 @@ type Props = {
  * ソフトウェア描画を切った状態など）では従来のインライン SVG に落とす。
  * ここで落ちてもアプリの他の部分は動く、という状態を保つのが目的。
  */
-export default function Avatar({ lv, variant = 0, vitality, days = 0 }: Props) {
+export default function Avatar({ lv, variant = 0, vitality, days = 0, egg = false }: Props) {
   const look = lookOf(days, vitality ?? 0, lv, variant)
+  if (egg) {
+    look.stage = 0
+    look.isEgg = true
+  }
   const animate = useAnimationAllowed()
-  const fallback = <AvatarSvg lv={lv} variant={variant} />
+  const fallback = egg ? (
+    <svg className="avatar" viewBox="0 0 200 200" role="img" aria-label="たまご">
+      <ellipse cx="100" cy="178" rx="42" ry="8" fill="#000" opacity="0.08" />
+      <path d="M100 22C72 22 48 91 48 124a52 52 0 0 0 104 0c0-33-24-102-52-102Z" fill="#fff3d6" stroke="#e4d4b4" strokeWidth="3" />
+    </svg>
+  ) : <AvatarSvg lv={lv} variant={variant} />
 
   if (!hasWebGL()) return fallback
 

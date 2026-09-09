@@ -141,7 +141,7 @@ export default function SetupPage({ state, onStart }: Props) {
                 onClick={() => pickAvatar(a.id)}
               >
                 {/* 3D は活力とステージで見た目が決まる。選ぶ時の見本なので、
-                    たまご（0日）ではなく育った姿を固定値で見せる */}
+                    初期のひよこではなく育った姿を固定値で見せる */}
                 <Avatar lv={2} variant={a.id} vitality={60} days={7} />
                 <b>{a.name}</b>
                 <span>{a.desc}</span>
