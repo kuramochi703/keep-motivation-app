@@ -32,9 +32,12 @@ export function useApp() {
   }, [state, hasStarted])
 
   const start = (input: SetupInput) => {
+    setRunning(false)
+    setElapsed(0)
+    doneRef.current = false
     setHasStarted(true)
     setState((s) => ({
-      ...s,
+      ...resetGoal(s),
       goal: input.goal,
       deadline: input.deadline,
       frequency: input.frequency,

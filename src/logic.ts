@@ -64,7 +64,7 @@ export type SetupInput = {
 }
 
 export const initialState = (): State => ({
-  vitality: 62,
+  vitality: 50,
   goal: '資格の勉強',
   deadline: null,
   frequency: 'any',
@@ -141,7 +141,9 @@ export function rollover(s: State): State {
 
   let vitality = s.vitality
   let d = parseKey(s.lastDate)
-  while (key(d) !== tk) {
+  const end = parseKey(tk)
+  // 時計の巻き戻しや不正な保存日付でも、未来へ進み続けないようにする。
+  while (d < end) {
     if (!isDone(s, d)) vitality = clamp(vitality - DECAY)
     d = shift(d, 1)
   }
@@ -160,13 +162,12 @@ export function markDone(s: State): State {
   return { ...next, best: Math.max(next.best, streak(next)) }
 }
 
-/** 新しい目標に切り替える（アバターと活力は引き継ぐ） */
+/** 新しい目標に切り替える（アバターは引き継ぎ、活力は初期値に戻す） */
 export const resetGoal = (s: State): State => ({
   ...initialState(),
-  vitality: s.vitality,
   avatarId: s.avatarId,
   name: s.name,
-  lastDate: key(today(s)),
+  lastDate: key(new Date()),
 })
 
 export function load(): State {
