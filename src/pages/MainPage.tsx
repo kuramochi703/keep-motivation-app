@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import Calendar from '../Calendar'
+import Calendar from '../features/calendar/Calendar'
 import Avatar from '../avatar/Avatar'
 import './main-page.css'
 import {
@@ -12,7 +12,7 @@ import {
   streak,
   today,
   type State,
-} from '../logic'
+} from '../state/logic'
 import { useAccent } from '../ui/useAccent'
 
 const DASH = 326.7

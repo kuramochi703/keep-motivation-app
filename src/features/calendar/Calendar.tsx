@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from 'react'
-import { isDone, key, shift, streak, today, type State } from './logic'
+import { isDone, key, shift, streak, today, type State } from '../../state/logic'
 import MonthlyCalendar from './MonthlyCalendar'
 import './calendar.css'
 

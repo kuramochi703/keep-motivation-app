@@ -1,6 +1,6 @@
 import Avatar from '../avatar/Avatar'
-import Logo from '../Logo'
-import { levelOf } from '../logic'
+import Logo from '../ui/Logo'
+import { levelOf } from '../state/logic'
 import { useAccent } from '../ui/useAccent'
 
 const PRESET = 50

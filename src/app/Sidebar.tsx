@@ -1,4 +1,4 @@
-import Logo from './Logo'
+import Logo from '../ui/Logo'
 
 export type NavItem = { id: string; label: string }
 

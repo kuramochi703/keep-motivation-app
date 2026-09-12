@@ -155,9 +155,9 @@ MainPage（画面）→ 新しい画面を表示
 | 見たいこと | ファイル |
 | --- | --- |
 | 仕組みの図（Mermaid） | `ARCHITECTURE.md` |
-| 画面の構成 | `src/App.tsx` |
-| 状態・画面切り替え | `src/useApp.ts` |
-| ゲームのルール | `src/logic.ts` |
+| 画面の構成 | `src/app/App.tsx` |
+| 状態・画面切り替え | `src/state/useApp.ts` |
+| ゲームのルール | `src/state/logic.ts` |
 | 目標設定の画面 | `src/pages/SetupPage.tsx` |
 | ダッシュボード | `src/pages/MainPage.tsx` |
 | アバターの絵 | `src/avatar/`（色や表情は `look.ts`、形は `Chick.tsx`） |

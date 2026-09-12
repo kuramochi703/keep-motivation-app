@@ -1,5 +1,5 @@
 import { useEffect } from 'react'
-import { type Level } from '../logic'
+import { type Level } from '../state/logic'
 
 export function useAccent(L: Level) {
   useEffect(() => {
