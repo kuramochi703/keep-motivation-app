@@ -69,6 +69,52 @@ flowchart TB
 使って動いているかのつながりに対応します。フォルダ構成は機能単位
 （`app/` `pages/` `features/` `state/` `avatar/` `ui/`）で揃えています。
 
+### ディレクトリツリー
+
+```text
+src/
+├── main.tsx                    エントリポイント。App を描画する
+├── vite-env.d.ts                Vite の型定義
+│
+├── app/                          画面の骨組み
+│   ├── App.tsx                    画面の設計図。どの画面を出すか決める
+│   └── Sidebar.tsx                 メニュー（トップ/目標設定/ダッシュボード）
+│
+├── pages/                        画面（1画面 = 1ファイル）
+│   ├── TopPage.tsx                 トップ画面
+│   ├── SetupPage.tsx               目標設定画面
+│   ├── MainPage.tsx                ダッシュボード（達成ボタン・タイマー・カレンダー）
+│   └── main-page.css               MainPage 専用スタイル
+│
+├── features/
+│   └── calendar/                  カレンダー機能一式
+│       ├── Calendar.tsx             週表示（達成率・連続日数の集計もここ）
+│       ├── MonthlyCalendar.tsx      月表示（Calendar.tsx から呼ばれる）
+│       └── calendar.css             ↑2つのスタイル
+│
+├── state/                        状態とルール
+│   ├── useApp.ts                   合成層。3つのhookを1つのAPIにまとめる
+│   ├── useScreen.ts                画面遷移だけを管理
+│   ├── useTimer.ts                 5分タイマーだけを管理
+│   ├── useGoalState.ts             目標の状態管理・保存（localStorage）
+│   └── logic.ts                    ルールブック。活力計算・達成判定・保存/読込
+│
+├── avatar/                        アバターの3D描画（react-three-fiber）
+│   ├── Avatar.tsx                   入口。3D/SVGの切り替え（WebGL不可なら自動フォールバック）
+│   ├── AvatarCanvas.tsx             three.js のカメラ・光源
+│   ├── Chick.tsx                    3Dモデルの組み立て
+│   ├── AvatarSvg.tsx                3D不可時に出す従来のSVG
+│   ├── look.ts                      ステージ×活力 → 見た目パラメータの対応表
+│   ├── stage.ts                     のべ達成日数 → 成長ステージ
+│   ├── avatar.css                   表示サイズ
+│   └── README.md                    このフォルダだけの詳しい説明書
+│
+└── ui/                            見た目の共通部品
+    ├── Logo.tsx                     ロゴ
+    ├── useAccent.ts                 活力レベル → アクセントカラーに反映
+    └── styles.css                   全体スタイル（変数・共通クラスなど）
+```
+
 ```mermaid
 flowchart TB
     subgraph spa["React SPA"]
