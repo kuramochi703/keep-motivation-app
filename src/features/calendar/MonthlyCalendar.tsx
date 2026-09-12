@@ -1,6 +1,6 @@
 import { useId, useState } from 'react'
 import './calendar.css'
-import { isDone, key, shift, today, type State } from './logic'
+import { isDone, key, shift, today, type State } from '../../state/logic'
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土']
 

@@ -5,6 +5,7 @@ dist-ssr/
 *.tsbuildinfo
 .vite/
 .playwright-mcp/
+*.tar
 
 # 環境変数（機密）
 .env

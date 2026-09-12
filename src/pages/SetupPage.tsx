@@ -10,7 +10,7 @@ import {
   type Frequency,
   type SetupInput,
   type State,
-} from '../logic'
+} from '../state/logic'
 
 type Props = {
   state: State

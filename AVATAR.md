@@ -141,7 +141,7 @@
      └──▶ C：絵を描く（src/avatar/）              ← B と C は並行でOK
 ```
 
-### A：ロジック係 — `src/logic.ts`
+### A：ロジック係 — `src/state/logic.ts`
 
 `STAGES` / `stageOf()` / `daysToNextStage()` は、C が先に `src/avatar/stage.ts` へ
 置いてあります（`logic.ts` は触っていません）。ステージを State に持たせたくなったら
@@ -156,7 +156,7 @@
 ステージの判定は `src/avatar/stage.ts` で先に動いているので、B と C はここを待たずに進められます。
 `logic.ts` 側へ移すときは、関数名と型を変えないでください。
 
-### B：画面係 — `src/App.tsx`
+### B：画面係 — `src/app/App.tsx`
 
 - [ ] 今のステージ名を画面に出す（`stageOf(state.done.length).name`）
 - [ ] 「次のステージまであと N 日」の進捗表示

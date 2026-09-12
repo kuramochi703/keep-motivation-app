@@ -1,8 +1,8 @@
-import MainPage from './pages/MainPage'
-import SetupPage from './pages/SetupPage'
+import MainPage from '../pages/MainPage'
+import SetupPage from '../pages/SetupPage'
 import Sidebar, { type NavItem } from './Sidebar'
-import TopPage from './pages/TopPage'
-import { useApp } from './useApp'
+import TopPage from '../pages/TopPage'
+import { useApp } from '../state/useApp'
 
 const NAV: NavItem[] = [
   { id: 'top', label: 'トップ' },
