@@ -1,8 +1,8 @@
 .dashboard-shell{background:radial-gradient(ellipse at 70% 15%,#f6fafc,transparent 65%),#edf3f7;}
 .dashboard-shell .content .dashboard{width:100%;max-width:1536px;padding:32px 3.3% 28px;--accent:#518d94;--accent-soft:#edf5f2;--muted:#6b7b93;--ink:#101b2d;color:var(--ink)}
-.dashboard header{position:relative;margin-bottom:26px}
+.dashboard header{position:relative;margin-bottom:26px;text-align:center}
 .dashboard h1{font-size:clamp(28px,3vw,46px);letter-spacing:-.045em;margin-bottom:6px}
-.dashboard header>p{max-width:980px;font-size:14px}
+.dashboard header>p{max-width:980px;font-size:14px;margin-left:auto;margin-right:auto}
 
 .dash-area{position:relative}
 
@@ -83,12 +83,37 @@
 .dashboard .acts{min-width:0;gap:14px}
 .dashboard .acts>.btn{padding:17px 12px;font-size:19px;background:linear-gradient(125deg,#46818b,#538e93)}
 .dashboard .acts>.btn.sec{background:#f4f7fa;border-color:#dce4ee;color:var(--ink);font-size:14px}
+
+/* パネル内で崩れないように幅を固定 */
+.dash-panel .timer{flex-wrap:wrap;justify-content:center}
+.dash-panel .ring{width:190px;height:190px}
+.dash-panel .activity-summary{grid-template-columns:repeat(3,minmax(0,1fr))}
+.dash-panel .activity-summary aside{grid-column:1/-1}
+.dash-panel .activity-summary>div{gap:6px;padding:9px}
+.dash-panel .week-layout{grid-template-columns:minmax(0,1fr)}
+.dash-panel .week-legend{flex-direction:row;flex-wrap:wrap;gap:8px 14px;box-shadow:none}
+
+/* 目標パネル：期限とアクションを強調 */
+.dashboard .goal-card{display:block;padding:16px 18px;background:#f7f9fc;border:1px solid #e6ecf3;border-radius:16px;margin:10px 0 14px}
+.dashboard .goal-card .goal-text{font-size:22px;line-height:1.55;white-space:normal;overflow-wrap:anywhere}
+.deadline{display:flex;align-items:center;justify-content:space-between;gap:12px;
+  padding:16px 18px;border-radius:18px;background:linear-gradient(130deg,#e9f3f0,#f5f9f7);border:1px solid #dcebe4}
+.deadline.warn{background:linear-gradient(130deg,#fdeee9,#fdf6f1);border-color:#f3d6ca}
+.deadline-label small{display:block;font-size:11px;color:var(--muted)}
+.deadline-label span{font-size:17px;font-weight:700;color:var(--ink)}
+.deadline-days{margin:0;font-size:15px;font-weight:700;color:var(--muted);white-space:nowrap}
+.deadline-days b{font-size:38px;font-weight:800;color:#3f9a7a;letter-spacing:-.04em;font-variant-numeric:tabular-nums;margin:0 3px}
+.deadline.warn .deadline-days b{color:#e06a4e}
+.deadline-days small{font-size:13px;color:inherit;font-weight:600}
+.deadline-hint{margin:8px 0 14px;font-size:12px;color:var(--muted);text-align:center}
+.new-goal-cta{width:100%;padding:16px 18px;font-size:16px;border-radius:16px;
+  background:linear-gradient(125deg,#46818b,#538e93)}
 .dashboard .stats{gap:12px;margin-top:20px}
 .dashboard .stats>div{padding:15px 12px;background:linear-gradient(130deg,#f3f6fa,#f1f4f8);border-radius:20px}
 .dashboard .stats span{font-size:13px}
 .dashboard .stats b{font-size:30px;margin:5px 0 0 24px}
 .dashboard .stats b small{font-size:20px}
-.dashboard .tools{margin-top:2px}
+.dashboard .tools{margin-top:14px;justify-content:center}
 .dashboard .tools .btn{font-size:11px;padding:5px 10px}
 
 /* 期限後の振り返り */
