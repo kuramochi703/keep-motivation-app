@@ -45,7 +45,6 @@ src/
     ├── Avatar.tsx        入口（3D/SVGの切り替え）
     ├── AvatarCanvas.tsx  three.js のカメラ・光源
     ├── Chick.tsx         3Dモデルの組み立て
-    ├── AvatarSvg.tsx      3D不可時のフォールバック
     ├── look.ts            ステージ×活力→見た目パラメータ
     ├── stage.ts            のべ日数→成長ステージ
     ├── avatar.css
