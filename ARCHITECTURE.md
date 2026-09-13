@@ -100,10 +100,9 @@ src/
 │   └── logic.ts                    ルールブック。活力計算・達成判定・保存/読込
 │
 ├── avatar/                        アバターの3D描画（react-three-fiber）
-│   ├── Avatar.tsx                   入口。3D/SVGの切り替え（WebGL不可なら自動フォールバック）
+│   ├── Avatar.tsx                   入口。3Dの遅延読み込みと失敗の受け止め
 │   ├── AvatarCanvas.tsx             three.js のカメラ・光源
 │   ├── Chick.tsx                    3Dモデルの組み立て
-│   ├── AvatarSvg.tsx                3D不可時に出す従来のSVG
 │   ├── look.ts                      ステージ×活力 → 見た目パラメータの対応表
 │   ├── stage.ts                     のべ達成日数 → 成長ステージ
 │   ├── avatar.css                   表示サイズ
@@ -135,7 +134,7 @@ flowchart TB
 
         subgraph parts["表示部品"]
             direction LR
-            avatar["avatar/<br/><i>[react-three-fiber + SVG]</i><br/>アバターの3D描画。<br/>WebGL不可なら自動でSVGに切替"]
+            avatar["avatar/<br/><i>[react-three-fiber]</i><br/>アバターの3D描画。<br/>WebGL不可なら空枠のみ"]
             calendar["features/calendar/<br/><i>[React]</i><br/>Calendar.tsx / MonthlyCalendar.tsx<br/>達成履歴のカレンダー表示"]
             ui["ui/<br/><i>[CSS + Hook]</i><br/>配色・ロゴなどデザインまわり<br/>（Logo.tsx / useAccent.ts / styles.css）"]
         end
@@ -203,8 +202,9 @@ flowchart TB
   `localStorage` の読み書きを担当する、UIを持たない層。`useScreen.ts`
   `useTimer.ts` `useGoalState.ts` はいずれもここの定数・関数を呼ぶだけで、
   ロジックそのものは持たない。
-- **`avatar/`** は WebGL が使えれば3D、使えなければ自動でインラインSVGに
-  フォールバックします（`Avatar.tsx` 内の `WebGLBoundary` が担当）。
+- **`avatar/`** の見た目は3Dの一種類だけです。WebGL が使えない／3Dの初期化に
+  失敗した場合は、レイアウトを保つための空枠だけが残ります
+  （`Avatar.tsx` 内の `WebGLBoundary` が担当）。
 - **`features/calendar/`** はカレンダー機能（週表示・月表示・専用CSS）を
   1フォルダにまとめたもの。同じ考え方で機能が増えたら `features/` 配下に
   フォルダを足していく想定。

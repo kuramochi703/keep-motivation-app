@@ -1,9 +1,8 @@
 import { Component, Suspense, lazy, type ReactNode, useEffect, useState } from 'react'
-import AvatarSvg from './AvatarSvg'
 import { lookOf } from './look'
 
 // three.js は容量が大きい。初回表示をこれに待たせたくないので
-// 別チャンクに切り出し、読み込み終わるまでは SVG を出しておく。
+// 別チャンクに切り出し、読み込み終わるまでは場所取りだけしておく。
 const AvatarCanvas = lazy(() => import('./AvatarCanvas'))
 
 type Props = {
@@ -22,9 +21,10 @@ type Props = {
 /**
  * アバターの入口。
  *
- * 中身は react-three-fiber の 3D だが、WebGL が使えない環境（古い端末、
- * ソフトウェア描画を切った状態など）では従来のインライン SVG に落とす。
- * ここで落ちてもアプリの他の部分は動く、という状態を保つのが目的。
+ * 表示は react-three-fiber の 3D ひとつだけ。以前は WebGL が使えない時に
+ * インライン SVG の 2D 版へ落としていたが、見た目が二種類あると
+ * 「環境によって別のアバターが出る」状態になるのでやめた。
+ * 3D を出せない場合は、レイアウトを崩さないための空の枠だけを置く。
  */
 export default function Avatar({ lv, variant = 0, vitality, days = 0, egg = false }: Props) {
   const look = lookOf(days, vitality ?? 0, lv, variant)
@@ -33,22 +33,26 @@ export default function Avatar({ lv, variant = 0, vitality, days = 0, egg = fals
     look.isEgg = true
   }
   const animate = useAnimationAllowed()
-  const fallback = egg ? (
-    <svg className="avatar" viewBox="0 0 200 200" role="img" aria-label="たまご">
-      <ellipse cx="100" cy="178" rx="42" ry="8" fill="#000" opacity="0.08" />
-      <path d="M100 22C72 22 48 91 48 124a52 52 0 0 0 104 0c0-33-24-102-52-102Z" fill="#fff3d6" stroke="#e4d4b4" strokeWidth="3" />
-    </svg>
-  ) : <AvatarSvg lv={lv} variant={variant} />
 
-  if (!hasWebGL()) return fallback
+  if (!hasWebGL()) {
+    return <AvatarPlaceholder />
+  }
 
   return (
-    <WebGLBoundary fallback={fallback}>
-      <Suspense fallback={fallback}>
+    <WebGLBoundary>
+      <Suspense fallback={<AvatarPlaceholder />}>
         <AvatarCanvas look={look} animate={animate} />
       </Suspense>
     </WebGLBoundary>
   )
+}
+
+/**
+ * 3D がまだ出せない間の場所取り。
+ * `.avatar-3d` と同じ比率・同じ幅なので、3D に入れ替わっても行がずれない。
+ */
+function AvatarPlaceholder() {
+  return <div className="avatar avatar-3d avatar-placeholder" aria-hidden="true" />
 }
 
 /** OS の「視差効果を減らす」設定を尊重する */
@@ -74,14 +78,16 @@ function hasWebGL() {
   } catch {
     webgl = false
   }
+  if (!webgl) console.warn('[avatar] WebGL が使えないため、アバターを表示できません。')
   return webgl
 }
 
 /**
- * 3D の初期化に失敗したときに SVG へ切り替えるための境界。
+ * 3D の初期化に失敗したときに空の枠へ切り替えるための境界。
+ * ここで受け止めないとアプリ全体が落ちる。
  * React のエラー境界はクラスでしか書けないので、ここだけクラス。
  */
-class WebGLBoundary extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
+class WebGLBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
   state = { failed: false }
 
   static getDerivedStateFromError() {
@@ -89,10 +95,10 @@ class WebGLBoundary extends Component<{ fallback: ReactNode; children: ReactNode
   }
 
   componentDidCatch(error: unknown) {
-    console.warn('[avatar] 3D の描画に失敗したので SVG で表示します。', error)
+    console.warn('[avatar] 3D の描画に失敗しました。', error)
   }
 
   render() {
-    return this.state.failed ? this.props.fallback : this.props.children
+    return this.state.failed ? <AvatarPlaceholder /> : this.props.children
   }
 }
