@@ -58,7 +58,9 @@ export default function MainPage({
   const st = streak(state)
 
   const expired = isExpired(state)
-  const daysToDeadline = daysUntil(state)
+  const deadlineDays = daysUntil(state)
+  const [yd, mo, dd] = (state.deadline ?? '').split('-').map(Number)
+  const deadlineText = mo && dd ? `${mo}月${dd}日まで` : '設定されていません'
   const [open, setOpen] = useState<PanelId | null>(null)
 
   return (
@@ -66,7 +68,7 @@ export default function MainPage({
       <header>
         <h1>がんばり畑</h1>
         <p>
-          やることを細かく決めなくていい。1日5分でも机に向かえば、その日は達成。手を止めた日数だけ、アバターは痩せていく。
+          1日5分でいい。継続した日だけ、アバターの畑は少しずつ育っていく。
         </p>
       </header>
 
@@ -209,17 +211,28 @@ export default function MainPage({
             {open === 'goal' && (
               <div className="panel-body">
                 <h2>目標</h2>
-                <div className="goal">
+                <div className="goal goal-card">
                   <span className="goal-text" title={state.goal}>
                     <span aria-hidden="true">✎ </span>{state.goal}
                   </span>
-                  <button className="btn ghost" onClick={onEditGoal}>
-                    目標を変える
-                  </button>
                 </div>
-                <p className="meta">
-                  期限まで {daysToDeadline !== null ? `${daysToDeadline}日` : '—'}
+
+                <div className={`deadline${deadlineDays !== null && deadlineDays <= 3 ? ' warn' : ''}`}>
+                  <div className="deadline-label">
+                    <small>目標の期限は</small>
+                    <span>{deadlineText}</span>
+                  </div>
+                  <p className="deadline-days">
+                    あと <b>{deadlineDays !== null ? deadlineDays : '—'}</b><small>日</small>
+                  </p>
+                </div>
+                <p className="deadline-hint">
+                  {deadlineDays !== null && deadlineDays <= 3 ? 'あと少し！今日の1つを積んでいこう。' : '自分のペースで続ければ、きっと大丈夫。'}
                 </p>
+
+                <button className="btn new-goal-cta" onClick={onEditGoal}>
+                  新しい目標をはじめる
+                </button>
 
                 <div className="tools">
                   <button className="btn ghost" onClick={onNextDay}>
