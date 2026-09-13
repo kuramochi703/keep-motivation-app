@@ -1,23 +1,12 @@
+/* アバターの置き場。中身の描画は three.js（Chick.tsx）が持つので、
+   ここで決めるのは「どれだけの面積を、どこに取るか」だけ。 */
 .avatar{position:relative;display:block;width:100%;max-width:300px;margin:2px auto 0}
-.avatar{--skin:#F2C4A5;--cloth:#34A98A;--hair:#2F3A45;--edge:#1A2028;--gold:#F0B429}
-.av0{--cloth:#34A98A;--gold:#F0B429;--edge:#1A2028}
-.av1{--cloth:#3D6FBF;--gold:#F5C94B;--edge:#18243A}
-.av2{--cloth:#D96087;--gold:#F2B14E;--edge:#3A2331}
-.lv4{--skin:#F7CBAA;--hair:#2B3440}
-.lv3{--skin:#F2C4A5;--hair:#2F3A45}
-.lv2{--skin:#DEC1AC;--hair:#3B454E;--gold:#C9B98A}
-.lv1{--skin:#CBB5A6;--hair:#4A535A;--gold:#B4AE9C}
-.lv0{--skin:#B5ACA6;--hair:#575E63;--gold:#A8A5A0}
-.avatar [data-show]{display:none}
-.lv4 [data-show~="4"],.lv3 [data-show~="3"],.lv2 [data-show~="2"],
-.lv1 [data-show~="1"],.lv0 [data-show~="0"]{display:inline}
-.figure{transition:transform .7s ease}
-.lv1 .figure{transform:translateY(5px) rotate(-2deg)}
-.lv0 .figure{transform:translateY(9px) rotate(-4deg)}
-.sparkle{animation:tw 2.6s ease-in-out infinite}
-.sparkle:nth-of-type(2){animation-delay:.9s}
-.sparkle:nth-of-type(3){animation-delay:1.7s}
-@keyframes tw{0%,100%{opacity:.2;transform:scale(.72)}50%{opacity:1;transform:scale(1)}}
-/* 3D（react-three-fiber）はキャンバス描画なので、SVG と違って高さを自分で持たない。
-   viewBox と同じ比率を CSS で与えて、SVG に落ちたときと見た目の場所を揃える */
+
+/* 3D（react-three-fiber）はキャンバス描画なので、自分では高さを持たない。
+   比率を CSS で与えて、読み込み中の枠と同じ場所に収まるようにする */
 .avatar-3d{aspect-ratio:240/250;width:100%;max-width:300px}
+
+/* 3D を出せない間の場所取り。うっすら息をして「読み込み中」だと分かるようにする */
+.avatar-placeholder{border-radius:24px;background:#00000008;animation:avatar-wait 1.8s ease-in-out infinite}
+@keyframes avatar-wait{0%,100%{opacity:.5}50%{opacity:1}}
+@media(prefers-reduced-motion:reduce){.avatar-placeholder{animation:none}}
