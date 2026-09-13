@@ -30,8 +30,10 @@
 .dashboard .badge{font-size:14px;padding:7px 15px;white-space:nowrap}
 .dashboard .speech{margin:0;text-align:left;font-size:15px;min-height:0}
 
-.stage-avatar{z-index:1;width:min(340px,54%);margin:22px 0 6px;filter:drop-shadow(0 14px 18px #bca78c26)}
-.stage-avatar .avatar{margin:0}
+/* 枠幅は .avatar の max-width(300px) に合わせる。広い枠に margin:0 の中身を
+   入れると、max-width で頭打ちになったぶんだけ左に寄ってしまうため */
+.stage-avatar{z-index:1;width:min(300px,54%);margin:22px auto 6px;filter:drop-shadow(0 14px 18px #bca78c26)}
+.stage-avatar .avatar{margin:0 auto}
 
 .dashboard .owner{font-size:16px;margin:2px 0 0;position:relative;z-index:1}
 .bg-streak{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;
