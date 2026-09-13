@@ -1,40 +1,10 @@
-import Avatar from '../avatar/Avatar'
-import Logo from '../ui/Logo'
-import { levelOf } from '../state/logic'
-import { useAccent } from '../ui/useAccent'
-
-const PRESET = 50
+import OnboardingPage from './OnboardingPage'
 
 type Props = {
   onStart: () => void
   variant?: number
 }
 
-export default function TopPage({ onStart, variant = 0 }: Props) {
-  const L = levelOf(PRESET)
-  useAccent(L)
-
-  return (
-    <div className="wrap top">
-      <header className="top-head">
-        <Logo width={64} />
-        <h1>がんばり畑</h1>
-        <p>
-          1日5分でも畑に通えば、苗はすこしずつ育っていく。
-          やることを細かく決めなくていい。手を抜いた日数だけ、苗はやつれていく。
-        </p>
-      </header>
-
-      <section className="card top-card">
-        <Avatar lv={L.lv} variant={variant} vitality={PRESET} egg />
-        <p className="speech">{L.say}</p>
-        <p className="top-tag">— サボると、やつれる。 —</p>
-        <div className="top-cta">
-          <button className="btn top-btn" onClick={onStart}>
-            はじめる
-          </button>
-        </div>
-      </section>
-    </div>
-  )
+export default function TopPage({ onStart }: Props) {
+  return <OnboardingPage onComplete={onStart} />
 }
