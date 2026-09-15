@@ -3,6 +3,18 @@ import SetupPage from '../pages/SetupPage'
 import Sidebar, { type NavItem } from './Sidebar'
 import TopPage from '../pages/TopPage'
 import { useApp } from '../state/useApp'
+import { supabase } from '../lib/supabase'
+
+async function testSupabase() {
+  const { data, error } = await supabase
+    .from('user_state')
+    .select('*')
+
+  console.log('data:', data)
+  console.log('error:', error)
+}
+
+testSupabase()
 
 const NAV: NavItem[] = [
   { id: 'top', label: 'トップ' },
