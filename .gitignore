@@ -31,5 +31,8 @@ playwright-report/
 test-results/
 
 # その他
-*.png
 src/avatar/*.md
+
+# Blender 作業ファイル（重いので追跡しない。ローカルに保持）
+*.blend
+*.blend[0-9]
