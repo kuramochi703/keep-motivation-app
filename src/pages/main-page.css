@@ -16,9 +16,9 @@
 .bg-stage::after{content:'';position:absolute;left:-15%;bottom:-30px;width:130%;height:70px;border-radius:50%;background:#f4f3ec}
 
 /* ステージ演出（アバター側のファイルには触れない） */
-.deco-window{position:absolute;right:8%;top:9%;width:104px;height:172px;
-  background:linear-gradient(140deg,#deeffb,#f0f9ff);border:11px solid #fbf9f5;border-bottom:0;
-  border-radius:72px 72px 0 0;opacity:.95}
+.deco-window{position:absolute;left:50%;top:10%;width:132px;height:210px;transform:translateX(-50%);
+  background:linear-gradient(140deg,#deeffb,#f0f9ff);border:12px solid #fbf9f5;border-bottom:0;
+  border-radius:74px 74px 0 0;opacity:.9;z-index:0}
 .deco-window::after{content:'';position:absolute;width:52px;height:18px;top:50px;right:0;background:#ffffffa8;border-radius:50px 40px 0 0}
 .deco-plant{position:absolute;right:5%;bottom:13%;font-size:76px;line-height:1.15}
 .deco-books{position:absolute;left:5%;bottom:15%;width:92px;transform:rotate(-3deg)}
@@ -45,8 +45,8 @@
 .dashboard .meter .row span{font-size:17px}
 .dashboard .gauge{height:12px}
 
-/* 右側メニュー */
-.dash-menu{position:absolute;right:18px;top:18px;z-index:3;display:flex;flex-direction:column;gap:10px}
+/* 右側メニュー（タイマーウィジェットの下に配置） */
+.dash-menu{position:absolute;right:18px;top:282px;z-index:3;display:flex;flex-direction:column;gap:10px}
 .menu-btn{display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;
   min-width:82px;padding:12px 8px;border:1px solid #e0e8ef;border-radius:17px;background:rgba(255,255,255,.92);
   font:inherit;font-size:13px;font-weight:700;color:#45566c;box-shadow:0 8px 20px -14px #27405835;transition:.18s}
@@ -77,18 +77,25 @@
 .dashboard .goal-text{font-size:23px;padding:0}
 .dashboard .goal-text>span{color:#b58a61}
 .dashboard .goal .btn{padding:8px 13px;white-space:nowrap}
-.dashboard .timer{gap:22px;flex-wrap:nowrap;margin:16px 0 8px}
-.dashboard .ring{width:clamp(170px,17vw,250px);height:clamp(170px,17vw,250px)}
-.dashboard .ring .track{stroke:#e4eaf2;stroke-width:9}
-.dashboard .ring .num{font-size:clamp(36px,4vw,58px)}
-.dashboard .ring .num em{font-size:clamp(12px,1.3vw,17px);line-height:1.5;margin-top:0;color:#5c6c84;max-width:150px}
-.dashboard .acts{min-width:0;gap:14px}
-.dashboard .acts>.btn{padding:17px 12px;font-size:19px;background:linear-gradient(125deg,#46818b,#538e93)}
-.dashboard .acts>.btn.sec{background:#f4f7fa;border-color:#dce4ee;color:var(--ink);font-size:14px}
+
+/* ステージ上のタイマーウィジェット（常時表示） */
+.stage-timer{position:absolute;top:16px;right:20px;z-index:2;display:flex;flex-direction:column;align-items:center;gap:12px}
+.stage-timer .ring{width:160px;height:160px}
+.stage-timer .ring .track{stroke:#ead9ba;stroke-width:10}
+.stage-timer .ring .prog{stroke-width:10}
+.stage-timer .ring .num{display:grid;place-content:center;font-size:40px}
+.stage-timer .ring .num .stage-toggler{position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);width:42px;height:42px;font-size:17px}
+.stage-toggler{width:56px;height:56px;display:grid;place-items:center;border:none;border-radius:50%;
+  cursor:pointer;font-size:22px;color:#fff;background:linear-gradient(135deg,#46818b,#538e93);
+  box-shadow:0 8px 18px -10px rgba(70,129,139,.6);transition:.15s ease,transform .1s ease}
+.stage-toggler:hover{filter:brightness(1.08)}
+.stage-toggler:active{transform:scale(.92)}
+.stage-toggler:focus-visible{outline:2px solid #518d94;outline-offset:2px}
+.stage-toggler.running{animation:timer-pulse 1.7s ease-in-out infinite}
+.stage-record{margin:0 auto;padding:6px 14px;font-size:11.5px;border-radius:99px;color:#8a7a63}
+@keyframes timer-pulse{0%,100%{box-shadow:0 0 0 0 rgba(70,129,139,.32)}50%{box-shadow:0 0 0 9px rgba(70,129,139,0)}}
 
 /* パネル内で崩れないように幅を固定 */
-.dash-panel .timer{flex-wrap:wrap;justify-content:center}
-.dash-panel .ring{width:190px;height:190px}
 .dash-panel .activity-summary{grid-template-columns:repeat(3,minmax(0,1fr))}
 .dash-panel .activity-summary aside{grid-column:1/-1}
 .dash-panel .activity-summary>div{gap:6px;padding:9px}
@@ -129,8 +136,10 @@
 @media(min-width:1600px){.bg-stage{min-height:clamp(560px,78vh,900px)}}
 @media(max-width:1320px){
   .dash-panel{right:108px;width:min(396px,calc(100% - 122px));padding:22px}
-  .dashboard .ring{width:190px;height:190px}.dashboard .timer{flex-wrap:wrap}
-  .deco-window{right:7%;top:7%;width:84px;height:150px}
+  .dash-menu{top:262px}
+  .stage-timer .ring{width:150px;height:150px}
+  .stage-timer .ring .num{font-size:37px}
+  .deco-window{width:112px;height:186px}
 }
 @media(max-width:760px){
   .dashboard header{margin-bottom:20px}.dashboard header>p{font-size:12px}
@@ -143,11 +152,15 @@
   .dash-panel{top:auto;bottom:0;right:0;width:100%;height:min(62vh,560px);border-radius:24px 24px 0 0;
     transform:translateY(calc(100% + 8px));box-shadow:0 -24px 46px -30px #1d3a4e55}
   .dash-panel.open{transform:none}
-  .dashboard .timer{flex-wrap:nowrap}.dashboard .ring{width:168px;height:168px}
-  .dashboard .acts>.btn{font-size:16px}
+  .stage-timer{top:12px;right:12px}
+  .stage-timer .ring{width:120px;height:120px}
+  .stage-timer .ring .num{font-size:30px}
+  .stage-timer .ring .num .stage-toggler{width:38px;height:38px;font-size:16px}
   .deco-plant{font-size:60px}.deco-books{left:4%;bottom:12%}
+  .deco-window{width:96px;height:160px}
 }
 @media(max-width:420px){
-  .dashboard .timer{flex-direction:column}.dashboard .acts{width:100%}
-  .stage-avatar{width:64%}
+  .stage-avatar{width:58%}
+  .stage-timer .ring{width:108px;height:108px}
+  .stage-timer .ring .num{font-size:27px}
 }
