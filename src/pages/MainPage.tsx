@@ -17,10 +17,9 @@ import { useAccent } from '../ui/useAccent'
 
 const DASH = 326.7
 
-type PanelId = 'timer' | 'goal' | 'calendar'
+type PanelId = 'goal' | 'calendar'
 
 const PANELS: { id: PanelId; label: string; icon: string }[] = [
-  { id: 'timer', label: 'タイマー', icon: '⏱' },
   { id: 'goal', label: '目標', icon: '✎' },
   { id: 'calendar', label: 'カレンダー', icon: '▣' },
 ]
@@ -134,6 +133,39 @@ export default function MainPage({
                 <i style={{ width: `${vital}%` }} />
               </div>
             </div>
+
+            <div className="stage-timer" aria-label="5分タイマー">
+              <div className="ring">
+                <svg viewBox="0 0 120 120">
+                  <circle className="track" cx="60" cy="60" r="52" />
+                  <circle
+                    className="prog"
+                    cx="60"
+                    cy="60"
+                    r="52"
+                    strokeDasharray={DASH}
+                    strokeDashoffset={(DASH * (1 - Math.min(elapsed / SESSION, 1))).toFixed(1)}
+                  />
+                </svg>
+                <div className="num">
+                  <span>{fmtClock(elapsed)}</span>
+                  <button
+                    type="button"
+                    className={`stage-toggler${running ? ' running' : ''}`}
+                    aria-pressed={running}
+                    aria-label={running ? '一時停止' : elapsed > 0 ? '再開する' : 'タイマーをはじめる'}
+                    onClick={onToggleTimer}
+                  >
+                    <span aria-hidden="true">{running ? 'Ⅱ' : '▶'}</span>
+                  </button>
+                </div>
+              </div>
+              {!doneToday && (
+                <button type="button" className="btn ghost stage-record" onClick={onRecordOnly}>
+                  記録だけつける
+                </button>
+              )}
+            </div>
           </div>
 
           <nav className="dash-menu" aria-label="メニュー">
@@ -159,54 +191,6 @@ export default function MainPage({
             <button type="button" className="panel-close" aria-label="閉じる" onClick={() => setOpen(null)}>
               ✕
             </button>
-
-            {open === 'timer' && (
-              <div className="panel-body">
-                <h2>今日のタイマー</h2>
-                <p className="sub">
-                  {t.getMonth() + 1}月{t.getDate()}日 ・ {doneToday ? '今日は達成ずみ' : '今日はまだ手つかず'}
-                </p>
-
-                <div className="timer">
-                  <div className="ring">
-                    <svg viewBox="0 0 120 120">
-                      <circle className="track" cx="60" cy="60" r="52" />
-                      <circle
-                        className="prog"
-                        cx="60"
-                        cy="60"
-                        r="52"
-                        strokeDasharray={DASH}
-                        strokeDashoffset={(DASH * (1 - Math.min(elapsed / SESSION, 1))).toFixed(1)}
-                      />
-                    </svg>
-                    <div className="num">
-                      <span>{fmtClock(elapsed)}</span>
-                      <em>{doneToday ? '今日の達成、おめでとう！' : <>あと {fmtClock(Math.max(0, SESSION - elapsed))} で<br />今日の達成！</>}</em>
-                    </div>
-                  </div>
-                  <div className="acts">
-                    {doneToday ? (
-                      <>
-                        <div className="donemsg">今日はもう積んだ。あとは自由時間。</div>
-                        <button className="btn sec" onClick={onToggleTimer}>
-                          {running ? '一時停止' : elapsed > 0 ? '再開する' : '計測をはじめる'}
-                        </button>
-                      </>
-                    ) : (
-                      <>
-                        <button className="btn" onClick={onToggleTimer}>
-                          <span aria-hidden="true">{running ? 'Ⅱ' : '▶'}　</span>{running ? '一時停止' : elapsed > 0 ? '再開する' : '5分はじめる'}
-                        </button>
-                        <button className="btn sec" onClick={onRecordOnly}>
-                          もうやった（記録だけつける）
-                        </button>
-                      </>
-                    )}
-                  </div>
-                </div>
-              </div>
-            )}
 
             {open === 'goal' && (
               <div className="panel-body">
