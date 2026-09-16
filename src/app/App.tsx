@@ -11,10 +11,14 @@ const NAV: NavItem[] = [
 ]
 
 export default function App() {
-  const { state, screen, go, start, reset, extendDeadline, newGoal, elapsed, running, toggleTimer, recordOnly, nextDay } = useApp()
+  const { state, loaded, screen, go, start, reset, extendDeadline, newGoal, elapsed, running, toggleTimer, recordOnly, nextDay } = useApp()
 
   const select = (id: string) => {
     if (id === 'top' || id === 'setup' || id === 'main') go(id)
+  }
+
+  if (!loaded) {
+    return <div role="status">読み込み中...</div>
   }
 
   return (

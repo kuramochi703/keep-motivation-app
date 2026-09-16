@@ -1,4 +1,5 @@
 import type { SetupInput } from './logic'
+import { useEffect } from 'react'
 import { useGoalState } from './useGoalState'
 import { useScreen, type Screen } from './useScreen'
 import { useTimer } from './useTimer'
@@ -11,8 +12,14 @@ export type { Screen }
  */
 export function useApp() {
   const { screen, setScreen } = useScreen()
-  const goal = useGoalState(screen === 'main')
+  const goal = useGoalState()
   const timer = useTimer(goal.markSessionDone)
+
+  useEffect(() => {
+    if (goal.loaded && goal.hasStarted) {
+      setScreen('main')
+    }
+  }, [goal.loaded, goal.hasStarted, setScreen])
 
   const go = (id: Screen) => {
     if (id === 'main') goal.markStarted()
@@ -48,6 +55,7 @@ export function useApp() {
 
   return {
     state: goal.state,
+    loaded: goal.loaded,
     screen,
     go,
     start,

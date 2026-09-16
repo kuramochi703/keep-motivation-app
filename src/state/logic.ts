@@ -1,4 +1,4 @@
-export const STORAGE_KEY = 'yatsure:state:v4'
+
 export const GAIN = 12
 export const DECAY = 20
 export const SESSION = 300 // 秒
@@ -169,19 +169,3 @@ export const resetGoal = (s: State): State => ({
   lastDate: key(today(s)),
 })
 
-export function load(): State {
-  try {
-    const raw = localStorage.getItem(STORAGE_KEY)
-    return raw ? { ...initialState(), ...JSON.parse(raw) } : initialState()
-  } catch {
-    return initialState()
-  }
-}
-
-export function save(s: State) {
-  try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(s))
-  } catch {
-    /* ignore */
-  }
-}
