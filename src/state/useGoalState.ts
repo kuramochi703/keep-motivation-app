@@ -16,14 +16,15 @@ import {
  * 目標そのもの（活力・達成履歴など）の管理と、その永続化を担当する。
  * 画面遷移・タイマーは持たず、達成の記録は `markSessionDone` として外から呼ばれる。
  */
-export function useGoalState(initialHasStarted: boolean) {
+export function useGoalState() {
   const [state, setState] = useState<State>(() => initialState())
-  const [hasStarted, setHasStarted] = useState(initialHasStarted)
+  const [hasStarted, setHasStarted] = useState(false)
 
   const [loaded, setLoaded] = useState(false)
 
   // Supabaseから読み込む
   useEffect(() => {
+    console.log('ロード', state)
     async function loadUserState() {
       const { data, error } = await supabase
         .from('user_state')
@@ -142,6 +143,7 @@ export function useGoalState(initialHasStarted: boolean) {
   return {
     state,
     loaded,
+    hasStarted,
     markStarted,
     start,
     reset,
