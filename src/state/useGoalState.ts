@@ -126,17 +126,30 @@ export function useGoalState() {
       })
     )
 
-  const extendDeadline = () =>
-    setState((s) =>
-      s.deadline
-        ? {
-          ...s,
-          deadline: key(
-            addMonths(parseKey(s.deadline), 1)
-          ),
-        }
-        : s
+  const extendDeadline = async () => {
+    if (!state.deadline || state.goalId === null) return
+
+    const newDeadline = key(
+      addMonths(parseKey(state.deadline), 1)
     )
+
+    const { error } = await supabase
+      .from('goals')
+      .update({
+        deadline: newDeadline,
+      })
+      .eq('id', state.goalId)
+
+    if (error) {
+      console.error('期限更新エラー:', error)
+      return
+    }
+
+    setState((s) => ({
+      ...s,
+      deadline: newDeadline,
+    }))
+  }
 
   const newGoal = () => {
     setHasStarted(false)
