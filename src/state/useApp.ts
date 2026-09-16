@@ -1,7 +1,7 @@
 import type { SetupInput } from './logic'
 import { useEffect } from 'react'
 import { useGoalState } from './useGoalState'
-import { useScreen, type Screen } from './useScreen'
+import { isDebugPath, useScreen, type Screen } from './useScreen'
 import { useTimer } from './useTimer'
 
 export type { Screen }
@@ -16,7 +16,7 @@ export function useApp() {
   const timer = useTimer(goal.markSessionDone)
 
   useEffect(() => {
-    if (goal.loaded && goal.hasStarted) {
+    if (goal.loaded && goal.hasStarted && !isDebugPath()) {
       setScreen('main')
     }
   }, [goal.loaded, goal.hasStarted, setScreen])
@@ -57,6 +57,7 @@ export function useApp() {
   return {
     state: goal.state,
     loaded: goal.loaded,
+    hasStarted: goal.hasStarted,
     screen,
     go,
     start,
