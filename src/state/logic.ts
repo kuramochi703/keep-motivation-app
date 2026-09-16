@@ -43,6 +43,7 @@ export const AVATARS: { id: AvatarId; name: string; desc: string }[] = [
 export const avatarName = (id: AvatarId) => AVATARS[id].name
 
 export type State = {
+  goalId: number | null
   vitality: number
   goal: string
   deadline: string | null // YYYY-MM-DD（目標の期限）
@@ -64,6 +65,7 @@ export type SetupInput = {
 }
 
 export const initialState = (): State => ({
+  goalId: null,
   vitality: 62,
   goal: '資格の勉強',
   deadline: null,
@@ -160,12 +162,23 @@ export function markDone(s: State): State {
   return { ...next, best: Math.max(next.best, streak(next)) }
 }
 
-/** 新しい目標に切り替える（アバターと活力は引き継ぐ） */
-export const resetGoal = (s: State): State => ({
-  ...initialState(),
-  vitality: s.vitality,
-  avatarId: s.avatarId,
-  name: s.name,
-  lastDate: key(today(s)),
-})
+
+export function resetGoal(state: State): State {
+  return {
+    ...state,
+
+    goalId: null,
+    goal: '',
+    deadline: null,
+    frequency: 'any',
+
+    done: [],
+    best: 0,
+
+    vitality: 50,
+
+    lastDate: null,
+    dayOffset: 0,
+  }
+}
 
