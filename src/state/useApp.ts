@@ -26,9 +26,10 @@ export function useApp() {
     setScreen(id)
   }
 
-  const start = (input: SetupInput) => {
-    goal.start(input)
-    setScreen('main')
+  const start = async (input: SetupInput) => {
+    if (await goal.start(input)) {
+      setScreen('main')
+    }
   }
 
   const reset = () => {

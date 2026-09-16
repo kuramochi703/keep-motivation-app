@@ -28,8 +28,16 @@ export function useGoalState() {
     async function loadUserState() {
       const { data, error } = await supabase
         .from('user_state')
-        .select('*')
-        .limit(1)
+        .select(`
+    *,
+    goals (
+      id,
+      goal,
+      deadline,
+      frequency
+    )
+  `)
+        .eq('id', 1)
         .maybeSingle()
 
       if (error) {
@@ -42,10 +50,12 @@ export function useGoalState() {
         const loadedState: State = {
           ...initialState(),
 
+          goalId: data.goal_id ?? null,
           vitality: data.vitality ?? 100,
-          goal: data.goal ?? '',
-          deadline: data.deadline ?? null,
-          frequency: data.frequency ?? '毎日',
+
+          goal: data.goals?.goal ?? '',
+          deadline: data.goals?.deadline ?? null,
+          frequency: data.goals?.frequency ?? 'any',
 
           avatarId: data.avatar_id ?? 0,
           name: data.name ?? '',
@@ -66,16 +76,38 @@ export function useGoalState() {
 
   const markStarted = () => setHasStarted(true)
 
-  const start = (input: SetupInput) => {
+  const start = async (input: SetupInput) => {
+    const { data, error } = await supabase
+      .from('goals')
+      .insert({
+        goal: input.goal,
+        deadline: input.deadline,
+        frequency: input.frequency,
+      })
+      .select('id')
+      .single()
+
+    if (error) {
+      console.error('目標作成エラー:', error)
+      return false
+    }
+
     setHasStarted(true)
+
     setState((s) => ({
-      ...s,
+      ...rollover(resetGoal(s)),
+
+      goalId: data.id,
       goal: input.goal,
       deadline: input.deadline,
       frequency: input.frequency,
       avatarId: input.avatarId,
       name: input.name,
+
+      done: [],
+      best: 0,
     }))
+    return true
   }
 
   const reset = () => {
@@ -94,21 +126,35 @@ export function useGoalState() {
       })
     )
 
-  const extendDeadline = () =>
-    setState((s) =>
-      s.deadline
-        ? {
-          ...s,
-          deadline: key(
-            addMonths(parseKey(s.deadline), 1)
-          ),
-        }
-        : s
+  const extendDeadline = async () => {
+    if (!state.deadline || state.goalId === null) return
+
+    const newDeadline = key(
+      addMonths(parseKey(state.deadline), 1)
     )
 
-  const newGoal = () =>
-    setState((s) => resetGoal(s))
+    const { error } = await supabase
+      .from('goals')
+      .update({
+        deadline: newDeadline,
+      })
+      .eq('id', state.goalId)
 
+    if (error) {
+      console.error('期限更新エラー:', error)
+      return
+    }
+
+    setState((s) => ({
+      ...s,
+      deadline: newDeadline,
+    }))
+  }
+
+  const newGoal = () => {
+    setHasStarted(false)
+    setState((s) => resetGoal(s))
+  }
   useEffect(() => {
     if (!loaded || !hasStarted) return
 
@@ -120,13 +166,11 @@ export function useGoalState() {
         .upsert({
           id: 1,
           vitality: state.vitality,
-          goal: state.goal,
-          deadline: state.deadline,
-          frequency: state.frequency,
           avatar_id: state.avatarId,
           name: state.name,
           done: state.done,
           best: state.best,
+          goal_id: state.goalId,
         })
         .select()
 
