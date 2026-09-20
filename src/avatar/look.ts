@@ -45,7 +45,7 @@ export type Look = {
   eye: EyeShape
   /** 0〜1。うつむき具合。1 で完全にへたる */
   droop: number
-  /** 0〜1。揺れ・跳ねの大きさ。0 でほぼ静止 */
+  /** 0〜1。元気さ。低いと歩き出さず、立ち止まったままになる */
   liveliness: number
 
   /** 翼。モデルの Wing_L / Wing_R を出し入れする */
@@ -54,8 +54,6 @@ export type Look = {
   crest: boolean
   scarf: boolean
   crown: boolean
-  /** まわりの光の粒。絶好調のときだけ */
-  sparkles: boolean
   /** あぶら汗。しんどいときだけ */
   sweat: boolean
 }
@@ -127,7 +125,6 @@ export function lookOf(days: number, vitality: number, lv: number, variant = 0):
     crest: stage >= 4,
     scarf: stage >= 5,
     crown: stage >= 6,
-    sparkles: lv >= 4,
     sweat: lv === 1,
   }
 }

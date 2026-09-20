@@ -1,13 +1,13 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { ContactShadows, Sparkles, useGLTF } from '@react-three/drei'
+import { ContactShadows, useAnimations, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import type { Look } from './look'
 import chickUrl from './models/chick.glb?url'
 
 type Props = {
   look: Look
-  /** false なら揺れも跳ねもさせない（prefers-reduced-motion 対応） */
+  /** false ならクリップを止めて立ち姿のままにする（prefers-reduced-motion 対応） */
   animate: boolean
 }
 
@@ -17,12 +17,16 @@ type Props = {
  * .blend そのものは three.js では読めないので、`models/export_glb.py` で
  * chick.glb に書き出したものを使う。**形を直したら書き出し直すこと。**
  *
- * 色・表情・姿勢は look.ts が決める。モデルは「形」だけを持っていて、
- * 色はここでマテリアルに流し込む。だからステージや活力の対応表を変えるときに
+ * **動いて見えるものは全部モデルの中のクリップ**（Walk / Blink / Jump）で、
+ * ここがやるのは「どれを流すか」を決めることだけ。時刻から角度や大きさを
+ * 作るような動きはここには置かない。直したいときは Blender を開く。
+ *
+ * 色・表情・姿勢は look.ts が決める。モデルは色を持っていないので、
+ * ここでマテリアルに流し込む。だからステージや活力の対応表を変えるときに
  * Blender を開く必要はない。
  */
 export default function Chick({ look, animate }: Props) {
-  if (look.isEgg) return <Egg look={look} animate={animate} />
+  if (look.isEgg) return <Egg look={look} />
   return <ChickModel look={look} animate={animate} />
 }
 
@@ -37,8 +41,6 @@ const BODY_R = 0.549
 /** モデルの高さ（約1.6）を look.bodyRadius 基準の大きさに直す倍率 */
 const SIZE = 1.42
 
-const AXIS_Z = new THREE.Vector3(0, 0, 1)
-
 /** 目の縦の潰し具合。look.eye の4つの形に対応する */
 const EYE_SQUASH: Record<Look['eye'], number> = {
   happy: 0.7,
@@ -48,10 +50,9 @@ const EYE_SQUASH: Record<Look['eye'], number> = {
 }
 
 function ChickModel({ look, animate }: Props) {
-  const root = useRef<THREE.Group>(null)
   const rig = useRef<THREE.Group>(null)
 
-  const { scene } = useGLTF(chickUrl)
+  const { scene, animations } = useGLTF(chickUrl)
 
   // 胴体の塗り分け。Blender では「Bib マスク → 2色を Mix」で塗っているが、
   // glTF はノードの Mix を運べないので、マスクだけが頂点カラー（COLOR_0）で
@@ -88,6 +89,23 @@ function ChickModel({ look, animate }: Props) {
     return copy
   }, [scene, tone])
 
+  // Blender の書き出しは**どのアクションにも全ボーンのキーを焼く**ので、
+  // Blink にも脚や胴のトラック（素の姿勢）が入っている。そのまま重ねて流すと
+  // まばたきが歩きを素の姿勢へ引き戻してしまう。目のトラックだけを Blink に、
+  // それ以外を Walk / Jump に振り分けて、同時に流せるようにする。
+  // 読み込んだクリップは three.js が使い回すので、複製してから削る。
+  const clips = useMemo(
+    () =>
+      animations.map((source) => {
+        const clip = source.clone()
+        const eyesOnly = clip.name === 'Blink'
+        clip.tracks = clip.tracks.filter((track) => track.name.startsWith('Eye') === eyesOnly)
+        return clip
+      }),
+    [animations]
+  )
+  const { actions, mixer } = useAnimations(clips, rig)
+
   const parts = useMemo(
     () => ({
       wingL: model.getObjectByName('Wing_L'),
@@ -96,15 +114,6 @@ function ChickModel({ look, animate }: Props) {
       eyes: [model.getObjectByName('Eye_L'), model.getObjectByName('Eye_R')],
     }),
     [model]
-  )
-
-  // 翼を羽ばたかせるとき、モデルが元々持っている傾きに足し込みたいので控えておく
-  const rest = useMemo(
-    () => ({
-      wingL: parts.wingL?.quaternion.clone() ?? new THREE.Quaternion(),
-      wingR: parts.wingR?.quaternion.clone() ?? new THREE.Quaternion(),
-    }),
-    [parts]
   )
 
   // 色は毎フレームではなく、look が変わったときだけ流し込む
@@ -137,56 +146,44 @@ function ChickModel({ look, animate }: Props) {
     for (const eye of parts.eyes) eye?.scale.set(1, squash, 1)
   }, [parts, look.eye])
 
+  // まばたきと歩きは流しっぱなしにして、**重み**で出し入れする。
+  // 毎回 play/stop すると歩き出しと止まりが瞬間的になって見える。
+  // ジャンプだけは1回きりなので、跳ぶときに rewind して鳴らす。
+  useEffect(() => {
+    actions.Blink?.play()
+    actions.Walk?.play().setEffectiveWeight(0)
+    if (actions.Jump) {
+      actions.Jump.setLoop(THREE.LoopOnce, 1)
+      actions.Jump.clampWhenFinished = true
+    }
+    return () => {
+      mixer.stopAllAction()
+    }
+  }, [actions, mixer])
+
   const s = look.bodyRadius * SIZE
 
-  // 進化した瞬間だけ「ぽん」と跳ねさせるための状態。
-  // 初回マウントでは鳴らさない（前のステージが分からないため）。
-  const prevStage = useRef<number | null>(null)
-  const pop = useRef(0)
-  if (prevStage.current !== null && look.stage > prevStage.current) pop.current = 1
-  prevStage.current = look.stage
+  // いま流しているクリップ。毎フレーム変わるので、再描画を起こさない ref に持つ
+  const playing = useRef({ mode: 'idle' as Mode, timer: 1.4, weight: 0 })
 
-  const flapQ = useMemo(() => new THREE.Quaternion(), [])
+  useFrame((_, delta) => {
+    // **ここでは何も動かさない。** 見えている動きはモデルのクリップが作る。
+    // 決めるのは「どれを流すか」と「どれくらいの重みで混ぜるか」だけ。
+    mixer.timeScale = animate ? 1 : 0
+    actions.Blink?.setEffectiveWeight(animate ? 1 : 0)
 
-  useFrame((state, delta) => {
-    const t = state.clock.elapsedTime
-    const amp = animate ? look.liveliness : 0
-
-    // 進化の跳ねを減衰させる
-    pop.current = THREE.MathUtils.damp(pop.current, 0, 4, delta)
-    const popScale = 1 + Math.sin(pop.current * Math.PI) * 0.22
-
-    if (root.current) {
-      root.current.position.y = Math.sin(t * 2.1) * 0.035 * amp
-      root.current.scale.setScalar(popScale)
-      // やつれると前かがみになる
-      root.current.rotation.x = THREE.MathUtils.damp(
-        root.current.rotation.x,
-        look.droop * 0.12,
-        6,
-        delta
-      )
-    }
-    if (rig.current) {
-      // 呼吸。横に膨らんだぶん縦を縮めて体積を保つ
-      const b = 1 + Math.sin(t * 2.1) * 0.03 * amp
-      rig.current.scale.set(s * b, s / b, s * b)
-      // 縦に縮めたぶん足が浮くので、足の裏が y=0 に残るように押し下げる
-      rig.current.position.y = -FOOT_Y * (s / b)
-    }
-    const flap = Math.sin(t * 3.4) * 0.3 * amp
-    // 羽ばたきは親の座標系で足す。モデルが持っている傾きを壊さないため
-    if (parts.wingL) {
-      parts.wingL.quaternion.copy(flapQ.setFromAxisAngle(AXIS_Z, flap)).multiply(rest.wingL)
-    }
-    if (parts.wingR) {
-      parts.wingR.quaternion.copy(flapQ.setFromAxisAngle(AXIS_Z, -flap)).multiply(rest.wingR)
-    }
+    const m = playing.current
+    pick(m, animate ? look.liveliness : 0, delta, actions.Jump)
+    // 歩きは重みで出し入れする。0/1 を直に入れると歩き出しと止まりが瞬間的になる
+    m.weight = THREE.MathUtils.damp(m.weight, m.mode === 'walk' ? 1 : 0, 9, delta)
+    actions.Walk?.setEffectiveWeight(m.weight)
   })
 
   return (
     <>
-      <group ref={root}>
+      {/* やつれると前かがみになる。これは姿勢であって動きではないので、
+          毎フレーム寄せるのではなく look が変わったときにそのまま入れる */}
+      <group rotation={[look.droop * 0.12, 0, 0]}>
         <group ref={rig} position={[0, -FOOT_Y * s, 0]} scale={s}>
           <primitive object={model} />
           {look.scarf && <Scarf />}
@@ -194,13 +191,58 @@ function ChickModel({ look, animate }: Props) {
           {look.sweat && <Sweat />}
         </group>
       </group>
-
-      {look.sparkles && (
-        <Sparkles count={24} scale={[2.4, 2.4, 1.6]} position={[0, 1.2, 0]} size={5} speed={0.4} color="#FFD66B" />
-      )}
       <ContactShadows position={[0, 0, 0]} opacity={0.32} scale={5} blur={2.6} far={2} resolution={512} />
     </>
   )
+}
+
+type Mode = 'idle' | 'walk' | 'jump'
+
+/**
+ * 次にどのクリップを流すかを決めるだけの状態機械。
+ * 「しばらく立ち止まる → 歩く / ちょっと跳ぶ」を繰り返す。
+ * 見せる動きそのものは全部 Blender のクリップが持っている。
+ *
+ * `amp`（活力）が低いときは立ち止まったまま。やつれたひよこは歩き出さない。
+ */
+function pick(
+  m: { mode: Mode; timer: number; weight: number },
+  amp: number,
+  delta: number,
+  jump?: THREE.AnimationAction | null
+) {
+  const lively = amp > 0.25
+  m.timer -= delta
+
+  if (m.mode === 'jump') {
+    // 終わりは再生側（isRunning）で見る。timer は念のための上限。
+    // **止めないと最終フレームの姿勢を重み1で押さえ続け、次の歩きと半々に混ざる。**
+    if (!jump?.isRunning() || m.timer <= 0) {
+      jump?.stop()
+      m.mode = 'idle'
+      m.timer = 1.2 + Math.random() * 2.4
+    }
+    return
+  }
+
+  if (m.mode === 'walk' && !lively) {
+    m.mode = 'idle'
+    m.timer = 1
+    return
+  }
+  if (m.timer > 0) return
+
+  if (m.mode === 'walk' || !lively) {
+    m.mode = 'idle'
+    m.timer = lively ? 1.2 + Math.random() * 2.4 : 1
+  } else if (jump && Math.random() < 0.4) {
+    jump.reset().play()
+    m.mode = 'jump'
+    m.timer = jump.getClip().duration * 3
+  } else {
+    m.mode = 'walk'
+    m.timer = 2 + Math.random() * 2.5
+  }
 }
 
 /**
@@ -250,21 +292,15 @@ function Sweat() {
   )
 }
 
-/** ステージ0。殻のまま、ゆっくり傾くだけ */
-function Egg({ look, animate }: Props) {
-  const egg = useRef<THREE.Group>(null)
-  useFrame((state) => {
-    if (!egg.current) return
-    const t = state.clock.elapsedTime
-    const amp = animate ? look.liveliness : 0
-    egg.current.rotation.z = Math.sin(t * 1.3) * 0.12 * amp
-    egg.current.position.y = Math.abs(Math.sin(t * 1.3)) * 0.04 * amp
-  })
-
+/**
+ * ステージ0。殻のまま止まっている。
+ * たまごには Blender のモデルが無く、ここで球を置いているだけなので、
+ * 動かすと「コードで作った動き」になってしまう（→ 上の方針）。
+ */
+function Egg({ look }: { look: Look }) {
   return (
     <>
-      {/* 揺れの支点を底にしたいので、殻は group の中で上にずらしておく */}
-      <group ref={egg}>
+      <group>
         <mesh position={[0, 0.78, 0]} scale={[1, 1.3, 1]}>
           <sphereGeometry args={[0.6, 48, 32]} />
           <meshStandardMaterial color={look.bellyColor} roughness={0.7} />

@@ -1,6 +1,10 @@
 # Blender モデリング知見メモ
 
 設計図（`chick_design.png`）から Blender MCP でパーツを起こした際の失敗と解決策。
+**形を作るまで**がこのメモの範囲。動かす話は
+[BLENDER_ANIMATION_NOTES.md](BLENDER_ANIMATION_NOTES.md)（リグ・アクション・
+書き出し）にある。下の「このメモの書き方」と
+「Blender MCP / 環境のハマりどころ」は両方で共通。
 
 ## このメモの書き方
 
@@ -248,3 +252,6 @@ M = np.unpackbits(np.frombuffer(zlib.decompress(base64.b64decode(blob)), np.uint
 7. 正面・側面・3/4 の3枚でレンダー確認
 8. 胴体に載せるときは付け根のめり込みを数値で確認してから位置を決める
 9. ビルドスクリプトを `<part>_build` テキストに入れ、**実行して現物と一致することを確かめてから** .blend を保存
+
+動かすのはここまで終わってから。形を作り直すたびに親付けをやり直すことになるので、
+リグは最後に入れる（→ [BLENDER_ANIMATION_NOTES.md](BLENDER_ANIMATION_NOTES.md)）。
