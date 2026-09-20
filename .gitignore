@@ -33,3 +33,6 @@ test-results/
 # その他
 src/avatar/*.md
 
+
+# Blender 自動バックアップ
+*.blend1
