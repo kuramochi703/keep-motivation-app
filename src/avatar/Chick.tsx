@@ -106,15 +106,18 @@ function ChickModel({ look, animate }: Props) {
   )
   const { actions, mixer } = useAnimations(clips, rig)
 
-  const parts = useMemo(
-    () => ({
+  const parts = useMemo(() => {
+    const feather = model.getObjectByName('HeadFeather')
+    return {
       wingL: model.getObjectByName('Wing_L'),
       wingR: model.getObjectByName('Wing_R'),
-      feather: model.getObjectByName('HeadFeather'),
+      feather,
+      // とさかは大きさを変えるので、モデルが元々持っている倍率を控えておく。
+      // これを無視して直に入れると、Blender 側で大きさを調整した分が消える
+      featherScale: feather?.scale.clone() ?? new THREE.Vector3(1, 1, 1),
       eyes: [model.getObjectByName('Eye_L'), model.getObjectByName('Eye_R')],
-    }),
-    [model]
-  )
+    }
+  }, [model])
 
   // 色は毎フレームではなく、look が変わったときだけ流し込む
   useEffect(() => {
@@ -131,12 +134,17 @@ function ChickModel({ look, animate }: Props) {
     })
   }, [model, tone, look.bodyColor, look.bellyColor, look.beakColor])
 
-  // 成長で増える部位は、モデルのパーツを出し入れして表す
+  // 成長で増える部位は、モデルのパーツを出し入れして表す。
+  // とさか（HeadFeather）だけは例外で、**常に出したまま大きさだけ変える。**
+  // 隠すとひよこに見えなくなるので、消さないこと。
   useEffect(() => {
     if (parts.wingL) parts.wingL.visible = look.wings
     if (parts.wingR) parts.wingR.visible = look.wings
-    if (parts.feather) parts.feather.visible = look.crest
-  }, [parts, look.wings, look.crest])
+    if (parts.feather) {
+      parts.feather.visible = look.crest
+      parts.feather.scale.copy(parts.featherScale).multiplyScalar(look.crestScale)
+    }
+  }, [parts, look.wings, look.crest, look.crestScale])
 
   // 表情。モデルの目は丸い玉ひとつなので、潰して目つきを作る。
   // モーフを持たせれば本当に形を変えられるが、玉を潰すだけでも

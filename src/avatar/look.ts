@@ -50,8 +50,14 @@ export type Look = {
 
   /** 翼。モデルの Wing_L / Wing_R を出し入れする */
   wings: boolean
-  /** 頭の羽。モデルの HeadFeather を出し入れする */
+  /**
+   * 頭の羽（とさか）。**どのステージでも必ず出す。**
+   * ひよこだと分かる目印なので、消すと別の生き物に見えてしまう。
+   * 成長は出し入れではなく `crestScale` の大きさで表す。
+   */
   crest: boolean
+  /** とさかの大きさの倍率。育つと立派になる */
+  crestScale: number
   scarf: boolean
   crown: boolean
   /** あぶら汗。しんどいときだけ */
@@ -122,7 +128,9 @@ export function lookOf(days: number, vitality: number, lv: number, variant = 0):
     liveliness: 0.15 + v * 0.85,
 
     wings: stage >= 2,
-    crest: stage >= 4,
+    // とさかは常に出す。ステージ4で「生える」のではなく、そこから立派になる
+    crest: true,
+    crestScale: stage >= 4 ? 1 : 0.62,
     scarf: stage >= 5,
     crown: stage >= 6,
     sweat: lv === 1,
