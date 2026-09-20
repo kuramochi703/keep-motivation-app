@@ -17,7 +17,8 @@ type Props = {
  * .blend そのものは three.js では読めないので、`models/export_glb.py` で
  * chick.glb に書き出したものを使う。**形を直したら書き出し直すこと。**
  *
- * **姿勢の動きは全部モデルの中のクリップ**（Walk / Blink / Jump）で、
+ * **姿勢の動きは全部モデルの中のクリップ**（Idle / Walk / TurnL / TurnR /
+ * Rest / Jump / Blink）で、
  * ここがやるのは「どれを流すか」と「歩いた結果どこへ行くか」だけ。
  * 時刻から角度や大きさを作るような動きはここには置かない。
  * 足の運びや揺れを直したいときは Blender を開く。
@@ -52,6 +53,19 @@ const ROAM_Z = 0.4
 const WALK_SPEED = 0.42
 /** 向きを変える速さ。急に振り向くと滑って見える */
 const TURN_RATE = 4.5
+/** 向きがこれ以上ずれていたら、その場で向き直る（TurnL / TurnR を流す） */
+const TURN_START = 0.5
+/** 向き直りを終える残り角度。0 まで待つといつまでも足踏みする */
+const TURN_DONE = 0.12
+/** 立ち止まったあと、休憩に入る確率 */
+const REST_CHANCE = 0.3
+
+/** 重みを取り合う姿勢クリップ。ここに無い Idle が、余ったぶんを受け持つ */
+const POSTURE = ['Walk', 'TurnL', 'TurnR', 'Rest', 'Jump'] as const
+type Posture = (typeof POSTURE)[number]
+
+/** 重みの寄せ方の速さ。休憩は遅くして「座り込む」間合いを作り、跳躍は即座に */
+const RATE: Record<Posture, number> = { Walk: 9, TurnL: 9, TurnR: 9, Rest: 3.5, Jump: 20 }
 
 /** 目の縦の潰し具合。look.eye の4つの形に対応する */
 const EYE_SQUASH: Record<Look['eye'], number> = {
@@ -104,7 +118,7 @@ function ChickModel({ look, animate }: Props) {
   // Blender の書き出しは**どのアクションにも全ボーンのキーを焼く**ので、
   // Blink にも脚や胴のトラック（素の姿勢）が入っている。そのまま重ねて流すと
   // まばたきが歩きを素の姿勢へ引き戻してしまう。目のトラックだけを Blink に、
-  // それ以外を Walk / Jump に振り分けて、同時に流せるようにする。
+  // それ以外を姿勢のクリップに振り分けて、同時に流せるようにする。
   // 読み込んだクリップは three.js が使い回すので、複製してから削る。
   const clips = useMemo(
     () =>
@@ -166,12 +180,15 @@ function ChickModel({ look, animate }: Props) {
     for (const eye of parts.eyes) eye?.scale.set(1, squash, 1)
   }, [parts, look.eye])
 
-  // まばたきと歩きは流しっぱなしにして、**重み**で出し入れする。
+  // まばたきと姿勢のクリップは流しっぱなしにして、**重み**で出し入れする。
   // 毎回 play/stop すると歩き出しと止まりが瞬間的になって見える。
   // ジャンプだけは1回きりなので、跳ぶときに rewind して鳴らす。
   useEffect(() => {
     actions.Blink?.play()
-    actions.Walk?.play().setEffectiveWeight(0)
+    // 姿勢のクリップは全部流しっぱなしにして、重みだけで出し入れする。
+    // Idle が既定で、他がゼロのぶんを受け持つ（→ useFrame）
+    for (const name of POSTURE) actions[name]?.play().setEffectiveWeight(0)
+    actions.Idle?.play().setEffectiveWeight(1)
     if (actions.Jump) {
       actions.Jump.setLoop(THREE.LoopOnce, 1)
       actions.Jump.clampWhenFinished = true
@@ -188,8 +205,10 @@ function ChickModel({ look, animate }: Props) {
   const walker = useRef<THREE.Group>(null)
   const playing = useRef<Walker>({
     mode: 'idle',
+    next: 'idle',
+    turningLeft: true,
     timer: 1.4,
-    weight: 0,
+    weight: { Walk: 0, TurnL: 0, TurnR: 0, Rest: 0, Jump: 0 },
     x: 0,
     z: 0,
     heading: 0,
@@ -202,15 +221,26 @@ function ChickModel({ look, animate }: Props) {
     // 重みで混ぜるか」、そして「歩いた結果どこへ行くか」の3つだけ。
     mixer.timeScale = animate ? 1 : 0
     actions.Blink?.setEffectiveWeight(animate ? 1 : 0)
+    // 止めているときは状態機械ごと凍らせる（prefers-reduced-motion）。
+    // 重みを寄せ続けると、クリップが止まっていても姿勢が動いてしまう
+    if (!animate) return
 
     const m = playing.current
-    pick(m, animate ? look.liveliness : 0, delta, actions.Jump)
-    // 歩きは重みで出し入れする。0/1 を直に入れると歩き出しと止まりが瞬間的になる
-    m.weight = THREE.MathUtils.damp(m.weight, m.mode === 'walk' ? 1 : 0, 9, delta)
-    actions.Walk?.setEffectiveWeight(m.weight)
+    pick(m, look.liveliness, delta, actions.Jump)
 
-    // 位置と向き。止めているときは凍らせる（prefers-reduced-motion）
-    if (animate) roam(m, delta)
+    // **重みの合計は1。** 余りは Idle（立ち止まりの呼吸）が受け持つ。
+    // 0/1 を直に入れると切り替わりが瞬間的になるので、寄せていく。
+    // 休憩だけは遅くして「座り込む・立ち上がる」の間合いを作る
+    const now = clipOf(m)
+    let idle = 1
+    for (const name of POSTURE) {
+      m.weight[name] = THREE.MathUtils.damp(m.weight[name], name === now ? 1 : 0, RATE[name], delta)
+      actions[name]?.setEffectiveWeight(m.weight[name])
+      idle -= m.weight[name]
+    }
+    actions.Idle?.setEffectiveWeight(Math.max(0, idle))
+
+    roam(m, delta)
     const g = walker.current
     if (g) {
       g.position.set(m.x, 0, m.z)
@@ -238,14 +268,18 @@ function ChickModel({ look, animate }: Props) {
   )
 }
 
-type Mode = 'idle' | 'walk' | 'jump'
+type Mode = 'idle' | 'walk' | 'turn' | 'jump' | 'rest'
 
 type Walker = {
   mode: Mode
+  /** 向き直りが終わったら入るモード。歩く前の向き直りか、ただ正面に戻るだけか */
+  next: 'idle' | 'walk'
+  /** 向き直りで回る向き。TurnL / TurnR のどちらを流すか */
+  turningLeft: boolean
   /** 次に切り替えるまでの残り秒 */
   timer: number
-  /** Walk クリップの重み 0〜1 */
-  weight: number
+  /** 姿勢クリップそれぞれの重み 0〜1 */
+  weight: Record<Posture, number>
   /** 定位置からのずれ */
   x: number
   z: number
@@ -255,12 +289,42 @@ type Walker = {
   facing: number
 }
 
+/** 行きたい方向まであと何ラジアン。左回りが正（three.js の Y 回転と同じ向き） */
+const turnLeft = (m: Walker) => ((m.heading - m.facing + Math.PI * 3) % (Math.PI * 2)) - Math.PI
+
+/**
+ * いまのモードで流すクリップ。`null`（＝ idle）のときは、
+ * どれも重み0になって Idle が余りを全部受け持つ。
+ *
+ * 向き直りだけは**左右で別のクリップ**。傾ける向きが逆なので1本にできない。
+ */
+function clipOf(m: Walker): Posture | null {
+  if (m.mode === 'walk') return 'Walk'
+  if (m.mode === 'rest') return 'Rest'
+  if (m.mode === 'jump') return 'Jump'
+  if (m.mode === 'turn') return m.turningLeft ? 'TurnL' : 'TurnR'
+  return null
+}
+
+/** その場で向き直りに入る。終わったら `next` のモードへ移る */
+function startTurn(m: Walker, next: 'idle' | 'walk') {
+  m.mode = 'turn'
+  m.next = next
+  // 左右どちらへ回るかは**入るときに決めて固定する。** 毎フレーム見ると、
+  // 回り終わりぎわに残り角度が符号をまたいでクリップが入れ替わる
+  m.turningLeft = turnLeft(m) > 0
+  m.timer = 2.5   // 念のための上限。回り切れないまま足踏みし続けるのを防ぐ
+}
+
 /**
  * 次にどのクリップを流すかを決めるだけの状態機械。
- * 「しばらく立ち止まる → 歩く / ちょっと跳ぶ」を繰り返す。
+ * 「立ち止まる → 向き直る → 歩く／跳ぶ／座って休む」を繰り返す。
  * 見せる動きそのものは全部 Blender のクリップが持っている。
  *
- * `amp`（活力）が低いときは立ち止まったまま。やつれたひよこは歩き出さない。
+ * **向きが大きくずれたら必ず向き直りを挟む。** 立ったままぬるっと回ると
+ * 足が地面を滑って見えるので、足踏みするクリップを出してから回す。
+ *
+ * `amp`（活力）が低いときは歩かず、座り込んで休む。
  */
 function pick(m: Walker, amp: number, delta: number, jump?: THREE.AnimationAction | null) {
   const lively = amp > 0.25
@@ -277,26 +341,45 @@ function pick(m: Walker, amp: number, delta: number, jump?: THREE.AnimationActio
     return
   }
 
+  if (m.mode === 'turn') {
+    // 回り切ったら次へ。timer 切れは保険（回り込めないまま足踏みし続けない）
+    if (Math.abs(turnLeft(m)) < TURN_DONE || m.timer <= 0) {
+      m.mode = m.next
+      m.timer = m.next === 'walk' ? 2 + Math.random() * 2.5 : 1.2 + Math.random() * 2.4
+    }
+    return
+  }
+
   if (m.mode === 'walk' && !lively) {
     m.mode = 'idle'
     m.timer = 1
     return
   }
+
+  // 立ち止まっている／休んでいるのに向きがずれている（歩き終わって正面に
+  // 戻るときなど）。時間が来るのを待たずに向き直る
+  if ((m.mode === 'idle' || m.mode === 'rest') && Math.abs(turnLeft(m)) > TURN_START) {
+    startTurn(m, 'idle')
+    return
+  }
   if (m.timer > 0) return
 
-  if (m.mode === 'walk' || !lively) {
+  if (m.mode === 'walk' || m.mode === 'rest') {
     m.mode = 'idle'
-    m.timer = lively ? 1.2 + Math.random() * 2.4 : 1
+    m.timer = 1.2 + Math.random() * 2.4
+  } else if (!lively || Math.random() < REST_CHANCE) {
+    // やつれているときは立ったままにせず座り込ませる。休むほど絵が持つ
+    m.mode = 'rest'
+    m.timer = lively ? 4 + Math.random() * 4 : 6 + Math.random() * 4
   } else if (jump && Math.random() < 0.4) {
     jump.reset().play()
     m.mode = 'jump'
     m.timer = jump.getClip().duration * 3
   } else {
-    m.mode = 'walk'
-    m.timer = 2 + Math.random() * 2.5
-    // 行き先を決める。カメラに尻を向けたままにならないよう、
-    // 正面から左右 100 度までの範囲で選ぶ
+    // 行き先を決めてから、その方へ向き直って歩き出す。
+    // カメラに尻を向けたままにならないよう、正面から左右 100 度までで選ぶ
     m.heading = (Math.random() * 2 - 1) * 1.75
+    startTurn(m, 'walk')
   }
 }
 
@@ -316,17 +399,20 @@ function roam(m: Walker, delta: number) {
     }
     // クリップの重みぶんだけ、**いま向いている方向へ**進む。
     // 行きたい方向（heading）へ直に進めると、振り向く途中で横滑りして見える
-    const step = WALK_SPEED * m.weight * delta
+    const step = WALK_SPEED * m.weight.Walk * delta
     m.x += Math.sin(m.facing) * step
     m.z += Math.cos(m.facing) * step
-  } else if (m.weight < 0.01) {
-    // 立ち止まったらカメラの方に向き直る。顔が見えないままだと寂しい
+  } else if (m.mode === 'idle' || m.mode === 'rest') {
+    // 立ち止まったらカメラの方に向き直る。顔が見えないままだと寂しい。
+    // ずれが大きければ pick が向き直りのクリップを出す
     m.heading = 0
   }
 
-  // 向きは寄せる。ここは「向き」であって動きの作り込みではない
-  const turn = ((m.heading - m.facing + Math.PI * 3) % (Math.PI * 2)) - Math.PI
-  m.facing += turn * Math.min(1, delta * TURN_RATE)
+  // 向きは寄せる。ここは「向き」であって動きの作り込みではない。
+  // 歩きと向き直りのとき以外は回さない（座ったまま回ると足が滑って見える）
+  if (m.mode === 'walk' || m.mode === 'turn') {
+    m.facing += turnLeft(m) * Math.min(1, delta * TURN_RATE)
+  }
 }
 
 /**
