@@ -17,9 +17,10 @@ type Props = {
  * .blend そのものは three.js では読めないので、`models/export_glb.py` で
  * chick.glb に書き出したものを使う。**形を直したら書き出し直すこと。**
  *
- * **動いて見えるものは全部モデルの中のクリップ**（Walk / Blink / Jump）で、
- * ここがやるのは「どれを流すか」を決めることだけ。時刻から角度や大きさを
- * 作るような動きはここには置かない。直したいときは Blender を開く。
+ * **姿勢の動きは全部モデルの中のクリップ**（Walk / Blink / Jump）で、
+ * ここがやるのは「どれを流すか」と「歩いた結果どこへ行くか」だけ。
+ * 時刻から角度や大きさを作るような動きはここには置かない。
+ * 足の運びや揺れを直したいときは Blender を開く。
  *
  * 色・表情・姿勢は look.ts が決める。モデルは色を持っていないので、
  * ここでマテリアルに流し込む。だからステージや活力の対応表を変えるときに
@@ -40,6 +41,17 @@ const BODY_R = 0.549
 
 /** モデルの高さ（約1.6）を look.bodyRadius 基準の大きさに直す倍率 */
 const SIZE = 1.42
+
+// 歩き回れる範囲（ワールド座標、中心が定位置）。カメラ（AvatarCanvas）の
+// 画角に収まる値。**カメラや avatar.css の比率を変えたら測り直すこと。**
+/** 左右。これ以上行くと画面の外にはみ出す */
+const ROAM_X = 0.5
+/** 奥行き。遠近で大きさが変わって見えるので、左右より狭くしてある */
+const ROAM_Z = 0.4
+/** 歩く速さ（毎秒）。Walk クリップの歩幅（1秒で2歩）に合う速さ */
+const WALK_SPEED = 0.42
+/** 向きを変える速さ。急に振り向くと滑って見える */
+const TURN_RATE = 4.5
 
 /** 目の縦の潰し具合。look.eye の4つの形に対応する */
 const EYE_SQUASH: Record<Look['eye'], number> = {
@@ -106,15 +118,18 @@ function ChickModel({ look, animate }: Props) {
   )
   const { actions, mixer } = useAnimations(clips, rig)
 
-  const parts = useMemo(
-    () => ({
+  const parts = useMemo(() => {
+    const feather = model.getObjectByName('HeadFeather')
+    return {
       wingL: model.getObjectByName('Wing_L'),
       wingR: model.getObjectByName('Wing_R'),
-      feather: model.getObjectByName('HeadFeather'),
+      feather,
+      // とさかは大きさを変えるので、モデルが元々持っている倍率を控えておく。
+      // これを無視して直に入れると、Blender 側で大きさを調整した分が消える
+      featherScale: feather?.scale.clone() ?? new THREE.Vector3(1, 1, 1),
       eyes: [model.getObjectByName('Eye_L'), model.getObjectByName('Eye_R')],
-    }),
-    [model]
-  )
+    }
+  }, [model])
 
   // 色は毎フレームではなく、look が変わったときだけ流し込む
   useEffect(() => {
@@ -131,12 +146,17 @@ function ChickModel({ look, animate }: Props) {
     })
   }, [model, tone, look.bodyColor, look.bellyColor, look.beakColor])
 
-  // 成長で増える部位は、モデルのパーツを出し入れして表す
+  // 成長で増える部位は、モデルのパーツを出し入れして表す。
+  // とさか（HeadFeather）だけは例外で、**常に出したまま大きさだけ変える。**
+  // 隠すとひよこに見えなくなるので、消さないこと。
   useEffect(() => {
     if (parts.wingL) parts.wingL.visible = look.wings
     if (parts.wingR) parts.wingR.visible = look.wings
-    if (parts.feather) parts.feather.visible = look.crest
-  }, [parts, look.wings, look.crest])
+    if (parts.feather) {
+      parts.feather.visible = look.crest
+      parts.feather.scale.copy(parts.featherScale).multiplyScalar(look.crestScale)
+    }
+  }, [parts, look.wings, look.crest, look.crestScale])
 
   // 表情。モデルの目は丸い玉ひとつなので、潰して目つきを作る。
   // モーフを持たせれば本当に形を変えられるが、玉を潰すだけでも
@@ -163,12 +183,23 @@ function ChickModel({ look, animate }: Props) {
 
   const s = look.bodyRadius * SIZE
 
-  // いま流しているクリップ。毎フレーム変わるので、再描画を起こさない ref に持つ
-  const playing = useRef({ mode: 'idle' as Mode, timer: 1.4, weight: 0 })
+  // いま流しているクリップと、どこに立っているか。
+  // 毎フレーム変わるので、再描画を起こさない ref に持つ
+  const walker = useRef<THREE.Group>(null)
+  const playing = useRef<Walker>({
+    mode: 'idle',
+    timer: 1.4,
+    weight: 0,
+    x: 0,
+    z: 0,
+    heading: 0,
+    facing: 0,
+  })
 
   useFrame((_, delta) => {
-    // **ここでは何も動かさない。** 見えている動きはモデルのクリップが作る。
-    // 決めるのは「どれを流すか」と「どれくらいの重みで混ぜるか」だけ。
+    // **足の運びも胴の揺れもここでは作らない。** 見えている動きはモデルの
+    // クリップが持っている。ここが決めるのは「どれを流すか」「どれくらいの
+    // 重みで混ぜるか」、そして「歩いた結果どこへ行くか」の3つだけ。
     mixer.timeScale = animate ? 1 : 0
     actions.Blink?.setEffectiveWeight(animate ? 1 : 0)
 
@@ -177,18 +208,29 @@ function ChickModel({ look, animate }: Props) {
     // 歩きは重みで出し入れする。0/1 を直に入れると歩き出しと止まりが瞬間的になる
     m.weight = THREE.MathUtils.damp(m.weight, m.mode === 'walk' ? 1 : 0, 9, delta)
     actions.Walk?.setEffectiveWeight(m.weight)
+
+    // 位置と向き。止めているときは凍らせる（prefers-reduced-motion）
+    if (animate) roam(m, delta)
+    const g = walker.current
+    if (g) {
+      g.position.set(m.x, 0, m.z)
+      g.rotation.y = m.facing
+    }
   })
 
   return (
     <>
-      {/* やつれると前かがみになる。これは姿勢であって動きではないので、
-          毎フレーム寄せるのではなく look が変わったときにそのまま入れる */}
-      <group rotation={[look.droop * 0.12, 0, 0]}>
-        <group ref={rig} position={[0, -FOOT_Y * s, 0]} scale={s}>
-          <primitive object={model} />
-          {look.scarf && <Scarf />}
-          {look.crown && <Crown />}
-          {look.sweat && <Sweat />}
+      {/* 歩いて動くのはこの入れ物ごと。中の姿勢はクリップが作る */}
+      <group ref={walker}>
+        {/* やつれると前かがみになる。これは姿勢であって動きではないので、
+            毎フレーム寄せるのではなく look が変わったときにそのまま入れる */}
+        <group rotation={[look.droop * 0.12, 0, 0]}>
+          <group ref={rig} position={[0, -FOOT_Y * s, 0]} scale={s}>
+            <primitive object={model} />
+            {look.scarf && <Scarf />}
+            {look.crown && <Crown />}
+            {look.sweat && <Sweat />}
+          </group>
         </group>
       </group>
       <ContactShadows position={[0, 0, 0]} opacity={0.32} scale={5} blur={2.6} far={2} resolution={512} />
@@ -198,6 +240,21 @@ function ChickModel({ look, animate }: Props) {
 
 type Mode = 'idle' | 'walk' | 'jump'
 
+type Walker = {
+  mode: Mode
+  /** 次に切り替えるまでの残り秒 */
+  timer: number
+  /** Walk クリップの重み 0〜1 */
+  weight: number
+  /** 定位置からのずれ */
+  x: number
+  z: number
+  /** 行きたい方向（Y 回転。0 がカメラ向き） */
+  heading: number
+  /** いま向いている方向。heading へ少しずつ寄せる */
+  facing: number
+}
+
 /**
  * 次にどのクリップを流すかを決めるだけの状態機械。
  * 「しばらく立ち止まる → 歩く / ちょっと跳ぶ」を繰り返す。
@@ -205,12 +262,7 @@ type Mode = 'idle' | 'walk' | 'jump'
  *
  * `amp`（活力）が低いときは立ち止まったまま。やつれたひよこは歩き出さない。
  */
-function pick(
-  m: { mode: Mode; timer: number; weight: number },
-  amp: number,
-  delta: number,
-  jump?: THREE.AnimationAction | null
-) {
+function pick(m: Walker, amp: number, delta: number, jump?: THREE.AnimationAction | null) {
   const lively = amp > 0.25
   m.timer -= delta
 
@@ -242,7 +294,39 @@ function pick(
   } else {
     m.mode = 'walk'
     m.timer = 2 + Math.random() * 2.5
+    // 行き先を決める。カメラに尻を向けたままにならないよう、
+    // 正面から左右 100 度までの範囲で選ぶ
+    m.heading = (Math.random() * 2 - 1) * 1.75
   }
+}
+
+/**
+ * 歩いた結果どこへ行くかだけを進める。**姿勢は一切触らない。**
+ * 足を運ぶ・胴が揺れるといった見た目は Walk クリップが作っていて、
+ * ここは「その場足踏み」を実際の移動に変えているだけ。
+ *
+ * 位置と向きだけは Blender に置けない。クリップに移動を焼くと毎回同じ道順に
+ * なり、画面からもはみ出す。どこへ行くかはコードが決めるしかない。
+ */
+function roam(m: Walker, delta: number) {
+  if (m.mode === 'walk') {
+    // 端まで来たら向き直す。壁で止まるのではなく、ぐるっと回って戻る
+    if (Math.abs(m.x) > ROAM_X || Math.abs(m.z) > ROAM_Z) {
+      m.heading = Math.atan2(-m.x, -m.z)
+    }
+    // クリップの重みぶんだけ、**いま向いている方向へ**進む。
+    // 行きたい方向（heading）へ直に進めると、振り向く途中で横滑りして見える
+    const step = WALK_SPEED * m.weight * delta
+    m.x += Math.sin(m.facing) * step
+    m.z += Math.cos(m.facing) * step
+  } else if (m.weight < 0.01) {
+    // 立ち止まったらカメラの方に向き直る。顔が見えないままだと寂しい
+    m.heading = 0
+  }
+
+  // 向きは寄せる。ここは「向き」であって動きの作り込みではない
+  const turn = ((m.heading - m.facing + Math.PI * 3) % (Math.PI * 2)) - Math.PI
+  m.facing += turn * Math.min(1, delta * TURN_RATE)
 }
 
 /**
