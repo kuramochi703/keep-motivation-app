@@ -1,8 +1,10 @@
 # アーキテクチャ — 何がどう動いているか
 
-このアプリの見取り図です。**構成・データの持ち方・置き場所・既知の課題**をまとめています。
-アプリの機能と環境構築は [README.md](./README.md)、分担とルールは [TEAM.md](./TEAM.md) を参照。
+このアプリの見取り図。**構成・データの持ち方・既知の課題・置き場所**をまとめています。
+アプリの機能と動かし方は [README.md](./README.md)、分担とルールは [TEAM.md](./TEAM.md) を参照。
 
+> ゲームのルールの数値（`GAIN` / `DECAY` / `SESSION`）はここには書きません。
+> 原典は `src/state/logic.ts`、読み物としては [README 2章](./README.md#2-ゲームのルール)にあります。
 > 図は GitHub 上で Mermaid として自動表示されます。
 
 ---
@@ -94,7 +96,7 @@ src/
 ├── lib/
 │   └── supabase.ts             DB の接続クライアント
 │
-├── avatar/                     アバターの3D描画 → README.md に詳細
+├── avatar/                     アバターの3D描画 → src/avatar/README.md に詳細
 │   ├── Avatar.tsx / AvatarCanvas.tsx / Chick.tsx
 │   ├── look.ts / stage.ts / avatar.css
 │   ├── models/                   chick.blend / chick.glb / export_glb.py
@@ -155,7 +157,7 @@ flowchart TB
     useapp --> usescreen
     useapp --> usetimer
     useapp --> usegoal
-    usetimer -->|"300秒たったら onComplete()"| usegoal
+    usetimer -->|"SESSION 秒たったら onComplete()"| usegoal
     usetimer -->|"SESSION を参照"| logic
     usegoal -->|"markDone() / rollover() / resetGoal()"| logic
     usegoal --> client
@@ -209,10 +211,10 @@ sequenceDiagram
 
     U->>M: ▶ を押す
     M->>T: タイマー開始（useApp() 経由）
-    T->>T: 300秒たったら達成と判定
+    T->>T: SESSION 秒たったら達成と判定
     T->>G: onComplete()（markSessionDone）
     G->>L: markDone(state)
-    L-->>G: 活力 +12 / 達成日を記録
+    L-->>G: 活力 +GAIN / 達成日を記録
     G->>S: user_state を id=1 で UPSERT
     G-->>M: 新しい状態で再描画
     M-->>U: 「今日はもう積んだ」と表示
@@ -236,7 +238,7 @@ sequenceDiagram
     G->>S: user_state(id=1) と 関連する goals を取得
     S-->>G: 保存されていた状態
     G->>L: rollover() でサボった日を判定
-    L-->>G: 1日サボりごとに 活力 -20
+    L-->>G: 1日サボりごとに 活力 -DECAY
     G-->>M: やつれたアバターを表示
     M-->>B: 色が抜けてうつむいた絵と「もう…」のセリフ
 ```
@@ -285,8 +287,8 @@ flowchart LR
 | 起動 | `user_state`(id=1) を `maybeSingle()`。関連 `goals` も同時取得 | State に変換し `rollover()` を適用 |
 | 目標作成 | `goals` に INSERT して `id` を得る | 活力50・履歴空・最長記録0 にリセット |
 | 状態保存 | `user_state` を id=1 で UPSERT | `loaded && hasStarted` のとき変更に応じて |
-| 今日の達成 | 状態保存を通じて更新 | 達成日を追加し活力 +12。同日の重複は加算しない |
-| 次の日へ進める | 状態保存を通じて更新 | 日付を進め、未達成日ぶん活力 -20 |
+| 今日の達成 | 状態保存を通じて更新 | 達成日を追加し活力 +`GAIN`。同日の重複は加算しない |
+| 次の日へ進める | 状態保存を通じて更新 | 日付を進め、未達成日ぶん活力 -`DECAY` |
 | 期限延長 | `goals.deadline` を UPDATE | 成功後に画面の期限を1か月延長 |
 | 目標の作り直し | **書き換えない** | `hasStarted=false` にして設定画面へ |
 | 全体リセット | **削除しない** | ローカルの状態を初期値に戻す |
@@ -335,9 +337,12 @@ flowchart LR
 - **テストが1つもありません。** `logic.ts` は副作用のない純粋関数ばかりで本来いちばん
   テストしやすい部分です。とくに `rollover`（月またぎ・複数日サボり）・`streak`（同日2回、
   連続の途切れ）・`daysUntil` / `isExpired`（期限の当日・前日・翌日）は手で確認しづらく、
-  3節のシーケンス図と対応するテストを書けば仕様書としても働きます
+  3章のシーケンス図と対応するテストを書けば仕様書としても働きます
 - **lint / format 設定がありません。** いまスタイルが揃っているのは「守られている」のではなく
   「たまたま揃っている」状態です
+
+> 着手の担当と順番は [TEAM 3章「足回り」](./TEAM.md#3-いまのタスク)。ここは**何が問題か**だけを書き、
+> **誰がいつやるか**は TEAM.md に置いています。
 
 ---
 
@@ -377,7 +382,8 @@ Cloud Run は**常駐するサーバープロセス**を動かす場所です。
 - [ ] GitHub Actions で main マージ時に自動デプロイ（余裕が出てから）
 
 > anon key はブラウザに露出する前提の鍵なので、漏れても RLS があれば守られます。
-> **逆に言うと RLS が無いと全データが読み書きされます。** 1つ目のチェックを飛ばさないこと。
+> **逆に言うと RLS が無いと全データが読み書きされます**（5章の1つ目の課題）。
+> 1つ目のチェックを飛ばさないこと。
 
 Firebase Hosting を選ぶ理由は、無料枠・CDN・HTTPS 自動・カスタムドメインが揃っていて
 Google アカウントで完結するためです。Vercel / Cloudflare Pages / GitHub Pages でも問題なく、
