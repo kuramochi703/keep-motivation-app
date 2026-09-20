@@ -85,9 +85,12 @@ def bake_eye(obj):
     use_vertex_color(obj, 'Col')
 
 
+# アーマチュア。アニメーションの持ち主で、パーツはこれのボーンにぶら下がっている
+RIG = 'Rig'
+
 # カメラ・ライト・作業用の余りものは .glb に要らない
 for obj in list(bpy.data.objects):
-    if obj.name not in RATIOS:
+    if obj.name not in RATIOS and obj.name != RIG:
         bpy.data.objects.remove(obj, do_unlink=True)
 
 use_vertex_color(bpy.data.objects['Body'], 'Bib')
@@ -99,6 +102,7 @@ for name, ratio in RATIOS.items():
     obj = bpy.data.objects[name]
     obj.modifiers.new('decimate', 'DECIMATE').ratio = ratio
     obj.select_set(True)
+bpy.data.objects[RIG].select_set(True)
 bpy.context.view_layer.objects.active = bpy.data.objects['Body']
 
 out = os.path.join(os.path.dirname(bpy.data.filepath), 'chick.glb')
@@ -111,5 +115,12 @@ bpy.ops.export_scene.gltf(
     export_cameras=False,
     export_lights=False,
     export_texcoords=False,
+    export_animations=True,
+    # 「今フレームで再生中のもの」ではなく**アクション1本を1クリップ**として出す。
+    # これを指定しないと Rig に割り当てた1本しか出ず、Walk しか再生できない。
+    export_animation_mode='ACTIONS',
+    # 同じ値が続くキーも残す。消されるとクリップの長さが縮み、
+    # まばたきのように「ほとんど動かない」ものの間隔が変わる
+    export_optimize_animation_size=False,
 )
 print('exported', out, os.path.getsize(out))
