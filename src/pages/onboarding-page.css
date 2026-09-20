@@ -18,9 +18,18 @@
 .onboarding-bubble { position:relative; width:fit-content; background:#fff; border-radius:48%; padding:16px 20px; box-shadow:0 4px 12px #344e6010; transform:rotate(-12deg); font-size:15px; line-height:1.5; letter-spacing:.06em; margin:22px 0 0 6px; }
 .onboarding-bubble::after { content:''; position:absolute; bottom:-5px; right:20px; border-top:15px solid white; border-left:12px solid transparent; transform:rotate(-12deg); }
 .onboarding-avatar-space { min-height:130px; }
+.onboarding-avatar { display:flex; align-items:center; justify-content:center; width:100%; height:180px; }
+.onboarding-morio { height:100%; max-width:100%; aspect-ratio:1; }
+.onboarding-morio .avatar { width:100%; height:100%; max-width:none; margin:0; aspect-ratio:auto; }
+.onboarding-avatar img { display:block; width:100%; height:100%; object-fit:contain; }
+.onboarding-avatar-placeholder { display:flex; justify-content:center; width:100%; height:100%; color:#cbdedb; }
+.onboarding-avatar-placeholder svg { width:120px; max-width:80%; height:100%; }
+.onboarding-growth-space .onboarding-avatar { height:100%; }
+.onboarding-scene-small .onboarding-avatar { height:125px; }
+.onboarding-scene-final .onboarding-avatar { height:245px; padding-top:30px; }
 .onboarding-growth { display:flex; padding:0 2px; margin-top:-12px; margin-bottom:24px; }
-.onboarding-growth > div { position:relative; flex:1; text-align:center; font-size:12px; font-weight:600; }
-.onboarding-growth-space { height:142px; }
+.onboarding-growth > div { position:relative; flex:1; min-width:0; text-align:center; font-size:12px; font-weight:600; }
+.onboarding-growth-space { height:clamp(80px,25vw,142px); }
 .onboarding-growth i { position:absolute; right:-7px; bottom:44px; color:#39a6a4; font-size:24px; font-weight:400; font-style:normal; }
 .onboarding-vitality { display:flex; gap:9px; padding:13px 12px; border:1px solid #ecece0; border-radius:17px; background:#ffffffde; }
 .onboarding-sprout { font-size:32px; line-height:1.4; }

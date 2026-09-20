@@ -1,10 +1,18 @@
 import { useState } from 'react'
+import OnboardingAvatar from './OnboardingAvatar'
+import { onboardingAvatarImages as avatars } from './onboarding-avatar'
 import './onboarding-page.css'
 
 const steps = [
   { title: '目標を設定しよう', lines: ['勉強・運動・趣味など、', '続けたい目標を決めよう。'] },
   { title: 'キャラクターが成長する', lines: ['続けるほど、キャラクターが', '元気に成長していくよ。'] },
   { title: 'さあ、はじめよう', lines: ['小さな一歩が、', 'きっと明日の元気につながる。'] },
+]
+
+const growthExamples = [
+  { label: 'はじめ', days: 0, vitality: 54 },
+  { label: 'がんばり中', days: 7, vitality: 75 },
+  { label: '成長！', days: 30, vitality: 90 },
 ]
 
 export default function OnboardingPage({ onComplete }: { onComplete: () => void }) {
@@ -26,21 +34,21 @@ export default function OnboardingPage({ onComplete }: { onComplete: () => void 
             <div className="onboarding-goal"><span>目標（例）</span><div>
               <svg width="25" height="25" viewBox="0 0 24 24" fill="none" aria-hidden="true"><path d="M12 5v15m0-15C9 3 5 3 2 5v14c3-2 7-2 10 1 3-3 7-3 10-1V5c-3-2-7-2-10 0Z" stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" /></svg>
               資格の勉強</div></div>
-            <div className="onboarding-scene"><p className="onboarding-bubble">たった5分から<br />始められるよ！</p><div className="onboarding-avatar-space" aria-hidden="true" /></div>
+            <div className="onboarding-scene"><p className="onboarding-bubble">たった5分から<br />始められるよ！</p><div className="onboarding-avatar-space"><OnboardingAvatar src={avatars.goal || avatars.default} /></div></div>
           </>}
           {step === 1 && <>
             <div className="onboarding-growth">
-              {['はじめ', 'がんばり中', '成長！'].map((label, index) => <div key={label}><div className="onboarding-growth-space" aria-hidden="true" /><span>{label}</span>{index < 2 && <i aria-hidden="true">→</i>}</div>)}
+              {growthExamples.map(({ label, days, vitality }, index) => <div key={label}><div className="onboarding-growth-space"><OnboardingAvatar src={avatars.growth[index] || avatars.default} days={days} vitality={vitality} /></div><span>{label}</span>{index < 2 && <i aria-hidden="true">→</i>}</div>)}
             </div>
             <div className="onboarding-vitality"><span className="onboarding-sprout" aria-hidden="true">🌱</span><div>
               <div className="onboarding-vitality-label"><b>活力</b><span><strong>54</strong> / 100</span></div>
               <div className="onboarding-meter" role="meter" aria-label="活力の例" aria-valuemin={0} aria-valuemax={100} aria-valuenow={54}><span /></div>
               <p>つづけるほど、もっと元気に！</p>
             </div></div>
-            <div className="onboarding-scene onboarding-scene-small"><p className="onboarding-bubble">いっしょに<br />がんばろう！</p><div className="onboarding-avatar-space" aria-hidden="true" /></div>
+            <div className="onboarding-scene onboarding-scene-small"><p className="onboarding-bubble">いっしょに<br />がんばろう！</p><div className="onboarding-avatar-space"><OnboardingAvatar src={avatars.encouragement || avatars.default} /></div></div>
           </>}
           {step === 2 && <>
-            <div className="onboarding-scene onboarding-scene-final"><p className="onboarding-note">5分で<br />変わるよ！</p><div className="onboarding-avatar-space" aria-hidden="true" /></div>
+            <div className="onboarding-scene onboarding-scene-final"><p className="onboarding-note">5分で<br />変わるよ！</p><div className="onboarding-avatar-space"><OnboardingAvatar src={avatars.start || avatars.default} /></div></div>
             <p className="onboarding-closing">今日のわたしが、<br />もっとすきになる。<span aria-hidden="true">🌱</span></p>
           </>}
         </div>
