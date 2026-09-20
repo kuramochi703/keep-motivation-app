@@ -9,7 +9,12 @@ type Props = {
   look: Look
   /** false ならクリップを止めて立ち姿のままにする（prefers-reduced-motion 対応） */
   animate: boolean
+  /** 歩き回れる範囲。枠の大きさで変わるので、外（AvatarCanvas）が決める */
+  roam?: Roam
 }
+
+/** 歩き回れる範囲（ワールド座標。定位置を中心にした半径） */
+export type Roam = { x: number; z: number }
 
 /**
  * ひよこ本体。Blender で作ったモデル（models/chick.blend）を読んで動かす。
@@ -27,9 +32,9 @@ type Props = {
  * ここでマテリアルに流し込む。だからステージや活力の対応表を変えるときに
  * Blender を開く必要はない。
  */
-export default function Chick({ look, animate }: Props) {
+export default function Chick({ look, animate, roam }: Props) {
   if (look.isEgg) return <Egg look={look} />
-  return <ChickModel look={look} animate={animate} />
+  return <ChickModel look={look} animate={animate} roam={roam} />
 }
 
 // three.js に入った後のモデルの寸法（Y 上）。値は chick.glb の実測。
@@ -43,12 +48,15 @@ const BODY_R = 0.549
 /** モデルの高さ（約1.6）を look.bodyRadius 基準の大きさに直す倍率 */
 const SIZE = 1.42
 
-// 歩き回れる範囲（ワールド座標、中心が定位置）。カメラ（AvatarCanvas）の
-// 画角に収まる値。**カメラや avatar.css の比率を変えたら測り直すこと。**
+// 歩き回れる範囲の既定値（ワールド座標、中心が定位置）。カードの中に
+// 収まる小さな枠（onboarding など）向けの値。ダッシュボードのように枠が
+// 広い場面では、AvatarCanvas が枠の大きさから測った値を渡してくる。
 /** 左右。これ以上行くと画面の外にはみ出す */
 const ROAM_X = 0.5
 /** 奥行き。遠近で大きさが変わって見えるので、左右より狭くしてある */
 const ROAM_Z = 0.4
+/** 範囲の指定がないときに使う、既定の狭い範囲 */
+export const DEFAULT_ROAM: Roam = { x: ROAM_X, z: ROAM_Z }
 /** 歩く速さ（毎秒）。Walk クリップの歩幅（1秒で2歩）に合う速さ */
 const WALK_SPEED = 0.42
 /** 向きを変える速さ。急に振り向くと滑って見える */
@@ -75,7 +83,7 @@ const EYE_SQUASH: Record<Look['eye'], number> = {
   closed: 0.12,
 }
 
-function ChickModel({ look, animate }: Props) {
+function ChickModel({ look, animate, roam: area = DEFAULT_ROAM }: Props) {
   const rig = useRef<THREE.Group>(null)
 
   const { scene, animations } = useGLTF(chickUrl)
@@ -240,7 +248,7 @@ function ChickModel({ look, animate }: Props) {
     }
     actions.Idle?.setEffectiveWeight(Math.max(0, idle))
 
-    roam(m, delta)
+    roam(m, delta, area)
     const g = walker.current
     if (g) {
       g.position.set(m.x, 0, m.z)
@@ -263,7 +271,15 @@ function ChickModel({ look, animate }: Props) {
           </group>
         </group>
       </group>
-      <ContactShadows position={[0, 0, 0]} opacity={0.32} scale={5} blur={2.6} far={2} resolution={512} />
+      {/* 影の板は歩き回る範囲ぜんぶを覆う。狭いと端で影が切れる */}
+      <ContactShadows
+        position={[0, 0, 0]}
+        opacity={0.32}
+        scale={[Math.max(5, area.x * 2 + 2.4), Math.max(5, area.z * 2 + 2.4)]}
+        blur={2.6}
+        far={2}
+        resolution={512}
+      />
     </>
   )
 }
@@ -391,10 +407,10 @@ function pick(m: Walker, amp: number, delta: number, jump?: THREE.AnimationActio
  * 位置と向きだけは Blender に置けない。クリップに移動を焼くと毎回同じ道順に
  * なり、画面からもはみ出す。どこへ行くかはコードが決めるしかない。
  */
-function roam(m: Walker, delta: number) {
+function roam(m: Walker, delta: number, area: Roam) {
   if (m.mode === 'walk') {
     // 端まで来たら向き直す。壁で止まるのではなく、ぐるっと回って戻る
-    if (Math.abs(m.x) > ROAM_X || Math.abs(m.z) > ROAM_Z) {
+    if (Math.abs(m.x) > area.x || Math.abs(m.z) > area.z) {
       m.heading = Math.atan2(-m.x, -m.z)
     }
     // クリップの重みぶんだけ、**いま向いている方向へ**進む。

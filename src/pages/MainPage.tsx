@@ -116,7 +116,7 @@ export default function MainPage({
             </div>
 
             <div className="stage-avatar">
-              <Avatar lv={L.lv} variant={state.avatarId} vitality={vital} days={state.done.length} />
+              <Avatar lv={L.lv} variant={state.avatarId} vitality={vital} days={state.done.length} fill />
             </div>
 
             <p className="owner">{state.name}</p>
