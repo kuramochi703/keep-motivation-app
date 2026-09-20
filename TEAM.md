@@ -79,6 +79,11 @@ logic.ts ──[ State型 / levelOf() / streak() など ]──▶ pages/ ──
 - [ ] **ステージが上がった瞬間の演出** ← 育成アプリで一番おいしい所。時間を使う価値あり
 - [ ] 「見た目をためす」スライダーを、ステージも動かせるように拡張（C の確認が楽になる）
 
+> 初期プロトタイプ（`docs/prototype.html`、削除済み）には **「最低ライン」「のべ日数」「この5週間」**
+> の表示がありました。デザインの参考にしたい時は git の履歴から取り出せます:
+> `git log --all --oneline -- docs/prototype.html` でファイルがあった頃のコミットを探し、
+> `git show <コミットID>:docs/prototype.html > /tmp/prototype.html` でブラウザで開けます。
+
 **C：見た目係** — `src/avatar/` `src/ui/`
 
 - [x] ステージ6段階 ＋ たまごの実装、2軸対応、進化の「ぽん」演出、アバター3種の色分け
