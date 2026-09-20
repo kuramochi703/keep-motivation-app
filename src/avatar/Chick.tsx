@@ -1,8 +1,9 @@
-import { useMemo, useRef } from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { ContactShadows, Sparkles } from '@react-three/drei'
+import { ContactShadows, Sparkles, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
-import type { EyeShape, Look } from './look'
+import type { Look } from './look'
+import chickUrl from './models/chick.glb?url'
 
 type Props = {
   look: Look
@@ -10,21 +11,133 @@ type Props = {
   animate: boolean
 }
 
-/** ふわっとした質感。全パーツで共通に使う */
-const SKIN = { roughness: 0.72, metalness: 0 } as const
-
 /**
- * ひよこ本体。球とカプセルだけで組んでいる。
+ * ひよこ本体。Blender で作ったモデル（models/chick.blend）を読んで動かす。
  *
- * 位置と大きさはすべて `look.bodyRadius`（= r）を基準にした相対値で書く。
- * ステージが上がって r が変わっても、全体の比率が崩れないようにするため。
+ * .blend そのものは three.js では読めないので、`models/export_glb.py` で
+ * chick.glb に書き出したものを使う。**形を直したら書き出し直すこと。**
+ *
+ * 色・表情・姿勢は look.ts が決める。モデルは「形」だけを持っていて、
+ * 色はここでマテリアルに流し込む。だからステージや活力の対応表を変えるときに
+ * Blender を開く必要はない。
  */
 export default function Chick({ look, animate }: Props) {
+  if (look.isEgg) return <Egg look={look} animate={animate} />
+  return <ChickModel look={look} animate={animate} />
+}
+
+// three.js に入った後のモデルの寸法（Y 上）。値は chick.glb の実測。
+/** 足の裏。これを打ち消すと足が y=0 に乗る */
+const FOOT_Y = -0.634
+/** 頭のてっぺん。冠を乗せる高さの目安 */
+const HEAD_TOP = 0.798
+/** 一番太いところの半径。マフラーの大きさの目安 */
+const BODY_R = 0.549
+
+/** モデルの高さ（約1.6）を look.bodyRadius 基準の大きさに直す倍率 */
+const SIZE = 1.42
+
+const AXIS_Z = new THREE.Vector3(0, 0, 1)
+
+/** 目の縦の潰し具合。look.eye の4つの形に対応する */
+const EYE_SQUASH: Record<Look['eye'], number> = {
+  happy: 0.7,
+  open: 1,
+  half: 0.5,
+  closed: 0.12,
+}
+
+function ChickModel({ look, animate }: Props) {
   const root = useRef<THREE.Group>(null)
-  const body = useRef<THREE.Group>(null)
-  const head = useRef<THREE.Group>(null)
-  const wingL = useRef<THREE.Group>(null)
-  const wingR = useRef<THREE.Group>(null)
+  const rig = useRef<THREE.Group>(null)
+
+  const { scene } = useGLTF(chickUrl)
+
+  // 胴体の塗り分け。Blender では「Bib マスク → 2色を Mix」で塗っているが、
+  // glTF はノードの Mix を運べないので、マスクだけが頂点カラー（COLOR_0）で
+  // 来ている。2色は look.ts が決めるので、ここで混ぜ直す。
+  const tone = useMemo(
+    () => ({ uTop: { value: new THREE.Color() }, uBib: { value: new THREE.Color() } }),
+    []
+  )
+
+  // アバターは画面に複数出ることがある。読み込んだモデルは three.js が使い回すので、
+  // そのまま色を塗ると全部のアバターが同じ色になる。複製してから触る。
+  const model = useMemo(() => {
+    const copy = scene.clone(true)
+    copy.traverse((o) => {
+      const mesh = o as THREE.Mesh
+      if (!mesh.isMesh) return
+      const mat = (mesh.material as THREE.MeshStandardMaterial).clone()
+      mesh.material = mat
+      if (mat.name === 'Body') {
+        mat.onBeforeCompile = (shader) => {
+          shader.uniforms.uTop = tone.uTop
+          shader.uniforms.uBib = tone.uBib
+          shader.fragmentShader = shader.fragmentShader
+            .replace('#include <common>', 'uniform vec3 uTop;\nuniform vec3 uBib;\n#include <common>')
+            // 既定の頂点カラーは「掛ける」処理。マスクの黒い側が潰れるので置き換える
+            .replace('#include <color_fragment>', 'diffuseColor.rgb = mix(uTop, uBib, vColor.r);')
+        }
+      }
+      // 目は白ハイライトごと頂点カラーに焼いてある。白で掛けてそのまま出す
+      if (mat.name === 'Eye_Black') mat.color.setRGB(1, 1, 1)
+      mat.roughness = mat.name === 'Eye_Black' ? 0.25 : 0.6
+      mat.metalness = 0
+    })
+    return copy
+  }, [scene, tone])
+
+  const parts = useMemo(
+    () => ({
+      wingL: model.getObjectByName('Wing_L'),
+      wingR: model.getObjectByName('Wing_R'),
+      feather: model.getObjectByName('HeadFeather'),
+      eyes: [model.getObjectByName('Eye_L'), model.getObjectByName('Eye_R')],
+    }),
+    [model]
+  )
+
+  // 翼を羽ばたかせるとき、モデルが元々持っている傾きに足し込みたいので控えておく
+  const rest = useMemo(
+    () => ({
+      wingL: parts.wingL?.quaternion.clone() ?? new THREE.Quaternion(),
+      wingR: parts.wingR?.quaternion.clone() ?? new THREE.Quaternion(),
+    }),
+    [parts]
+  )
+
+  // 色は毎フレームではなく、look が変わったときだけ流し込む
+  useEffect(() => {
+    tone.uTop.value.set(look.bodyColor)
+    tone.uBib.value.set(look.bellyColor)
+    // 翼と頭の羽は「胴体よりやや暗いみどり」（設計図）。
+    // 胴体の色から作るので、アバターの種類が増えても勝手に付いてくる。
+    const accent = new THREE.Color(look.bodyColor).offsetHSL(0, 0.05, -0.16)
+    model.traverse((o) => {
+      const mat = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined
+      if (!mat) return
+      if (mat.name === 'Beak_Orange' || mat.name === 'Foot_Orange') mat.color.set(look.beakColor)
+      if (mat.name === 'Wing_Green' || mat.name === 'HeadFeather_Green') mat.color.copy(accent)
+    })
+  }, [model, tone, look.bodyColor, look.bellyColor, look.beakColor])
+
+  // 成長で増える部位は、モデルのパーツを出し入れして表す
+  useEffect(() => {
+    if (parts.wingL) parts.wingL.visible = look.wings
+    if (parts.wingR) parts.wingR.visible = look.wings
+    if (parts.feather) parts.feather.visible = look.crest
+  }, [parts, look.wings, look.crest])
+
+  // 表情。モデルの目は丸い玉ひとつなので、潰して目つきを作る。
+  // モーフを持たせれば本当に形を変えられるが、玉を潰すだけでも
+  // 「にっこり／半目／閉じ」は十分読める。
+  useEffect(() => {
+    const squash = EYE_SQUASH[look.eye]
+    for (const eye of parts.eyes) eye?.scale.set(1, squash, 1)
+  }, [parts, look.eye])
+
+  const s = look.bodyRadius * SIZE
 
   // 進化した瞬間だけ「ぽん」と跳ねさせるための状態。
   // 初回マウントでは鳴らさない（前のステージが分からないため）。
@@ -33,17 +146,7 @@ export default function Chick({ look, animate }: Props) {
   if (prevStage.current !== null && look.stage > prevStage.current) pop.current = 1
   prevStage.current = look.stage
 
-  const r = look.bodyRadius
-  const hr = r * look.headRatio
-  const headY = r * 1.58
-
-  // 顔のパーツは「頭の球のどこに貼るか」で決める。
-  // z を目分量で決めると球に飲み込まれて消えるので、x・y から表面の z を出す。
-  const faceZ = (x: number, y: number) => Math.sqrt(Math.max(hr * hr - x * x - y * y, 0)) * 0.96
-  const eyeX = hr * 0.36
-  const eyeY = hr * 0.1
-  const cheekX = hr * 0.6
-  const cheekY = -hr * 0.12
+  const flapQ = useMemo(() => new THREE.Quaternion(), [])
 
   useFrame((state, delta) => {
     const t = state.clock.elapsedTime
@@ -64,99 +167,32 @@ export default function Chick({ look, animate }: Props) {
         delta
       )
     }
-    if (body.current) {
+    if (rig.current) {
       // 呼吸。横に膨らんだぶん縦を縮めて体積を保つ
       const b = 1 + Math.sin(t * 2.1) * 0.03 * amp
-      body.current.scale.set(b, 1 / b, b)
+      rig.current.scale.set(s * b, s / b, s * b)
+      // 縦に縮めたぶん足が浮くので、足の裏が y=0 に残るように押し下げる
+      rig.current.position.y = -FOOT_Y * (s / b)
     }
-    if (head.current) {
-      head.current.rotation.z = Math.sin(t * 0.9) * 0.07 * amp
-      head.current.position.y = THREE.MathUtils.damp(
-        head.current.position.y,
-        headY - look.droop * r * 0.2,
-        6,
-        delta
-      )
+    const flap = Math.sin(t * 3.4) * 0.3 * amp
+    // 羽ばたきは親の座標系で足す。モデルが持っている傾きを壊さないため
+    if (parts.wingL) {
+      parts.wingL.quaternion.copy(flapQ.setFromAxisAngle(AXIS_Z, flap)).multiply(rest.wingL)
     }
-    const flap = Math.sin(t * 3.4) * 0.35 * amp
-    if (wingL.current) wingL.current.rotation.z = 0.25 + flap
-    if (wingR.current) wingR.current.rotation.z = -0.25 - flap
+    if (parts.wingR) {
+      parts.wingR.quaternion.copy(flapQ.setFromAxisAngle(AXIS_Z, -flap)).multiply(rest.wingR)
+    }
   })
-
-  if (look.isEgg) return <Egg look={look} animate={animate} />
 
   return (
     <>
       <group ref={root}>
-        {/* からだ */}
-        <group ref={body} position={[0, r * 0.98, 0]}>
-          <mesh scale={[1, 0.88, 1]}>
-            <sphereGeometry args={[r, 48, 32]} />
-            <meshStandardMaterial color={look.bodyColor} {...SKIN} />
-          </mesh>
-          {/* おなかの白い部分。手前に薄く重ねる */}
-          <mesh position={[0, -r * 0.22, r * 0.34]} scale={[0.68, 0.7, 0.68]}>
-            <sphereGeometry args={[r, 32, 24]} />
-            <meshStandardMaterial color={look.bellyColor} {...SKIN} />
-          </mesh>
+        <group ref={rig} position={[0, -FOOT_Y * s, 0]} scale={s}>
+          <primitive object={model} />
+          {look.scarf && <Scarf />}
+          {look.crown && <Crown />}
+          {look.sweat && <Sweat />}
         </group>
-
-        {look.wings && (
-          <>
-            <group ref={wingL} position={[-r * 0.9, r * 0.86, 0]}>
-              <Wing color={look.bodyColor} r={r} side={-1} />
-            </group>
-            <group ref={wingR} position={[r * 0.9, r * 0.86, 0]}>
-              <Wing color={look.bodyColor} r={r} side={1} />
-            </group>
-          </>
-        )}
-
-        {look.tail && (
-          <mesh position={[0, r * 1.25, -r * 0.86]} rotation={[0.7, 0, 0]} scale={[1, 1, 1.5]}>
-            <sphereGeometry args={[r * 0.3, 20, 16]} />
-            <meshStandardMaterial color={look.bodyColor} {...SKIN} />
-          </mesh>
-        )}
-
-        {/* 頭 */}
-        <group ref={head} position={[0, headY, 0]}>
-          <mesh>
-            <sphereGeometry args={[hr, 48, 32]} />
-            <meshStandardMaterial color={look.bodyColor} {...SKIN} />
-          </mesh>
-
-          <Eye shape={look.eye} x={-eyeX} y={eyeY} z={faceZ(eyeX, eyeY)} scale={hr} />
-          <Eye shape={look.eye} x={eyeX} y={eyeY} z={faceZ(eyeX, eyeY)} scale={hr} />
-
-          {/* くちばし。上下に割れているように2枚重ねる */}
-          <mesh position={[0, -hr * 0.12, faceZ(0, hr * 0.12) + hr * 0.12]} rotation={[Math.PI / 2 - 0.72, Math.PI / 4, 0]}>
-            <coneGeometry args={[hr * 0.3, hr * 0.9, 4]} />
-            <meshStandardMaterial color={look.beakColor} roughness={0.5} />
-          </mesh>
-
-          {look.cheekOpacity > 0.01 && (
-            <>
-              <Cheek x={-cheekX} y={cheekY} z={faceZ(cheekX, cheekY)} r={hr * 0.2} o={look.cheekOpacity} />
-              <Cheek x={cheekX} y={cheekY} z={faceZ(cheekX, cheekY)} r={hr * 0.2} o={look.cheekOpacity} />
-            </>
-          )}
-
-          {look.crest && <Crest hr={hr} color={look.beakColor} />}
-          {look.crown && <Crown hr={hr} />}
-          {look.sweat && <Sweat hr={hr} />}
-        </group>
-
-        {look.scarf && (
-          <mesh position={[0, r * 1.2, 0]} rotation={[Math.PI / 2, 0, 0]}>
-            <torusGeometry args={[r * 0.97, r * 0.14, 12, 36]} />
-            <meshStandardMaterial color="#D9534F" roughness={0.9} />
-          </mesh>
-        )}
-
-        {/* あし */}
-        <Foot x={-r * 0.34} color={look.beakColor} r={r} />
-        <Foot x={r * 0.34} color={look.beakColor} r={r} />
       </group>
 
       {look.sparkles && (
@@ -164,6 +200,53 @@ export default function Chick({ look, animate }: Props) {
       )}
       <ContactShadows position={[0, 0, 0]} opacity={0.32} scale={5} blur={2.6} far={2} resolution={512} />
     </>
+  )
+}
+
+/**
+ * ステージ5のマフラー。モデルには無いので、ここで巻く。
+ * 頭と胴が一つの塊なので「首」が無い。くちばしの下端（y=0.17）より
+ * 上に置くと顔を覆ってしまうので、一番太いあたりに巻く。
+ */
+function Scarf() {
+  return (
+    <mesh position={[0, 0.03, 0]} rotation={[Math.PI / 2, 0, 0]}>
+      <torusGeometry args={[BODY_R * 1.04, 0.07, 12, 36]} />
+      <meshStandardMaterial color="#D9534F" roughness={0.9} />
+    </mesh>
+  )
+}
+
+/** ステージ6の冠。頭の羽より下、頭が細くなり始める高さに嵌める */
+function Crown() {
+  const gold = useMemo(() => ({ color: '#F0B429', roughness: 0.28, metalness: 0.85 }), [])
+  const r = 0.33
+  return (
+    <group position={[0, HEAD_TOP - 0.1, 0]}>
+      <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <torusGeometry args={[r, 0.045, 10, 28]} />
+        <meshStandardMaterial {...gold} />
+      </mesh>
+      {[0, 1, 2, 3].map((i) => {
+        const a = (i / 4) * Math.PI * 2
+        return (
+          <mesh key={i} position={[Math.cos(a) * r, 0.09, Math.sin(a) * r]}>
+            <coneGeometry args={[0.06, 0.17, 8]} />
+            <meshStandardMaterial {...gold} />
+          </mesh>
+        )
+      })}
+    </group>
+  )
+}
+
+/** しょんぼりのときの汗。顔の横に浮かべる */
+function Sweat() {
+  return (
+    <mesh position={[0.5, 0.55, 0.28]} scale={[0.8, 1.3, 0.8]}>
+      <sphereGeometry args={[0.085, 16, 12]} />
+      <meshStandardMaterial color="#5FA8D3" roughness={0.2} transparent opacity={0.85} />
+    </mesh>
   )
 }
 
@@ -204,115 +287,5 @@ function Egg({ look, animate }: Props) {
   )
 }
 
-function Wing({ color, r, side }: { color: string; r: number; side: 1 | -1 }) {
-  return (
-    <mesh position={[side * r * 0.12, -r * 0.1, 0]} scale={[0.18, 0.52, 0.66]}>
-      <sphereGeometry args={[r, 24, 20]} />
-      <meshStandardMaterial color={color} {...SKIN} />
-    </mesh>
-  )
-}
-
-function Foot({ x, color, r }: { x: number; color: string; r: number }) {
-  return (
-    <mesh position={[x, r * 0.1, r * 0.18]} rotation={[-Math.PI / 2, 0, 0]}>
-      <coneGeometry args={[r * 0.17, r * 0.3, 3]} />
-      <meshStandardMaterial color={color} roughness={0.6} />
-    </mesh>
-  )
-}
-
-function Cheek({ x, y, z, r, o }: { x: number; y: number; z: number; r: number; o: number }) {
-  return (
-    <mesh position={[x, y, z]} scale={[1, 0.7, 0.4]}>
-      <sphereGeometry args={[r, 16, 12]} />
-      <meshStandardMaterial color="#F58A8A" transparent opacity={o} roughness={1} />
-    </mesh>
-  )
-}
-
-function Crest({ hr, color }: { hr: number; color: string }) {
-  return (
-    <group position={[0, hr * 0.92, 0]}>
-      {[-1, 0, 1].map((i) => (
-        <mesh key={i} position={[i * hr * 0.22, i === 0 ? hr * 0.08 : 0, 0]} rotation={[0, 0, i * -0.3]}>
-          <coneGeometry args={[hr * 0.11, hr * 0.36, 8]} />
-          <meshStandardMaterial color={color} roughness={0.7} />
-        </mesh>
-      ))}
-    </group>
-  )
-}
-
-function Crown({ hr }: { hr: number }) {
-  const gold = useMemo(() => ({ color: '#F0B429', roughness: 0.28, metalness: 0.85 }), [])
-  return (
-    <group position={[0, hr * 1.02, 0]}>
-      <mesh rotation={[Math.PI / 2, 0, 0]}>
-        <torusGeometry args={[hr * 0.44, hr * 0.06, 10, 28]} />
-        <meshStandardMaterial {...gold} />
-      </mesh>
-      {[0, 1, 2, 3].map((i) => {
-        const a = (i / 4) * Math.PI * 2
-        return (
-          <mesh key={i} position={[Math.cos(a) * hr * 0.44, hr * 0.12, Math.sin(a) * hr * 0.44]}>
-            <coneGeometry args={[hr * 0.08, hr * 0.22, 8]} />
-            <meshStandardMaterial {...gold} />
-          </mesh>
-        )
-      })}
-    </group>
-  )
-}
-
-/** しょんぼりのときの汗。SVG 版にもあった記号なので残している */
-function Sweat({ hr }: { hr: number }) {
-  return (
-    <mesh position={[hr * 0.86, hr * 0.34, hr * 0.4]} scale={[0.8, 1.3, 0.8]}>
-      <sphereGeometry args={[hr * 0.11, 16, 12]} />
-      <meshStandardMaterial color="#5FA8D3" roughness={0.2} transparent opacity={0.85} />
-    </mesh>
-  )
-}
-
-/**
- * 目。活力レベルで形が変わる。
- * 曲線は「半分だけのトーラス」で作っている。向きを 180 度回すと
- * ∩（笑い）と ∪（しょんぼり）が同じ部品で作れる。
- */
-function Eye({ shape, x, y, z, scale }: { shape: EyeShape; x: number; y: number; z: number; scale: number }) {
-  const s = scale * 0.17
-  const dark = '#1A2028'
-
-  if (shape === 'open') {
-    return (
-      <group position={[x, y, z]}>
-        <mesh>
-          <sphereGeometry args={[s, 20, 16]} />
-          <meshStandardMaterial color={dark} roughness={0.35} />
-        </mesh>
-        <mesh position={[s * 0.32, s * 0.34, s * 0.6]}>
-          <sphereGeometry args={[s * 0.32, 12, 10]} />
-          <meshStandardMaterial color="#fff" roughness={0.3} />
-        </mesh>
-      </group>
-    )
-  }
-
-  if (shape === 'closed') {
-    return (
-      <mesh position={[x, y, z]}>
-        <boxGeometry args={[s * 2, s * 0.36, s * 1.4]} />
-        <meshStandardMaterial color={dark} roughness={0.5} />
-      </mesh>
-    )
-  }
-
-  // happy は ∩、half は ∪
-  return (
-    <mesh position={[x, y, z]} rotation={[0, 0, shape === 'happy' ? 0 : Math.PI]}>
-      <torusGeometry args={[s, s * 0.3, 10, 20, Math.PI]} />
-      <meshStandardMaterial color={dark} roughness={0.5} />
-    </mesh>
-  )
-}
+// 先に読み込んでおく。ステージ1に上がった瞬間にひよこが出ないと間が抜ける
+useGLTF.preload(chickUrl)
