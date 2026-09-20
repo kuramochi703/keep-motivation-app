@@ -42,7 +42,8 @@ VRM は使いません。あれは人型（ボーン・表情の規格）前提�
 | `AvatarCanvas.tsx` | カメラと照明 | 明るさ・アングルを変えたい |
 | `avatar.css` | 表示サイズ | 大きさを変えたい |
 | `Avatar.tsx` | 入口。3D の読み込みと失敗時の受け止め | ほぼ触らない |
-| `docs/BLENDER_MODELING_NOTES.md` | Blender 作業の失敗と解決策 | モデリングで詰まった時 |
+| `docs/BLENDER_MODELING_NOTES.md` | 形を作るまでの失敗と解決策 | モデリングで詰まった時 |
+| `docs/BLENDER_ANIMATION_NOTES.md` | リグ・アクション・書き出しの失敗と解決策 | 動きを足す・直すときに詰まった時 |
 
 ---
 
@@ -175,6 +176,8 @@ Blender の書き出しは**どのアクションにも全ボーンのキーを�
 歩きが素の姿勢へ引き戻されます。`Chick.tsx` で**目のトラックだけを `Blink` に、
 それ以外を `Walk` / `Jump` に振り分けて**から流しています。
 Blender 側でボーンを足したら、この振り分け（`clips` の `useMemo`）を見直してください。
+
+Blender 側の作業で詰まったら [docs/BLENDER_ANIMATION_NOTES.md](docs/BLENDER_ANIMATION_NOTES.md)。
 
 ---
 
