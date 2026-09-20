@@ -6,6 +6,14 @@
    比率を CSS で与えて、読み込み中の枠と同じ場所に収まるようにする */
 .avatar-3d{aspect-ratio:240/250;width:100%;max-width:300px}
 
+/* 置き場いっぱいに広げる指定（ダッシュボードの背景ステージ）。比率で高さを
+   作るのをやめて、与えられた面積をそのまま使う。歩ける床の広さはこの枠の
+   大きさから AvatarCanvas が決める。
+   位置取り（absolute）だけは AvatarCanvas がインラインで当てている。
+   three.js の入れ物がインラインで position を持っていて、CSS では上書き
+   できないため */
+.avatar.avatar-fill{width:100%;height:100%;max-width:none;margin:0;aspect-ratio:auto;pointer-events:none}
+
 /* 3D を出せない間の場所取り。うっすら息をして「読み込み中」だと分かるようにする */
 .avatar-placeholder{border-radius:24px;background:#00000008;animation:avatar-wait 1.8s ease-in-out infinite}
 @keyframes avatar-wait{0%,100%{opacity:.5}50%{opacity:1}}

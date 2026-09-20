@@ -16,6 +16,9 @@ type Props = {
   days?: number
   /** トップページ用に卵の姿を表示する */
   egg?: boolean
+  /** 置き場いっぱいに広げる。ダッシュボードの背景ステージのように、
+      決まった比率の枠ではなく与えられた面積すべてを使いたいときに */
+  fill?: boolean
 }
 
 /**
@@ -26,7 +29,7 @@ type Props = {
  * 「環境によって別のアバターが出る」状態になるのでやめた。
  * 3D を出せない場合は、レイアウトを崩さないための空の枠だけを置く。
  */
-export default function Avatar({ lv, variant = 0, vitality, days = 0, egg = false }: Props) {
+export default function Avatar({ lv, variant = 0, vitality, days = 0, egg = false, fill = false }: Props) {
   const look = lookOf(days, vitality ?? 0, lv, variant)
   if (egg) {
     look.stage = 0
@@ -35,13 +38,13 @@ export default function Avatar({ lv, variant = 0, vitality, days = 0, egg = fals
   const animate = useAnimationAllowed()
 
   if (!hasWebGL()) {
-    return <AvatarPlaceholder />
+    return <AvatarPlaceholder fill={fill} />
   }
 
   return (
-    <WebGLBoundary>
-      <Suspense fallback={<AvatarPlaceholder />}>
-        <AvatarCanvas look={look} animate={animate} />
+    <WebGLBoundary fill={fill}>
+      <Suspense fallback={<AvatarPlaceholder fill={fill} />}>
+        <AvatarCanvas look={look} animate={animate} fill={fill} />
       </Suspense>
     </WebGLBoundary>
   )
@@ -51,8 +54,13 @@ export default function Avatar({ lv, variant = 0, vitality, days = 0, egg = fals
  * 3D がまだ出せない間の場所取り。
  * `.avatar-3d` と同じ比率・同じ幅なので、3D に入れ替わっても行がずれない。
  */
-function AvatarPlaceholder() {
-  return <div className="avatar avatar-3d avatar-placeholder" aria-hidden="true" />
+function AvatarPlaceholder({ fill = false }: { fill?: boolean }) {
+  return (
+    <div
+      className={`avatar avatar-3d avatar-placeholder${fill ? ' avatar-fill' : ''}`}
+      aria-hidden="true"
+    />
+  )
 }
 
 /** OS の「視差効果を減らす」設定を尊重する */
@@ -87,7 +95,7 @@ function hasWebGL() {
  * ここで受け止めないとアプリ全体が落ちる。
  * React のエラー境界はクラスでしか書けないので、ここだけクラス。
  */
-class WebGLBoundary extends Component<{ children: ReactNode }, { failed: boolean }> {
+class WebGLBoundary extends Component<{ children: ReactNode; fill?: boolean }, { failed: boolean }> {
   state = { failed: false }
 
   static getDerivedStateFromError() {
@@ -99,6 +107,6 @@ class WebGLBoundary extends Component<{ children: ReactNode }, { failed: boolean
   }
 
   render() {
-    return this.state.failed ? <AvatarPlaceholder /> : this.props.children
+    return this.state.failed ? <AvatarPlaceholder fill={this.props.fill} /> : this.props.children
   }
 }
