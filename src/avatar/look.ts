@@ -42,17 +42,15 @@ export type Look = {
   bodyColor: string
   bellyColor: string
   beakColor: string
-  /** ほっぺの赤み。活力が高いときだけ出す */
-  cheekOpacity: number
-
   eye: EyeShape
   /** 0〜1。うつむき具合。1 で完全にへたる */
   droop: number
   /** 0〜1。揺れ・跳ねの大きさ。0 でほぼ静止 */
   liveliness: number
 
+  /** 翼。モデルの Wing_L / Wing_R を出し入れする */
   wings: boolean
-  tail: boolean
+  /** 頭の羽。モデルの HeadFeather を出し入れする */
   crest: boolean
   scarf: boolean
   crown: boolean
@@ -120,14 +118,12 @@ export function lookOf(days: number, vitality: number, lv: number, variant = 0):
     bodyColor: hsl(kind.hue, 6 + v * 62, 58 + v * 16),
     bellyColor: hsl(kind.hue, 8 + v * 44, 80 + v * 8),
     beakColor: hsl(30 - v * 4, 16 + v * 68, 50 + v * 8),
-    cheekOpacity: unit((v - 0.6) * 2.2),
 
     eye: eyeOf(lv),
     droop: unit((0.55 - v) * 2),
     liveliness: 0.15 + v * 0.85,
 
     wings: stage >= 2,
-    tail: stage >= 3,
     crest: stage >= 4,
     scarf: stage >= 5,
     crown: stage >= 6,

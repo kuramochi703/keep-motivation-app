@@ -21,7 +21,7 @@ export type Stage = {
 export const STAGES: Stage[] = [
   { id: 1, min: 0, name: 'ひよこ', gains: '最初から、からだ・あし・くちばしがある' },
   { id: 2, min: 3, name: 'やんちゃひよこ', gains: 'つばさが生える' },
-  { id: 3, min: 7, name: 'もふもふ', gains: 'からだが丸くなり、しっぽがつく' },
+  { id: 3, min: 7, name: 'もふもふ', gains: 'からだが一回り大きくなる' },
   { id: 4, min: 14, name: 'いっちょまえ', gains: 'とさかが立つ' },
   { id: 5, min: 30, name: 'りりしい', gains: 'マフラーを巻く' },
   { id: 6, min: 60, name: 'まんまるの主', gains: '冠をかぶる' },
