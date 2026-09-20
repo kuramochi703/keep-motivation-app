@@ -3,6 +3,11 @@ import SetupPage from '../pages/SetupPage'
 import Sidebar, { type NavItem } from './Sidebar'
 import TopPage from '../pages/TopPage'
 import { useApp } from '../state/useApp'
+import { lazy, Suspense } from 'react'
+
+const DebugPage = import.meta.env.DEV
+  ? lazy(() => import('../pages/DebugPage'))
+  : null
 
 const NAV: NavItem[] = [
   { id: 'top', label: 'トップ' },
@@ -11,7 +16,7 @@ const NAV: NavItem[] = [
 ]
 
 export default function App() {
-  const { state, loaded, screen, go, start, reset, extendDeadline, newGoal, elapsed, running, toggleTimer, recordOnly, nextDay } = useApp()
+  const { state, loaded, hasStarted, screen, go, start, reset, extendDeadline, newGoal, elapsed, running, toggleTimer, recordOnly, nextDay } = useApp()
 
   const select = (id: string) => {
     if (id === 'top' || id === 'setup' || id === 'main') go(id)
@@ -25,7 +30,13 @@ export default function App() {
     <div className={`shell${screen === 'main' ? ' dashboard-shell' : ''}`}>
       <Sidebar items={NAV} current={screen} onSelect={select} />
       <main className="content">
-        {screen === 'top' ? (
+        {screen === 'debug' && DebugPage ? (
+          <Suspense fallback={<p role="status">読み込み中...</p>}>
+            <DebugPage state={state} loaded={loaded} hasStarted={hasStarted}
+              elapsed={elapsed} running={running} onRecord={recordOnly}
+              onNextDay={nextDay} onNewGoal={newGoal} />
+          </Suspense>
+        ) : screen === 'top' ? (
           <TopPage onStart={() => go('setup')} variant={state.avatarId} />
         ) : screen === 'setup' ? (
           <SetupPage state={state} onStart={start} />
