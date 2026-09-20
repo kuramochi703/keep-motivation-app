@@ -9,6 +9,12 @@ const steps = [
   { title: 'さあ、はじめよう', lines: ['小さな一歩が、', 'きっと明日の元気につながる。'] },
 ]
 
+const growthExamples = [
+  { label: 'はじめ', days: 0, vitality: 54 },
+  { label: 'がんばり中', days: 7, vitality: 75 },
+  { label: '成長！', days: 30, vitality: 90 },
+]
+
 export default function OnboardingPage({ onComplete }: { onComplete: () => void }) {
   const [step, setStep] = useState(0)
   return (
@@ -32,7 +38,7 @@ export default function OnboardingPage({ onComplete }: { onComplete: () => void 
           </>}
           {step === 1 && <>
             <div className="onboarding-growth">
-              {['はじめ', 'がんばり中', '成長！'].map((label, index) => <div key={label}><div className="onboarding-growth-space"><OnboardingAvatar src={avatars.growth[index] || avatars.default} /></div><span>{label}</span>{index < 2 && <i aria-hidden="true">→</i>}</div>)}
+              {growthExamples.map(({ label, days, vitality }, index) => <div key={label}><div className="onboarding-growth-space"><OnboardingAvatar src={avatars.growth[index] || avatars.default} days={days} vitality={vitality} /></div><span>{label}</span>{index < 2 && <i aria-hidden="true">→</i>}</div>)}
             </div>
             <div className="onboarding-vitality"><span className="onboarding-sprout" aria-hidden="true">🌱</span><div>
               <div className="onboarding-vitality-label"><b>活力</b><span><strong>54</strong> / 100</span></div>

@@ -1,4 +1,7 @@
 /**
+ * 空欄の枠にはアプリ共通のアバター「もりお」を表示します。
+ * 別の素材に差し替える場合は、以下のパスを指定してください。
+ *
  * Blender では glTF 2.0 の「glTF Binary (.glb)」で書き出し、
  * public/avatars/ に置いてください（テクスチャも含めた GLB 推奨）。
  * default: '/avatars/character.glb' と指定すれば 3D 表示になります。

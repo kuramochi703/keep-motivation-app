@@ -1,14 +1,26 @@
 import { Component, lazy, Suspense, useState, type ReactNode } from 'react'
+import Avatar from '../avatar/Avatar'
+import { levelOf } from '../state/logic'
 
 const OnboardingAvatarModel = lazy(() => import('./OnboardingAvatarModel'))
 
-/** 画像と GLB / glTF を拡張子で切り替える装飾用の枠。 */
-export default function OnboardingAvatar({ src }: { src: string }) {
+type Props = {
+  src: string
+  days?: number
+  vitality?: number
+}
+
+/** 素材が未指定ならもりおを表示し、画像・GLB / glTF で差し替えられる枠。 */
+export default function OnboardingAvatar({ src, days = 0, vitality = 90 }: Props) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null)
 
   return (
     <div className="onboarding-avatar" aria-hidden="true">
-      {/\.(glb|gltf)(?:[?#]|$)/i.test(src) ? (
+      {!src ? (
+        <div className="onboarding-morio">
+          <Avatar variant={0} lv={levelOf(vitality).lv} vitality={vitality} days={days} />
+        </div>
+      ) : /\.(glb|gltf)(?:[?#]|$)/i.test(src) ? (
         <ModelBoundary key={src}>
           <Suspense fallback={<AvatarPlaceholder />}>
             <OnboardingAvatarModel src={src} fallback={<AvatarPlaceholder />} />
