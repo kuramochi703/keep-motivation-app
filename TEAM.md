@@ -46,7 +46,7 @@ logic.ts ──[ State型 / levelOf() / streak() など ]──▶ pages/ ──
 | PR・レビュー | **入れる** | — （[PRテンプレ](./.github/PULL_REQUEST_TEMPLATE.md) あり） |
 | `npm run build` を通してから共有 | **入れる** | — （5章の「守ること」） |
 | Issue / チケット | まだ | 「誰が何をやってるか分からない」「同じ所を2人が触った」が起きたら |
-| テスト（vitest） | まだ | 同じバグを2回直したら |
+| テスト（vitest） | **入れる** | — （`npm test` でルールの純粋関数だけ動かす） |
 | lint / format | まだ | スタイルの指摘がレビューで出るようになったら |
 | 自動デプロイ | まだ | 手動デプロイが面倒になったら |
 
@@ -98,7 +98,7 @@ logic.ts ──[ State型 / levelOf() / streak() など ]──▶ pages/ ──
 
 内容の詳細は [ARCHITECTURE 5章 既知の制約・課題](./ARCHITECTURE.md#5-既知の制約課題)。ここは担当と着手状況だけ持ちます。
 
-- [ ] A: テストを導入する（`npm i -D vitest`）— `rollover()` と `streak()` が一番バグりやすい
+- [x] A: テストを導入する（`npm i -D vitest`）— `npm test` / `npm run test:watch`
 - [ ] A/B: lint / format を入れる（`@typescript-eslint` + `eslint-plugin-react-hooks` で十分）
 - [ ] A: `lastDate` を DB に保存する（再読み込みをまたぐと活力減少がずれる）
 - [ ] B: タイマーの残り時間が、ページを閉じると 5:00 に戻ってしまう問題を直す
