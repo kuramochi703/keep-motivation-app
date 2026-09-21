@@ -9,6 +9,7 @@
 | 構成図・データの持ち方・既知の課題・デプロイ | [ARCHITECTURE.md](./ARCHITECTURE.md) |
 | 分担・タスク・Git・相談のルール | [TEAM.md](./TEAM.md) |
 | アバター（3Dのひよこ）の触り方 | [src/avatar/README.md](./src/avatar/README.md) |
+| **2026年9月に何がどう変わったか**（以前 → いま） | [CHANGES_EVOLUTION.md](./CHANGES_EVOLUTION.md) |
 
 ---
 
