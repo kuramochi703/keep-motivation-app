@@ -3,8 +3,9 @@
 このアプリの見取り図。**構成・データの持ち方・既知の課題・置き場所**をまとめています。
 アプリの機能と動かし方は [README.md](./README.md)、分担とルールは [TEAM.md](./TEAM.md) を参照。
 
-> ゲームのルールの数値（`GAIN` / `DECAY` / `SESSION`）はここには書きません。
-> 原典は `src/state/logic.ts`、読み物としては [README 2章](./README.md#2-ゲームのルール)にあります。
+> ゲームのルールの数値（`MOODS` / `STAGES` / `SESSION`）はここには書きません。
+> 原典は `src/state/logic.ts` と `src/avatar/stage.ts`、読み物としては
+> [README 2章](./README.md#2-ゲームのルール)にあります。
 > 図は GitHub 上で Mermaid として自動表示されます。
 
 ---
@@ -41,7 +42,7 @@ flowchart TB
         spa["React SPA<br/><i>[React 19 / TypeScript / Vite]</i><br/>画面・タイマー・状態管理。<br/>build すると静的ファイルになる"]
     end
 
-    sb[("Supabase<br/><i>[PostgreSQL / REST]</i><br/>goals / user_state")]
+    sb[("Supabase<br/><i>[PostgreSQL / REST]</i><br/>goals / avatars / records")]
 
     user -->|"ブラウザで開く"| spa
     spa -->|"起動時に読込 / 変更のたびに保存<br/>@supabase/supabase-js"| sb
@@ -82,7 +83,7 @@ src/
 │
 ├── features/
 │   └── calendar/               カレンダー機能一式
-│       ├── Calendar.tsx          週表示（達成率・連続日数の集計もここ）
+│       ├── Calendar.tsx          週表示（達成率・連続サイクルの集計もここ）
 │       ├── MonthlyCalendar.tsx   月表示（Calendar.tsx から呼ばれる）
 │       └── calendar.css
 │
@@ -91,7 +92,7 @@ src/
 │   ├── useScreen.ts              画面遷移だけ
 │   ├── useTimer.ts               5分タイマーだけ
 │   ├── useGoalState.ts           目標の状態管理と Supabase の読み書き
-│   └── logic.ts                  ルールブック。活力計算・達成判定・日付計算
+│   └── logic.ts                  ルールブック。サイクル・連続・気分・日付計算
 │
 ├── lib/
 │   └── supabase.ts             DB の接続クライアント
@@ -145,7 +146,7 @@ flowchart TB
         client["lib/supabase.ts<br/>接続クライアント"]
     end
 
-    db[("Supabase<br/>goals / user_state")]
+    db[("Supabase<br/>goals / avatars / records")]
 
     app --> sidebar
     app --> top
@@ -159,11 +160,11 @@ flowchart TB
     useapp --> usegoal
     usetimer -->|"SESSION 秒たったら onComplete()"| usegoal
     usetimer -->|"SESSION を参照"| logic
-    usegoal -->|"markDone() / rollover() / resetGoal()"| logic
+    usegoal -->|"markSessionDone() / resetGoal()"| logic
     usegoal --> client
-    client -->|"select / insert / update / upsert"| db
+    client -->|"select / insert / update"| db
 
-    main -->|"活力・のべ達成日数を渡す"| avatar
+    main -->|"ステージ・色相・気分を渡す"| avatar
     top -->|"たまごの姿を描画"| avatar
     main -->|"達成日リストを渡す"| calendar
 
@@ -187,7 +188,7 @@ flowchart TB
 - **`useApp.ts` は唯一の「状態のリモコン」**ですが、中身は3つの hook の合成層です。
   分けている理由は**変化する理由が別々**だから（画面が増える／タイマー仕様が変わる／保存先が変わる）。
   `useApp()` が返す API は分割前と同じなので、呼び出し側はこの分割を意識しなくて済みます
-- **`logic.ts` は UI を持たない純粋なルール**（活力の増減、サボり判定、日付計算）。
+- **`logic.ts` は UI を持たない純粋なルール**（サイクルの数え方、気分の表、日付計算）。
   3つの hook はここの定数・関数を呼ぶだけで、ロジックそのものは持ちません
 - **`avatar/` の見た目は3Dの一種類だけ**です。WebGL が使えない／初期化に失敗した場合は、
   レイアウトを保つための空枠だけが残ります（`Avatar.tsx` の `WebGLBoundary`）
@@ -213,17 +214,18 @@ sequenceDiagram
     M->>T: タイマー開始（useApp() 経由）
     T->>T: SESSION 秒たったら達成と判定
     T->>G: onComplete()（markSessionDone）
-    G->>L: markDone(state)
-    L-->>G: 活力 +GAIN / 達成日を記録
-    G->>S: user_state を id=1 で UPSERT
-    G-->>M: 新しい状態で再描画
-    M-->>U: 「今日はもう積んだ」と表示
+    G->>S: records に1行 INSERT（goal_id, done_on）
+    Note over S: 同じ日の2回目は UNIQUE(goal_id, done_on) が弾く
+    G-->>M: done に今日を足して再描画
+    M->>L: moodOf(state) / evolutionOf(...)
+    L-->>M: 連続サイクル・気分・ステージ（**保存しない**）
+    M-->>U: ゲージが伸び、アバターの色が濃くなる
 ```
 
 （`useApp.ts` はこの呼び出しを配線する合成層で、図では省略しています。
 「記録だけつける」ボタンは、タイマーを飛ばして `markSessionDone` を直接呼ぶ同じ流れです。）
 
-### アプリを開いたとき（やつれ判定）
+### アプリを開いたとき
 
 ```mermaid
 sequenceDiagram
@@ -231,17 +233,21 @@ sequenceDiagram
     participant B as ブラウザ
     participant G as useGoalState.ts
     participant S as Supabase
-    participant L as logic.ts
+    participant L as logic.ts / stage.ts
     participant M as MainPage.tsx
 
     B->>G: アプリを開く
-    G->>S: user_state(id=1) と 関連する goals を取得
-    S-->>G: 保存されていた状態
-    G->>L: rollover() でサボった日を判定
-    L-->>G: 1日サボりごとに 活力 -DECAY
-    G-->>M: やつれたアバターを表示
-    M-->>B: 色が抜けてうつむいた絵と「もう…」のセリフ
+    G->>S: goals（archived_at が NULL の最新1件）＋ avatars を取得
+    G->>S: その goal_id の records を取得
+    S-->>G: 目標・アバター・達成日の一覧
+    G-->>M: State（保存値はこれだけ）
+    M->>L: 記録とサイクル長から計算
+    L-->>M: 連続サイクル・気分・ステージ・次の条件
+    M-->>B: その場で計算した絵を描く
 ```
+
+**やつれ判定のような「起動時の後処理」はもうありません。** 保存値が記録だけなので、
+いつ開いても同じ計算結果になります（以前は活力を保存していて、読み込みのタイミングでズレました）。
 
 ---
 
@@ -253,66 +259,68 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    S["user_state.goal_id"] -->|現在の目標を参照| G["goals.id"]
+    U["users"] -->|立てる| G["goals"]
+    G -->|育てる1体| A["avatars"]
+    G -->|積んだ日| R["records"]
 ```
 
-> 以下の型は**アプリ側の型**です。DDL / マイグレーションはリポジトリに無いため、
-> SQL の型・主キー・NULL 制約・デフォルト値・インデックス・RLS ポリシーは未確認です。
+**DDL の原典は [`supabase/schema.sql`](./supabase/schema.sql)** です（新しいプロジェクトに
+1本流すだけで、この形になります）。以下はその要約。
+
+### `users` — 認証を入れるまでの置き場
+
+| カラム | 型 | 内容 |
+| --- | --- | --- |
+| `id` | `bigserial` PK | **いまは1行だけ。** 認証を入れたら auth の ID に置き換える |
+| `name` | `text` | ユーザーの表示名（入力欄は認証と一緒に作る） |
 
 ### `goals` — 目標
 
-| カラム | アプリ上の型 | 内容 |
+| カラム | 型 | 内容 |
 | --- | --- | --- |
-| `id` | `number` | 目標ID。作成時は送らず、返ってきた値を使う |
-| `goal` | `string` | 目標の文章 |
-| `deadline` | `string` / `null` | 期限（`YYYY-MM-DD`） |
-| `frequency` | `Frequency` | `everyday` / `week3` / `week1` / `any`（表示名: 毎日 / 週3回 / 週1回 / 決めてない） |
+| `id` | `bigserial` PK | 目標ID |
+| `user_id` | `bigint` FK | どのユーザーのものか |
+| `goal` | `text` | 目標の文章 |
+| `deadline` | `date` | 期限 |
+| `cycle_days` | `int` | サイクル長。「n日に1回」の n |
+| `started_at` | `date` | サイクルの起点（目標を作った日） |
+| `archived_at` | `timestamptz` | **NULL の最新1件がいまの目標** |
 
-### `user_state` — 現在の状態
+### `avatars` — 育てる1体（目標と 1:1）
 
-| カラム | アプリ上の型 | 内容 |
+| カラム | 型 | 内容 |
 | --- | --- | --- |
-| `id` | `number` | **現在は `1` 固定** |
-| `goal_id` | `number` / `null` | 取り組んでいる目標のID |
-| `vitality` | `number` | 活力（0〜100） |
-| `avatar_id` | `0` / `1` / `2` | もりお / だいち / こむぎ |
-| `name` | `string` | アバターの名前 |
-| `done` | `string[]` | 達成日リスト（`YYYY-MM-DD`） |
-| `best` | `number` | 最長連続達成日数 |
+| `goal_id` | `bigint` FK UNIQUE | 1目標に1体 |
+| `name` | `text` | アバターの名前 |
+| `hue` | `int` | 色相 0〜359。ユーザーが選ぶ |
+| `seen_stage` | `int` | **進化の演出をどこまで見せたか。唯一の「計算できない保存値」** |
+
+### `records` — 積んだ日
+
+| カラム | 型 | 内容 |
+| --- | --- | --- |
+| `goal_id` | `bigint` FK | どの目標の記録か |
+| `done_on` | `date` | 達成した日。`UNIQUE (goal_id, done_on)` が同日の重複を弾く |
+| `minutes` | `int` | 何分やったか（1日1行なので最初のセッションぶん） |
 
 ### 読み書きの対応
 
-| 操作 | DBへの処理 | アプリ側 |
-| --- | --- | --- |
-| 起動 | `user_state`(id=1) を `maybeSingle()`。関連 `goals` も同時取得 | State に変換し `rollover()` を適用 |
-| 目標作成 | `goals` に INSERT して `id` を得る | 活力50・履歴空・最長記録0 にリセット |
-| 状態保存 | `user_state` を id=1 で UPSERT | `loaded && hasStarted` のとき変更に応じて |
-| 今日の達成 | 状態保存を通じて更新 | 達成日を追加し活力 +`GAIN`。同日の重複は加算しない |
-| 次の日へ進める | 状態保存を通じて更新 | 日付を進め、未達成日ぶん活力 -`DECAY` |
-| 期限延長 | `goals.deadline` を UPDATE | 成功後に画面の期限を1か月延長 |
-| 目標の作り直し | **書き換えない** | `hasStarted=false` にして設定画面へ |
-| 全体リセット | **削除しない** | ローカルの状態を初期値に戻す |
-
-### 初期値と補完
-
-アプリ側の値であり、DB のデフォルト値ではありません。
-
-| 項目 | 起動時 | DB値が null の場合 | 目標作成成功時 |
-| --- | --- | --- | --- |
-| `vitality` | `62` | `100` | `50` |
-| `goalId` | `null` | `null` | 作成された目標ID |
-| `goal` | `資格の勉強` | 空文字 | 入力値 |
-| `deadline` | `null` | `null` | 入力値 |
-| `frequency` | `any` | `any` | 入力値 |
-| `avatarId` | `0` | `0` | 入力値 |
-| `name` | `もりお` | 空文字 | 入力値 |
-| `done` / `best` | `[]` / `0` | `[]` / `0` | `[]` / `0` |
+| 操作 | DBへの処理 |
+| --- | --- |
+| 起動 | `goals`（`archived_at IS NULL` の最新1件）に `avatars` を join して取得 ＋ その `records` |
+| 目標作成 | `goals` に INSERT（`started_at = 今日`）→ 返った `id` で `avatars` に INSERT |
+| 1日達成 | `records` に **INSERT 1行**（同日は UNIQUE が弾く） |
+| 進化の演出を流し終わった | `avatars.seen_stage` を UPDATE |
+| 期限延長 | `goals.deadline` を UPDATE |
+| 目標の作り直し | 旧 `goals.archived_at` を入れて、新しい `goals` ＋ `avatars` を INSERT。**記録もアバターも消さない** |
+| 画面を描くとき | **なし**（`records` と `cycle_days` / `started_at` から毎回その場で計算） |
 
 ### DBに保存していないもの
 
+**連続サイクル数・気分・ステージ・最長記録は保存しません。** 記録から計算できるからです。
+
 | 項目 | 用途 | 再読み込み時 |
 | --- | --- | --- |
-| `lastDate` | 最後に日付更新を処理した日 | `null` に戻り、読み込み時の `rollover()` で当日を設定 |
 | `dayOffset` | デバッグ用の日送り | `0` に戻る |
 | `loaded` / `hasStarted` | 読み込み・開始状況 | hook 内で再設定 |
 | 画面・タイマーの状態 | 現在の画面、経過秒数 | 保存していない |
@@ -323,21 +331,19 @@ flowchart LR
 
 **データまわり**
 
-- **ユーザーの区別がありません。** すべての操作が `user_state.id = 1` を対象にします。
+- **ユーザーの区別がありません。** すべての操作が `users.id = 1` を対象にします。
   認証と RLS（行レベルセキュリティ）を入れるまで、**誰が開いても同じデータ**です
-- **`lastDate` を保存していない**ため、再読み込みをまたいだ未達成日数による活力減少を
-  正しく再現できません
-- **目標を作り直しても古い `goals` は残ります。** 一方で達成履歴は `user_state.done` の
-  1本だけなので、**過去の目標ごとの履歴は残りません**
-- 目標作成の INSERT と状態保存の UPSERT は別々の非同期処理です。
-  **目標作成の成功は、状態保存の完了を意味しません**（失敗時は Console にエラー）
+- **ペース（`cycle_days`）はあとから変えられません。** 変えると過去の記録の所属サイクルが
+  変わるため、「過去を切り直さずに変える」には変更履歴のテーブルが要ります。いまは
+  「変えたいなら新しい目標＝たまごから」。**1日に1回にした人の逃げ道が作り直しだけ**なのが
+  未解決の宿題です
+- 目標作成は `goals` → `avatars` の2回の INSERT で、**トランザクションではありません。**
+  片方だけ成功する余地が残っています（失敗時は Console にエラー）
 
 **コードまわり**
 
-- **テストが1つもありません。** `logic.ts` は副作用のない純粋関数ばかりで本来いちばん
-  テストしやすい部分です。とくに `rollover`（月またぎ・複数日サボり）・`streak`（同日2回、
-  連続の途切れ）・`daysUntil` / `isExpired`（期限の当日・前日・翌日）は手で確認しづらく、
-  3章のシーケンス図と対応するテストを書けば仕様書としても働きます
+- **テストはルールの純粋関数だけです**（`npm test`）。`logic.ts` / `stage.ts` のサイクル計算・
+  気分・進化条件は覆っていますが、画面とDBの読み書きは手で確かめています
 - **lint / format 設定がありません。** いまスタイルが揃っているのは「守られている」のではなく
   「たまたま揃っている」状態です
 

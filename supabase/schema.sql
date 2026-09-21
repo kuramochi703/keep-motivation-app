@@ -1,4 +1,4 @@
--- keep-motivation-app のスキーマ（EVOLUTION_PLAN 3章）
+-- keep-motivation-app のスキーマ（ARCHITECTURE 4章）
 --
 -- **新しい Supabase プロジェクトに、このファイルを1本流すだけ。**
 -- ALTER も DROP も無いので、旧プロジェクトには一切触れない。
@@ -21,7 +21,7 @@ CREATE TABLE goals (
   -- 目標設定画面が必須にしているので NOT NULL。
   -- 「まだ目標が無い」は deadline の NULL ではなく「goals に行が無い」で表す
   deadline    date   NOT NULL,
-  cycle_days  int    NOT NULL DEFAULT 1,  -- サイクル長（EVOLUTION_PLAN 2章）
+  cycle_days  int    NOT NULL DEFAULT 1,  -- サイクル長（README 2章）
   started_at  date   NOT NULL DEFAULT current_date,
   archived_at timestamptz,                -- NULL の最新1件がいまの目標
   created_at  timestamptz NOT NULL DEFAULT now()

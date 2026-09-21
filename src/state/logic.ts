@@ -12,7 +12,7 @@ export type State = {
   goalId: number | null
   goal: string
   deadline: string | null // YYYY-MM-DD（目標の期限）
-  /** 何日に1回つけるか。サイクル長（EVOLUTION_PLAN 2章） */
+  /** 何日に1回つけるか。サイクル長（README 2章） */
   cycleDays: number
   /** サイクルの起点。目標を作った日 YYYY-MM-DD */
   startedAt: string | null
@@ -30,7 +30,7 @@ export type State = {
 export type SetupInput = {
   goal: string
   deadline: string
-  /** 何日に1回つけるか。**あとから変えられない**（EVOLUTION_PLAN 2章） */
+  /** 何日に1回つけるか。**あとから変えられない**（README 2章） */
   cycleDays: number
   /** アバターの色相 0〜359 */
   hue: number
@@ -134,7 +134,7 @@ export function resetGoal(state: State): State {
 
 
 /* ------------------------------------------------------------------
- * サイクル ― すべての判定の単位（EVOLUTION_PLAN 2章）
+ * サイクル ― すべての判定の単位（README 2章）
  *
  * 「n日に1回」の n が `cycleDays`。連続もサボりも「日」ではなく
  * 「サイクル」で数えるので、週1回の人が毎日しょんぼりすることがない。
