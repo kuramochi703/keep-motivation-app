@@ -1,31 +1,29 @@
 import { Component, Suspense, lazy, type ReactNode, useEffect, useState } from 'react'
 import { lookOf } from './look'
+import { type Mood } from '../state/logic'
 
 // three.js は容量が大きい。初回表示をこれに待たせたくないので
 // 別チャンクに切り出し、読み込み終わるまでは場所取りだけしておく。
 const AvatarCanvas = lazy(() => import('./AvatarCanvas'))
 
 type Props = {
-  /** 活力レベル 0〜4（logic.ts の levelOf が返す lv） */
-  lv: number
-  /** どのアバターか。logic.ts の AvatarId（0:もりお 1:だいち 2:こむぎ） */
-  variant?: number
-  /** 活力 0〜100。色と姿勢を連続的に変えるのに使う */
-  vitality?: number
-  /** のべ達成日数。成長ステージはここから決まる */
-  days?: number
-  /** トップページ用に卵の姿を表示する */
+  /** 進化のステージ 0〜3（avatar/stage.ts の `evolutionOf`）。0 はたまご */
+  stage?: number
+  /** 色相 0〜359。ユーザーが選んだ色 */
+  hue?: number
+  /** 今の気分（logic.ts の `moodOf`）。**たまごには渡さない** */
+  mood?: Mood | null
+  /** デバッグ画面用に、ステージを問わずたまごの姿を出す */
   egg?: boolean
   /**
    * たまごを割る（孵化の演出）。false → true になった瞬間に
    * `EggCrack` を1回だけ流し、割れた姿のまま止まる。
-   * **いまは呼ぶ側が手で立てる。** 進化した日を状態から出せるように
-   * なったら、そこから自動で立てる（→ EVOLUTION_PLAN.md「進化した日も返せる」）
    */
   hatching?: boolean
   /** 置き場いっぱいに広げる。ダッシュボードの背景ステージのように、
       決まった比率の枠ではなく与えられた面積すべてを使いたいときに */
   fill?: boolean
+
 }
 
 /**
@@ -36,12 +34,17 @@ type Props = {
  * 「環境によって別のアバターが出る」状態になるのでやめた。
  * 3D を出せない場合は、レイアウトを崩さないための空の枠だけを置く。
  */
-export default function Avatar({ lv, variant = 0, vitality, days = 0, egg = false, fill = false, hatching = false }: Props) {
-  const look = lookOf(days, vitality ?? 0, lv, variant)
-  if (egg) {
-    look.stage = 0
-    look.isEgg = true
-  }
+export default function Avatar({
+  stage = 0,
+  hue = 150,
+  mood = null,
+  egg = false,
+  fill = false,
+  hatching = false,
+}: Props) {
+  // **たまごかどうかはステージ判定の結果で決まる。** `egg` は
+  // デバッグ画面が殻の姿だけを見たいときの手動上書き
+  const look = lookOf(egg ? 0 : stage, hue, egg ? null : mood)
   const animate = useAnimationAllowed()
 
   if (!hasWebGL()) {

@@ -1,18 +1,23 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Calendar from '../features/calendar/Calendar'
 import Avatar from '../avatar/Avatar'
 import './main-page.css'
 import {
   SESSION,
+  bestRun,
+  cycleLabel,
   daysUntil,
   fmtClock,
   isDone,
   isExpired,
-  levelOf,
-  streak,
+  key,
+  moodOf,
+  runOf,
+  startOf,
   today,
   type State,
 } from '../state/logic'
+import { evolutionOf, nextGoalOf } from '../avatar/stage'
 import { useAccent } from '../ui/useAccent'
 
 const DASH = 326.7
@@ -34,8 +39,13 @@ type Props = {
   onEditGoal: () => void
   onNewGoal: () => void
   onExtend: () => void
+  /** 進化の演出を流し終わったら呼ぶ。`avatars.seen_stage` を進める */
+  onStageSeen: (stage: number) => void
   onReset: () => void
 }
+
+/** 演出を流す長さ。たまごが割れるクリップ（3.0秒）に少し余裕を足した値 */
+const EFFECT_MS = 4200
 
 export default function MainPage({
   state,
@@ -47,20 +57,57 @@ export default function MainPage({
   onEditGoal,
   onNewGoal,
   onExtend,
+  onStageSeen,
   onReset,
 }: Props) {
   const t = today(state)
   const doneToday = isDone(state, t)
-  const vital = state.vitality
-  const L = levelOf(vital)
-  useAccent(L)
-  const st = streak(state)
+  // 気分もステージも保存していない。**記録とサイクル長から毎回その場で計算する**
+  const stage = evolutionOf(state.done, state.cycleDays, startOf(state), key(t))
+  // **気分はステージ1以上のもの。** たまごに気分は無い
+  const mood = stage.id === 0 ? null : moodOf(state)
+  useAccent(state.hue, mood?.s ?? 24)
+  const next = nextGoalOf(state.done, state.cycleDays, startOf(state), key(t))
+  const run = runOf(state)
+
+  // **演出は条件を満たした瞬間に1回だけ。** 計算したステージが
+  // 「見せ終わったステージ」を超えていたら流し、終わってから記録を進める。
+  // localStorage と違って DB に置くので、別の端末で開いても1回で済む
+  const [celebrating, setCelebrating] = useState(false)
+  const pending = stage.id > state.seenStage
+  useEffect(() => {
+    if (!pending) return
+    setCelebrating(true)
+    const id = window.setTimeout(() => {
+      setCelebrating(false)
+      onStageSeen(stage.id)
+    }, EFFECT_MS)
+    return () => window.clearTimeout(id)
+    // onStageSeen は毎描画で作り直されるので、依存に入れると演出が流れ続ける
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pending, stage.id])
+
+  // 孵化（たまご → 幼体）だけは、殻が割れるところから見せる
+  const hatching = celebrating && state.seenStage === 0 && stage.id >= 1
 
   const expired = isExpired(state)
   const deadlineDays = daysUntil(state)
   const [yd, mo, dd] = (state.deadline ?? '').split('-').map(Number)
   const deadlineText = mo && dd ? `${mo}月${dd}日まで` : '設定されていません'
   const [open, setOpen] = useState<PanelId | null>(null)
+
+  /** **押すとアバターがたまごに戻る。** 取り返しがつかないので一度止める */
+  const askNewGoal = () =>
+    window.confirm(
+      `いまの「${state.goal}」を終わりにして、新しい目標を始めますか？\n` +
+        `${state.name || 'アバター'}は たまご から育て直しになります（これまでの記録は残ります）。`
+    )
+  const confirmNewGoal = () => {
+    if (askNewGoal()) onNewGoal()
+  }
+  const confirmEditGoal = () => {
+    if (askNewGoal()) onEditGoal()
+  }
 
   return (
     <div className="wrap dashboard">
@@ -82,16 +129,16 @@ export default function MainPage({
                 <span>達成日数</span>
               </div>
               <div>
-                <b>{st}</b>
-                <span>今の連続日数</span>
+                <b>{run}</b>
+                <span>今の連続サイクル</span>
               </div>
               <div>
-                <b>{Math.max(state.best, st)}</b>
+                <b>{bestRun(state)}</b>
                 <span>最長記録</span>
               </div>
             </div>
             <div className="acts done-acts">
-              <button className="btn" onClick={onNewGoal}>
+              <button className="btn" onClick={confirmNewGoal}>
                 新しい目標をはじめる
               </button>
               <button className="btn sec" onClick={onExtend}>
@@ -110,28 +157,53 @@ export default function MainPage({
             <div className="bg-top">
               <span className="badge">
                 <i />
-                <span>{L.name}</span>
+                <span>{stage.name}{mood ? ` / ${mood.name}` : ''}</span>
               </span>
-              <p className="speech">{L.say}</p>
+              <p className="speech">{mood?.say ?? 'まだ殻の中。最初の1回をつけてみよう。'}</p>
             </div>
 
-            <div className="stage-avatar">
-              <Avatar lv={L.lv} variant={state.avatarId} vitality={vital} days={state.done.length} fill />
+            {celebrating && (
+              <div className="evolve-banner" role="status">
+                <b>{state.seenStage === 0 ? `${state.name} がうまれた！` : `${stage.name} に進化！`}</b>
+                <span>{stage.gains}</span>
+              </div>
+            )}
+
+            <div className={`stage-avatar${celebrating ? ' evolving' : ''}`}>
+              <Avatar
+                key={hatching ? 'egg' : 'chick'}
+                stage={hatching ? 0 : stage.id}
+                hue={state.hue}
+                mood={hatching ? null : mood}
+                egg={hatching}
+                hatching={hatching}
+                fill
+              />
             </div>
 
             <p className="owner">{state.name}</p>
-            <p className="bg-streak">🔥 {st}日連続</p>
+            <p className="bg-streak">🔥 {run}サイクル連続（{cycleLabel(state.cycleDays)}）</p>
+            {/* 活力ゲージだった場所を、そのまま進化ゲージに作り替えている。
+                **「あと○回」ではなく `x / y`**。ステージ2は窓の条件なので、
+                「あと○回」はサボるほど増えるうえ、その回数では届かない */}
             <div className="meter">
               <div className="row">
-                <span>活力</span>
+                <span>{next ? `つぎは ${next.stage.name}` : `${stage.name}（最終）`}</span>
                 <b>
-                  {vital}
-                  <small>/100</small>
+                  {next ? next.have : '★'}
+                  <small>{next ? `/${next.need}` : ''}</small>
                 </b>
               </div>
               <div className="gauge">
-                <i style={{ width: `${vital}%` }} />
+                <i style={{ width: `${next ? Math.min(100, (next.have / next.need) * 100) : 100}%` }} />
               </div>
+              <p className="meter-note">
+                {next
+                  ? next.kind === 'run'
+                    ? `連続 ${next.have} / ${next.need} サイクル`
+                    : `直近${next.window}サイクルで ${next.have} / ${next.need}`
+                  : 'ここまで育てきりました'}
+              </p>
             </div>
 
             <div className="stage-timer" aria-label="5分タイマー">
@@ -214,7 +286,7 @@ export default function MainPage({
                   {deadlineDays !== null && deadlineDays <= 3 ? 'あと少し！今日の1つを積んでいこう。' : '自分のペースで続ければ、きっと大丈夫。'}
                 </p>
 
-                <button className="btn new-goal-cta" onClick={onEditGoal}>
+                <button className="btn new-goal-cta" onClick={confirmEditGoal}>
                   新しい目標をはじめる
                 </button>
 

@@ -16,7 +16,7 @@ const NAV: NavItem[] = [
 ]
 
 export default function App() {
-  const { state, loaded, hasStarted, screen, go, start, reset, extendDeadline, newGoal, elapsed, running, toggleTimer, recordOnly, nextDay } = useApp()
+  const { state, loaded, hasStarted, screen, go, start, reset, extendDeadline, markStageSeen, newGoal, elapsed, running, toggleTimer, recordOnly, nextDay } = useApp()
 
   const select = (id: string) => {
     if (id === 'top' || id === 'setup' || id === 'main') go(id)
@@ -37,7 +37,7 @@ export default function App() {
               onNextDay={nextDay} onNewGoal={newGoal} />
           </Suspense>
         ) : screen === 'top' ? (
-          <TopPage onStart={() => go('setup')} variant={state.avatarId} />
+          <TopPage onStart={() => go('setup')} />
         ) : screen === 'setup' ? (
           <SetupPage state={state} onStart={start} />
         ) : (
@@ -51,6 +51,7 @@ export default function App() {
             onEditGoal={() => go('setup')}
             onNewGoal={newGoal}
             onExtend={extendDeadline}
+            onStageSeen={markStageSeen}
             onReset={reset}
           />
         )}

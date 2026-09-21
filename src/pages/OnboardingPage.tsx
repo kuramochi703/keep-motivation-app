@@ -1,5 +1,6 @@
 import { useState } from 'react'
 import OnboardingAvatar from './OnboardingAvatar'
+import { MOODS } from '../state/logic'
 import { onboardingAvatarImages as avatars } from './onboarding-avatar'
 import './onboarding-page.css'
 
@@ -9,10 +10,11 @@ const steps = [
   { title: 'さあ、はじめよう', lines: ['小さな一歩が、', 'きっと明日の元気につながる。'] },
 ]
 
+/** 進化の3段階。ステージと気分の組み合わせで見せる */
 const growthExamples = [
-  { label: 'はじめ', days: 0, vitality: 54 },
-  { label: 'がんばり中', days: 7, vitality: 75 },
-  { label: '成長！', days: 30, vitality: 90 },
+  { label: 'たまご', stage: 0, mood: null },
+  { label: '幼体', stage: 1, mood: MOODS.find((m) => m.id === 'good') ?? null },
+  { label: '成体', stage: 2, mood: MOODS.find((m) => m.id === 'shine') ?? null },
 ]
 
 export default function OnboardingPage({ onComplete }: { onComplete: () => void }) {
@@ -38,12 +40,12 @@ export default function OnboardingPage({ onComplete }: { onComplete: () => void 
           </>}
           {step === 1 && <>
             <div className="onboarding-growth">
-              {growthExamples.map(({ label, days, vitality }, index) => <div key={label}><div className="onboarding-growth-space"><OnboardingAvatar src={avatars.growth[index] || avatars.default} days={days} vitality={vitality} /></div><span>{label}</span>{index < 2 && <i aria-hidden="true">→</i>}</div>)}
+              {growthExamples.map(({ label, stage, mood }, index) => <div key={label}><div className="onboarding-growth-space"><OnboardingAvatar src={avatars.growth[index] || avatars.default} stage={stage} mood={mood} /></div><span>{label}</span>{index < 2 && <i aria-hidden="true">→</i>}</div>)}
             </div>
-            <div className="onboarding-vitality"><span className="onboarding-sprout" aria-hidden="true">🌱</span><div>
-              <div className="onboarding-vitality-label"><b>活力</b><span><strong>54</strong> / 100</span></div>
-              <div className="onboarding-meter" role="meter" aria-label="活力の例" aria-valuemin={0} aria-valuemax={100} aria-valuenow={54}><span /></div>
-              <p>つづけるほど、もっと元気に！</p>
+            <div className="onboarding-evolution"><span className="onboarding-sprout" aria-hidden="true">🌱</span><div>
+              <p><b>2サイクル続ける</b>と、たまごがかえる。</p>
+              <p><b>直近5サイクルのうち4サイクル</b>で成体に。</p>
+              <p className="onboarding-evolution-note">サイクルを続けるほど色が濃くなり、休むと色が抜けていく。1サイクルぶんの猶予はあるよ。</p>
             </div></div>
             <div className="onboarding-scene onboarding-scene-small"><p className="onboarding-bubble">いっしょに<br />がんばろう！</p><div className="onboarding-avatar-space"><OnboardingAvatar src={avatars.encouragement || avatars.default} /></div></div>
           </>}

@@ -1,15 +1,19 @@
 /**
- * 「ステージ × 活力」から、3D で描くための見た目パラメータを決める。
+ * 「ステージ × 気分」から、3D で描くための見た目パラメータを決める。
  *
  * ここは three.js に一切依存しない、ただの計算。理由は2つ。
  *
- * 1. 見た目の仕様（何日で何が増える／活力がいくつで表情がどう変わる）を
+ * 1. 見た目の仕様（どのステージで何が増える／気分で色と姿勢がどう変わる）を
  *    1ファイルで読めるようにするため。絵の調整はまずここを触る。
  * 2. 3D をやめて別の描き方に差し替えるときも、この対応表だけは残せるため。
  *
  * 描画そのものは Chick.tsx。値の意味は下のコメントを参照。
+ *
+ * **活力（0〜100 の連続値）はもう無い。** 色は気分の表（logic.ts の `MOODS`）を
+ * 引くだけで、**色相はユーザーが選んだ `hue` に固定**する。色相まで動かすと、
+ * 選んだ色が画面から消えてしまう。
  */
-import { stageOf } from './stage'
+import type { Mood, MoodId } from '../state/logic'
 
 export type EyeShape =
   /** 元気。∩ の形に笑う */
@@ -22,14 +26,12 @@ export type EyeShape =
   | 'closed'
 
 export type Look = {
-  /** 0〜6 */
+  /** 0〜3。0 はたまご */
   stage: number
-  /** どのアバターか。0:もりお 1:だいち 2:こむぎ */
-  variant: number
-  /** 0〜100 */
-  vitality: number
-  /** 0〜4 */
-  lv: number
+  /** 色相 0〜359。ユーザーが選んだ色 */
+  hue: number
+  /** 今の気分。たまご（ステージ0）は気分を持たない */
+  mood: MoodId | null
 
   /** まだ殻の中か。true の間はからだのパーツを一切出さない */
   isEgg: boolean
@@ -62,53 +64,52 @@ export type Look = {
   crown: boolean
   /** あぶら汗。しんどいときだけ */
   sweat: boolean
+  /** 豪華なエフェクト。7サイクル連続（かがやき）から */
+  sparkle: boolean
 }
 
 /** 0〜1 に丸める */
 const unit = (v: number) => Math.max(0, Math.min(1, v))
 
-/**
- * アバターの種類ごとの色相。
- * **logic.ts の `AVATARS` と並び順を必ず合わせること。**
- * 名前と説明（もりお＝みどり など）が向こうにあり、こちらは色だけを持つ。
- */
-const VARIANTS = [
-  /** もりお: みどり。青みが強いと「若葉」に見えないので、少し黄へ寄せる */
-  { hue: 150 },
-  /** だいち: あお。明るく塗ると紫に転ぶので、水色寄りにする */
-  { hue: 205 },
-  /** こむぎ: ピンク */
-  { hue: 344 },
-]
-
 /** three.js が読める形の hsl 文字列 */
 const hsl = (h: number, s: number, l: number) =>
   `hsl(${h.toFixed(1)}, ${s.toFixed(1)}%, ${l.toFixed(1)}%)`
 
-const eyeOf = (lv: number): EyeShape =>
-  lv >= 4 ? 'happy' : lv >= 2 ? 'open' : lv >= 1 ? 'half' : 'closed'
+/** たまごの殻。**気分を持たないので、色相以外は固定** */
+const EGG_S = 24
+const EGG_L = 88
+
+const EYE_OF: Record<MoodId, EyeShape> = {
+  down: 'closed',
+  low: 'half',
+  ok: 'open',
+  good: 'open',
+  lively: 'happy',
+  shine: 'happy',
+}
 
 /**
- * @param days のべ達成日数
- * @param vitality 活力 0〜100
- * @param lv 活力レベル 0〜4（logic.ts の levelOf と同じもの）
- * @param variant どのアバターか（logic.ts の AvatarId）
+ * @param stage 進化のステージ 0〜3（avatar/stage.ts の `evolutionOf`）
+ * @param hue 色相 0〜359（ユーザーが選んだ色）
+ * @param mood 今の気分（logic.ts の `moodOf`）。たまごなら null
  */
-export function lookOf(days: number, vitality: number, lv: number, variant = 0): Look {
-  const stage = stageOf(days).id
-  const kind = VARIANTS[variant] ?? VARIANTS[0]
-  // 活力を 0〜1 に。色と姿勢はこの値で連続的に変える。
-  // レベル（0〜4）は表情のような、段階で切り替わるものにだけ使う。
-  const v = unit(vitality / 100)
-  // ステージを 0〜1 に。からだの大きさに効かせる。
-  const s = stage / 6
+export function lookOf(stage: number, hue: number, mood: Mood | null): Look {
+  const isEgg = stage <= 0 || mood === null
+  // ステージを 0〜1 に。からだの大きさに効かせる
+  const s = unit(stage / 3)
+
+  // **落ち込みは彩度で表し、明度は下げない**（下限 58）。暗く沈めると汚く
+  // 見えるうえ、前かがみ（droop）と汗で十分しんどそうに見える
+  // **たまごは気分を持たない。** 気分が渡ってきても色は固定値で塗る
+  const sat = isEgg ? EGG_S : mood?.s ?? EGG_S
+  const lum = isEgg ? EGG_L : mood?.l ?? EGG_L
+  const liveliness = isEgg ? 0 : mood?.liveliness ?? 0
 
   return {
-    stage,
-    variant,
-    vitality,
-    lv,
-    isEgg: stage === 0,
+    stage: isEgg ? 0 : stage,
+    hue,
+    mood: isEgg ? null : mood?.id ?? null,
+    isEgg,
 
     bodyRadius: 0.62 + s * 0.26,
     headRatio: 0.86 - s * 0.16,
@@ -116,29 +117,25 @@ export function lookOf(days: number, vitality: number, lv: number, variant = 0):
     // ここは必ずカンマ区切りの hsl() で書くこと。three.js の Color は
     // CSS Color 4 のスペース区切り（`hsl(50 80% 70%)`）を解釈できず、
     // 黙って白になる。色が出ない時はまずここを疑う。
-    //
-    // 色相はアバターの種類で決まり、彩度と明度は活力で決まる。
-    // やつれると彩度が抜けて灰色に寄るので、どの種類でも「やつれ」が同じに読める。
-    //
-    // **元気なときは「明るく・彩度は控えめ」**（パステル）。彩度を上げるほど
-    // 絵の具のような色になって可愛くなくなるので、元気さは彩度ではなく
-    // **明度**で出す。上限は彩度 56 / 明度 80 くらい。
-    bodyColor: hsl(kind.hue, 12 + v * 48, 58 + v * 24),
-    // おなか（白い側）。胴体を明るくしたぶん、こちらも上げないと差が消える
-    bellyColor: hsl(kind.hue, 12 + v * 26, 87 + v * 6),
+    bodyColor: hsl(hue, sat, lum),
+    // おなか（白い側）。胴体を明るくしたぶん、こちらも上げないと差が消える。
+    // **たまごのときはこれが殻の色**（Chick.tsx の Egg が使う）
+    bellyColor: hsl(hue, sat * 0.5, Math.min(94, lum + 20)),
     // くちばしと足。ここだけ彩度が高いと浮くので、杏子色くらいで止める
-    beakColor: hsl(32 - v * 4, 24 + v * 44, 64 + v * 6),
+    beakColor: hsl(30, 24 + sat * 0.5, 66),
 
-    eye: eyeOf(lv),
-    droop: unit((0.55 - v) * 2),
-    liveliness: 0.15 + v * 0.85,
+    eye: !isEgg && mood ? EYE_OF[mood.id] : 'open',
+    // 元気なほど背筋が伸びる。いきいき（0.9）以上で完全にまっすぐ
+    droop: unit((0.6 - liveliness) / 0.6),
+    liveliness,
 
     wings: stage >= 2,
-    // とさかは常に出す。ステージ4で「生える」のではなく、そこから立派になる
+    // とさかは常に出す。ステージ2で「生える」のではなく、そこから立派になる
     crest: true,
-    crestScale: stage >= 4 ? 1 : 0.62,
-    scarf: stage >= 5,
-    crown: stage >= 6,
-    sweat: lv === 1,
+    crestScale: stage >= 2 ? 1 : 0.62,
+    scarf: stage >= 3,
+    crown: stage >= 3,
+    sweat: !isEgg && (mood?.sweat ?? false),
+    sparkle: !isEgg && (mood?.sparkle ?? false),
   }
 }
