@@ -63,6 +63,7 @@ export function useApp() {
     start,
     reset,
     extendDeadline: goal.extendDeadline,
+    markStageSeen: goal.markStageSeen,
     newGoal,
     elapsed: timer.elapsed,
     running: timer.running,
