@@ -4,6 +4,7 @@ import { ContactShadows, useAnimations, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import type { Look } from './look'
 import chickUrl from './models/chick.glb?url'
+import eggUrl from './models/egg.glb?url'
 
 type Props = {
   look: Look
@@ -11,6 +12,8 @@ type Props = {
   animate: boolean
   /** 歩き回れる範囲。枠の大きさで変わるので、外（AvatarCanvas）が決める */
   roam?: Roam
+  /** たまごを割る（孵化の演出）。false → true になった瞬間に1回だけ流す */
+  hatching?: boolean
 }
 
 /** 歩き回れる範囲（ワールド座標。定位置を中心にした半径） */
@@ -32,8 +35,8 @@ export type Roam = { x: number; z: number }
  * ここでマテリアルに流し込む。だからステージや活力の対応表を変えるときに
  * Blender を開く必要はない。
  */
-export default function Chick({ look, animate, roam }: Props) {
-  if (look.isEgg) return <Egg look={look} />
+export default function Chick({ look, animate, roam, hatching }: Props) {
+  if (look.isEgg) return <Egg look={look} animate={animate} hatching={hatching} />
   return <ChickModel look={look} animate={animate} roam={roam} />
 }
 
@@ -93,6 +96,9 @@ const EYE_SQUASH: Record<Look['eye'], number> = {
   half: 0.5,
   closed: 0.12,
 }
+
+/** 揺れから割れへ重みを寄せる速さ。割れは待たせるものではないので速い */
+const CRACK_RATE = 14
 
 function ChickModel({ look, animate, roam: area = DEFAULT_ROAM }: Props) {
   const rig = useRef<THREE.Group>(null)
@@ -500,30 +506,102 @@ function Sweat() {
 }
 
 /**
- * ステージ0。殻のまま止まっている。
- * たまごには Blender のモデルが無く、ここで球を置いているだけなので、
- * 動かすと「コードで作った動き」になってしまう（→ 上の方針）。
+ * ステージ0のたまご。**ひよこと同じで、形も動きも Blender のモデルが持っている**
+ * （models/egg.blend → egg.glb）。ここがやるのは色を入れることと、
+ * 「いつ割るか」を決めることだけ。
+ *
+ * クリップは2本。
+ *
+ * | クリップ | 長さ | 中身 |
+ * | --- | --- | --- |
+ * | `EggIdle` | 2.5秒 | ゆっくり左右に揺れる。ループ |
+ * | `EggCrack` | 3.0秒 | ひびが入り、上半分が飛んで横に転がる。**1回きり** |
+ *
+ * `hatching` が true になった瞬間に `EggCrack` を頭から流し、そのぶん
+ * `EggIdle` の重みを下げる（**合計1**。ひよこの姿勢クリップと同じ約束）。
+ * 割れ終わりは `clampWhenFinished` で最後の姿のまま止まる。
  */
-function Egg({ look }: { look: Look }) {
+function Egg({ look, animate, hatching = false }: { look: Look; animate: boolean; hatching?: boolean }) {
+  const rig = useRef<THREE.Group>(null)
+  const { scene, animations } = useGLTF(eggUrl)
+
+  // ひよこと同じ理由で複製してから触る。読み込んだモデルは three.js が
+  // 使い回すので、そのまま塗るとすべてのたまごが同じ色になる
+  const model = useMemo(() => {
+    const copy = scene.clone(true)
+    copy.traverse((o) => {
+      const mesh = o as THREE.Mesh
+      if (!mesh.isMesh) return
+      const mat = (mesh.material as THREE.MeshStandardMaterial).clone()
+      mesh.material = mat
+      mat.roughness = 0.65
+      mat.metalness = 0
+    })
+    return copy
+  }, [scene])
+
+  const { actions, mixer } = useAnimations(animations, rig)
+
+  // 殻の色。おなかと同じ淡い色で塗り、割れ口（Egg_Inner）だけ一段濃くする。
+  // 同じ色にすると、割れても切り口が平らな面に見えて「割れた」と読めない
+  useEffect(() => {
+    const inner = new THREE.Color(look.bellyColor).offsetHSL(0, 0.10, -0.18)
+    model.traverse((o) => {
+      const mat = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined
+      if (!mat) return
+      if (mat.name === 'Egg_Shell') mat.color.set(look.bellyColor)
+      if (mat.name === 'Egg_Inner') mat.color.copy(inner)
+    })
+  }, [model, look.bellyColor])
+
+  useEffect(() => {
+    actions.EggIdle?.play().setEffectiveWeight(1)
+    return () => {
+      mixer.stopAllAction()
+    }
+  }, [actions, mixer])
+
+  // 割れ始めたか。**再生側（isRunning）では見分けられない。**
+  // 割れ終わると一時停止になって false に戻るが、そのときも殻は割れたまま
+  const cracked = useRef(false)
+  const weight = useRef(0)
+
+  useEffect(() => {
+    if (!hatching || cracked.current) return
+    cracked.current = true
+    const crack = actions.EggCrack
+    if (!crack) return
+    // ジャンプと同じ扱い。1回きりで、終わったら最後の姿のまま止める
+    crack.setLoop(THREE.LoopOnce, 1)
+    crack.clampWhenFinished = true
+    crack.reset().play()
+  }, [hatching, actions])
+
+  useFrame((_, delta) => {
+    mixer.timeScale = animate ? 1 : 0
+    if (!animate) {
+      // 動きを止めている人（prefers-reduced-motion）には、割れる過程ではなく
+      // **割れた姿だけ**を渡す。ひよこと同じに「止めたら何もしない」にすると、
+      // たまごが永久に割れないままになる
+      const crack = actions.EggCrack
+      if (cracked.current && crack) {
+        crack.time = crack.getClip().duration
+        crack.setEffectiveWeight(1)
+        actions.EggIdle?.setEffectiveWeight(0)
+      }
+      return
+    }
+    // 揺れている途中で割れ始めるので、重みは寄せる。0/1 を直に入れると
+    // 傾いた姿から素の姿へ飛ぶ
+    weight.current = THREE.MathUtils.damp(weight.current, cracked.current ? 1 : 0, CRACK_RATE, delta)
+    actions.EggCrack?.setEffectiveWeight(weight.current)
+    actions.EggIdle?.setEffectiveWeight(1 - weight.current)
+  })
+
   return (
     <>
-      <group>
-        <mesh position={[0, 0.78, 0]} scale={[1, 1.3, 1]}>
-          <sphereGeometry args={[0.6, 48, 32]} />
-          <meshStandardMaterial color={look.bellyColor} roughness={0.7} />
-        </mesh>
-        {/* ひび。殻の表面（半径 0.6 の楕円体）ぎりぎりに薄い板を置く。
-            少しでも内側に入れると殻に飲み込まれて見えなくなる */}
-        {[
-          { y: 1.02, rot: 0.6 },
-          { y: 0.93, rot: -0.6 },
-          { y: 0.84, rot: 0.6 },
-        ].map((c) => (
-          <mesh key={c.y} position={[0, c.y, 0.575]} rotation={[0, 0, c.rot]}>
-            <boxGeometry args={[0.02, 0.13, 0.05]} />
-            <meshStandardMaterial color="#9AA3AC" roughness={0.9} />
-          </mesh>
-        ))}
+      <group ref={rig}>
+        <primitive object={model} />
       </group>
       <ContactShadows position={[0, 0, 0]} opacity={0.32} scale={5} blur={2.6} far={2} resolution={512} />
     </>
@@ -532,3 +610,4 @@ function Egg({ look }: { look: Look }) {
 
 // 先に読み込んでおく。ステージ1に上がった瞬間にひよこが出ないと間が抜ける
 useGLTF.preload(chickUrl)
+useGLTF.preload(eggUrl)
