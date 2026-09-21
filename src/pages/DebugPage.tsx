@@ -18,6 +18,10 @@ type Props = {
 
 export default function DebugPage({ state, loaded, hasStarted, elapsed, running, onRecord, onNextDay, onNewGoal }: Props) {
   const [snapshot, setSnapshot] = useState<{ data: unknown; at: string } | null>(null)
+  // たまごの孵化。**モデルのクリップは1回きり**で、割れた姿のまま止まる。
+  // もう一度見るには「閉じる」でアバターごと作り直す（key を変える）
+  const [hatching, setHatching] = useState(false)
+  const [eggKey, setEggKey] = useState(0)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
 
@@ -66,6 +70,23 @@ export default function DebugPage({ state, loaded, hasStarted, elapsed, running,
           <div><dt>自動保存の条件</dt><dd>{loaded && hasStarted ? '有効' : '停止中'}</dd></div>
         </dl>
         <p className="debug-note">保存条件の表示は、保存成功を示すものではありません。DB取得ボタンで保存値を確認してください。</p>
+      </section>
+
+      <section className="card debug-avatar" aria-label="たまご（ステージ0）">
+        <div>
+          <h2>たまご</h2>
+          <p className="debug-note">
+            ステージ0の姿と、孵化（割れる）アニメーションの確認用。進化の演出につなぐ前の手動トリガです。
+          </p>
+          <div className="tools">
+            <button className="btn sec" disabled={hatching} onClick={() => setHatching(true)}>割る</button>
+            <button className="btn sec" onClick={() => { setHatching(false); setEggKey((n) => n + 1) }}>戻す</button>
+          </div>
+        </div>
+        <div className="debug-avatar-preview">
+          <Avatar key={eggKey} egg lv={levelOf(state.vitality).lv} variant={state.avatarId}
+            vitality={state.vitality} hatching={hatching} />
+        </div>
       </section>
 
       <section className="card">
