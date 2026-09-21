@@ -3,6 +3,7 @@ import { Canvas, useThree } from '@react-three/fiber'
 import type * as THREE from 'three'
 import Chick, { DEFAULT_ROAM, type Roam } from './Chick'
 import type { Look } from './look'
+import { MOODS } from '../state/logic'
 
 type Props = {
   look: Look
@@ -31,7 +32,7 @@ const EDGE_PAD = 0.9
 /**
  * 3D の置き場。カメラと照明はここで決め、キャラの中身は Chick.tsx に任せる。
  *
- * 背景は透明にしてある（`gl.alpha`）。カードの背景色や、活力に連動する
+ * 背景は透明にしてある（`gl.alpha`）。カードの背景色や、気分に連動する
  * アクセント色（ui/useAccent.ts）がそのまま透けるようにするため。
  */
 export default function AvatarCanvas({ look, animate, fill = false, hatching }: Props) {
@@ -43,7 +44,11 @@ export default function AvatarCanvas({ look, animate, fill = false, hatching }: 
       // 絶対位置にしておかないと高さが伝わらず、既定の 150px に潰れる
       style={fill ? { position: 'absolute', inset: 0 } : undefined}
       role="img"
-      aria-label={`アバターの状態: ${look.stage}段階目、活力${look.vitality}`}
+      aria-label={
+        look.isEgg
+          ? 'アバターの状態: たまご'
+          : `アバターの状態: ${look.stage}段階目、${MOODS.find((m) => m.id === look.mood)?.name ?? ''}`
+      }
       // 高 DPI 端末で 2 倍までに抑える。3 倍以上にすると発熱が目に見えて増える。
       // 枠いっぱいに広げるときは画素数がそもそも多いので、さらに抑える
       dpr={fill ? [1, 1.5] : [1, 2]}
