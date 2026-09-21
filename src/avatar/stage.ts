@@ -150,28 +150,3 @@ export function nextGoalOf(
         window: next.to.window,
       }
 }
-
-/* ------------------------------------------------------------------
- * 以下は活力時代の旧 API。look.ts がまだ「のべ達成日数」と 1〜6 の
- * ステージ番号を見ているので、**#5 で付け替えるまでの間だけ**残す。
- * （EVOLUTION_PLAN 5章 #7 で消す）
- * ------------------------------------------------------------------ */
-
-const LEGACY_STAGES: { id: number; min: number; name: string }[] = [
-  { id: 1, min: 0, name: 'ひよこ' },
-  { id: 2, min: 3, name: 'やんちゃひよこ' },
-  { id: 3, min: 7, name: 'もふもふ' },
-  { id: 4, min: 14, name: 'いっちょまえ' },
-  { id: 5, min: 30, name: 'りりしい' },
-  { id: 6, min: 60, name: 'まんまるの主' },
-]
-
-/** @deprecated のべ達成日数から今のステージを返す。`evolutionOf()` へ */
-export const stageOf = (days: number) =>
-  LEGACY_STAGES.reduce((acc, s) => (days >= s.min ? s : acc), LEGACY_STAGES[0])
-
-/** @deprecated 次のステージまであと何日か。`nextGoalOf()` へ */
-export const daysToNextStage = (days: number): number | null => {
-  const next = LEGACY_STAGES.find((s) => s.min > days)
-  return next ? next.min - days : null
-}

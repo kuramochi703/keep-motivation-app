@@ -1,67 +1,30 @@
+/**
+ * ゲームのルール。**ここには「記録から計算するやり方」だけを置く。**
+ *
+ * 活力（0〜100 の保存値）は廃止した。連続サイクル数も気分もステージも、
+ * `done`（達成日）と `cycleDays` / `startedAt` から毎回その場で計算する。
+ * 保存するのは「進化の演出をどこまで見せたか」（`seenStage`）だけ。
+ */
 
-export const GAIN = 12
-export const DECAY = 20
 export const SESSION = 300 // 秒
-
-export type Level = {
-  min: number
-  lv: 0 | 1 | 2 | 3 | 4
-  name: string
-  say: string
-  h: number
-  s: number
-}
-
-export const LEVELS: Level[] = [
-  { min: 0, lv: 0, name: 'ボロボロ', say: 'もう、うごけない…', h: 212, s: 8 },
-  { min: 20, lv: 1, name: 'しょんぼり', say: 'ちょっとしんどいかも。', h: 208, s: 16 },
-  { min: 45, lv: 2, name: 'ふつう', say: 'ふつう。ここからだよ。', h: 190, s: 28 },
-  { min: 70, lv: 3, name: '元気', say: '調子いいね。', h: 166, s: 52 },
-  { min: 90, lv: 4, name: '絶好調', say: '絶好調。今日もいける。', h: 156, s: 68 },
-]
-
-export type Frequency = 'everyday' | 'week3' | 'week1' | 'any'
-
-export const FREQUENCIES: { id: Frequency; label: string }[] = [
-  { id: 'everyday', label: '毎日' },
-  { id: 'week3', label: '週3回' },
-  { id: 'week1', label: '週1回' },
-  { id: 'any', label: '決めてない' },
-]
-
-export const freqLabel = (f: Frequency) =>
-  FREQUENCIES.find((x) => x.id === f)?.label ?? ''
-
-export type AvatarId = 0 | 1 | 2
-
-export const AVATARS: { id: AvatarId; name: string; desc: string }[] = [
-  { id: 0, name: 'もりお', desc: 'みどりの野草タイプ' },
-  { id: 1, name: 'だいち', desc: 'あおの力持ちタイプ' },
-  { id: 2, name: 'こむぎ', desc: 'ピンクのいやしタイプ' },
-]
-
-export const avatarName = (id: AvatarId) => AVATARS[id].name
 
 export type State = {
   goalId: number | null
-  vitality: number
   goal: string
   deadline: string | null // YYYY-MM-DD（目標の期限）
-  frequency: Frequency
   /** 何日に1回つけるか。サイクル長（EVOLUTION_PLAN 2章） */
   cycleDays: number
   /** サイクルの起点。目標を作った日 YYYY-MM-DD */
   startedAt: string | null
-  avatarId: AvatarId
-  /** アバターの色相 0〜359。`avatarId` を置き換える */
+  /** アバターの色相 0〜359 */
   hue: number
   name: string
   /** 進化の演出をどこまで見せたか。記録から計算できない唯一の保存値 */
   seenStage: number
-  lastDate: string | null
+  /** お試し用。アプリの中の日付だけをずらす */
   dayOffset: number
+  /** 達成日 YYYY-MM-DD。`records` から作る配列。カレンダーと `isDone()` が使う */
   done: string[]
-  best: number
 }
 
 export type SetupInput = {
@@ -100,23 +63,16 @@ export const HUES: { hue: number; label: string }[] = [
 
 export const initialState = (): State => ({
   goalId: null,
-  vitality: 62,
-  goal: '資格の勉強',
+  goal: '',
   deadline: null,
-  frequency: 'any',
   cycleDays: 1,
   startedAt: null,
-  avatarId: 0,
   hue: 150,
-  name: 'もりお',
+  name: '',
   seenStage: 0,
-  lastDate: null,
   dayOffset: 0,
   done: [],
-  best: 0,
 })
-
-export const clamp = (v: number) => Math.max(0, Math.min(100, Math.round(v)))
 
 export const key = (d: Date) =>
   `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
@@ -142,9 +98,6 @@ export const today = (s: State) => shift(new Date(), s.dayOffset)
 
 export const isDone = (s: State, d: Date) => s.done.includes(key(d))
 
-export const levelOf = (v: number) =>
-  LEVELS.reduce((acc, l) => (v >= l.min ? l : acc), LEVELS[0])
-
 export const fmtClock = (sec: number) =>
   `${Math.floor(sec / 60)}:${String(sec % 60).padStart(2, '0')}`
 
@@ -161,46 +114,8 @@ export const isExpired = (s: State) => {
   return d !== null && d < 0
 }
 
-/** 連続日数 */
-export function streak(s: State) {
-  let n = 0
-  let d = today(s)
-  if (!isDone(s, d)) d = shift(d, -1)
-  while (isDone(s, d)) {
-    n++
-    d = shift(d, -1)
-  }
-  return n
-}
 
-/** 前回起動日から今日までの未達成日ぶん、活力を減らす */
-export function rollover(s: State): State {
-  const tk = key(today(s))
-  if (!s.lastDate) return { ...s, lastDate: tk }
-  if (s.lastDate === tk) return s
-
-  let vitality = s.vitality
-  let d = parseKey(s.lastDate)
-  while (key(d) !== tk) {
-    if (!isDone(s, d)) vitality = clamp(vitality - DECAY)
-    d = shift(d, 1)
-  }
-  return { ...s, vitality, lastDate: tk }
-}
-
-/** 今日を達成にする */
-export function markDone(s: State): State {
-  const tk = key(today(s))
-  if (s.done.includes(tk)) return s
-  const next: State = {
-    ...s,
-    done: [...s.done, tk],
-    vitality: clamp(s.vitality + GAIN),
-  }
-  return { ...next, best: Math.max(next.best, streak(next)) }
-}
-
-
+/** 目標を作り直す。**アバターはたまごから** */
 export function resetGoal(state: State): State {
   return {
     ...state,
@@ -208,17 +123,11 @@ export function resetGoal(state: State): State {
     goalId: null,
     goal: '',
     deadline: null,
-    frequency: 'any',
     cycleDays: 1,
     startedAt: null,
     seenStage: 0,
 
     done: [],
-    best: 0,
-
-    vitality: 50,
-
-    lastDate: null,
     dayOffset: 0,
   }
 }

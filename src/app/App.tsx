@@ -37,7 +37,7 @@ export default function App() {
               onNextDay={nextDay} onNewGoal={newGoal} />
           </Suspense>
         ) : screen === 'top' ? (
-          <TopPage onStart={() => go('setup')} variant={state.avatarId} />
+          <TopPage onStart={() => go('setup')} />
         ) : screen === 'setup' ? (
           <SetupPage state={state} onStart={start} />
         ) : (
