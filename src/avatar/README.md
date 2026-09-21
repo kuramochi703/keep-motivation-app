@@ -23,9 +23,12 @@
 | --- | --- | --- |
 | `look.ts` | 「ステージ × 活力」→ 見た目パラメータの対応表 | **色・表情・何段階目で何が生えるか** |
 | `Chick.tsx` | モデルを読む・色を塗る・クリップを流す | 動き、パーツの出し入れ |
-| `models/chick.blend` | 形とアニメーションの原典 | **形・歩き方そのもの** |
+| `models/chick.blend` | ひよこの形とアニメーションの原典 | **形・歩き方そのもの** |
 | `models/chick.glb` | 書き出したもの。**手で触らない** | — |
-| `models/export_glb.py` | .blend → .glb の書き出し | 書き出す内容 |
+| `models/export_glb.py` | chick.blend → chick.glb の書き出し | 書き出す内容 |
+| `models/egg_build.py` | **たまごの原典。** 形もクリップも全部この1本が作る | たまごの形・割れ方 |
+| `models/egg.blend` | それを流して出来たもの。**手で触らない** | — |
+| `models/egg.glb` / `export_egg_glb.py` | 書き出したものと、書き出し | — |
 | `stage.ts` | のべ達成日数 → 成長ステージ | 進化に必要な日数 |
 | `AvatarCanvas.tsx` | カメラと照明 | 明るさ、アングル |
 | `avatar.css` | 表示サイズ | 大きさ |
@@ -76,7 +79,7 @@
 
 | ステージ | のべ達成日数 | 増えるもの | 実体 |
 | --- | --- | --- | --- |
-| 0 | — | たまご（トップページ専用） | 球を置くだけ（`Egg`） |
+| 0 | — | たまご（トップページ専用） | `egg.glb`（`Egg`）。揺れる・割れるクリップつき |
 | 1 | 0日〜 | からだ・あし・くちばし・とさか | 常に表示 |
 | 2 | 3日〜 | つばさ | `Wing_L` / `Wing_R` を表示 |
 | 3 | 7日〜 | 一回り大きく | `bodyRadius` 0.66 → 0.88（ステージ6まで連続） |
@@ -110,8 +113,15 @@
 `chick.blend` を直しただけでは**アプリの見た目は変わらない。**書き出し直すこと。
 
 ```sh
-"/mnt/c/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b \
-    src/avatar/models/chick.blend -P src/avatar/models/export_glb.py
+B="/mnt/c/Program Files/Blender Foundation/Blender 5.2/blender.exe"
+
+# ひよこ
+"$B" -b src/avatar/models/chick.blend -P src/avatar/models/export_glb.py
+
+# たまご。**形を直すのは egg.blend ではなく egg_build.py。**
+# 流すと egg.blend ごと作り直されるので、.blend の中の手作業は残らない
+"$B" -b --factory-startup -P src/avatar/models/egg_build.py
+"$B" -b src/avatar/models/egg.blend -P src/avatar/models/export_egg_glb.py
 ```
 
 - .blend は読むだけで保存しない
@@ -172,6 +182,18 @@ AnimationAction … クリップ1本の再生状態（時刻・ループ・重�
 | `Rest` | 3.0秒 | 休憩。お尻で座り、足を前へ・翼をおなかへ、**目を閉じて**深い呼吸 | ループ。重みをゆっくり寄せる |
 | `Jump` | 1.25秒 | しゃがむ→翼を開いて跳ぶ→足をたたむ→着地で潰れる | 1回きり（`LoopOnce`） |
 | `Blink` | 4.0秒 | 4秒に1回、目のボーンを縦に潰す | ループで流しっぱなし |
+
+たまご（`egg.glb`。ステージ0でだけ読む別のモデル）。
+
+| クリップ | 長さ | 中身 | 流し方 |
+| --- | --- | --- | --- |
+| `EggIdle` | 2.5秒 | 左右にゆっくり揺れる（5度） | ループ。既定 |
+| `EggCrack` | 3.0秒 | 中から3回突かれてひびが入り、上半分が飛んで横に転がる | 1回きり（`LoopOnce`）。`hatching` が true になった瞬間 |
+
+- 殻は `Shell_Bottom` / `Shell_Top` の2つ。**割れ線で分かれているが頂点は完全に一致する**ので、
+  閉じている間は継ぎ目が開かない（うっすら出るひびの線は、殻がそこで割れる印としてそのまま使っている）
+- 割れ終わりは `clampWhenFinished` で最後の姿のまま止まる。**もう一度見せるにはアバターを作り直す**
+  （デバッグ画面の「戻す」は `key` を変えている）
 
 - 翼ととさかは**歩き・跳びと同じ周期**。別周期にすると歩きと無関係にひらひら見える
 - **向き変えが左右2本なのは傾ける向きが逆だから。** 傾きをコードで足すと
@@ -237,7 +259,7 @@ look.ts が決める**状態**。時間で変化させない。
 | 前かがみ | `look.droop * 0.12` を外側 `group` の `rotation.x` へ |
 | 目つき | `EYE_SQUASH` の倍率で目を縦に潰す |
 | 体格 | `look.bodyRadius * SIZE` を `rig` の `scale` へ |
-| たまご | 球を置くだけなので止まったまま |
+| たまご | ステージ0では殻だけ。姿勢を作るのはクリップで、ここは `hatching` を渡すだけ |
 
 ### 約束ごと
 
