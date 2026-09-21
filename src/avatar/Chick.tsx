@@ -367,10 +367,13 @@ function startTurn(m: Walker, next: 'idle' | 'walk') {
  * **向きが大きくずれたら必ず向き直りを挟む。** 立ったままぬるっと回ると
  * 足が地面を滑って見えるので、足踏みするクリップを出してから回す。
  *
- * `amp`（活力）が低いときは歩かず、座り込んで休む。
+ * `amp`（気分の `liveliness`）が低いときは歩かず、座り込んで休む。
+ * **閾値はうつむき（0.2）より下に置く。** ここを 0.25 のままにすると、
+ * 「2サイクル放置」でいきなり座り込んでしまい、ぐったり（0.0）と区別が
+ * つかなくなる（EVOLUTION_PLAN 2章）。
  */
 function pick(m: Walker, amp: number, delta: number, jump?: THREE.AnimationAction | null) {
-  const lively = amp > 0.25
+  const lively = amp > 0.15
   m.timer -= delta
 
   if (m.mode === 'jump') {
@@ -542,7 +545,8 @@ function Egg({ look, animate, hatching = false }: { look: Look; animate: boolean
 
   const { actions, mixer } = useAnimations(animations, rig)
 
-  // 殻の色。おなかと同じ淡い色で塗り、割れ口（Egg_Inner）だけ一段濃くする。
+  // 殻の色。**たまごは気分を持たないので、look.ts で色相以外を固定した
+  // 淡い色**（彩度24 / 明度88）が来る。割れ口（Egg_Inner）だけ一段濃くする。
   // 同じ色にすると、割れても切り口が平らな面に見えて「割れた」と読めない
   useEffect(() => {
     const inner = new THREE.Color(look.bellyColor).offsetHSL(0, 0.10, -0.18)
