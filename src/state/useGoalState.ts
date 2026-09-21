@@ -15,13 +15,13 @@ import {
  * 目標そのもの（達成の記録・アバター）の管理と、その永続化を担当する。
  * 画面遷移・タイマーは持たず、達成の記録は `markSessionDone` として外から呼ばれる。
  *
- * **記録から計算できるものは保存しない**（EVOLUTION_PLAN 1章）。DB に置くのは
+ * **記録から計算できるものは保存しない**（README 2章）。DB に置くのは
  * 「何日つけたか」と「進化の演出をどこまで見せたか」だけで、連続サイクル数も
  * 気分もステージも画面を描くたびにその場で計算する。丸ごと UPSERT はやめて、
  * 変わったものだけを INSERT / UPDATE する。
  */
 
-/** 認証を入れるまでは1行目のユーザーで固定（EVOLUTION_PLAN 3章） */
+/** 認証を入れるまでは1行目のユーザーで固定（ARCHITECTURE 4章） */
 const USER_ID = 1
 
 /** 1セッションの長さ。`records.minutes` に入れる */
@@ -174,7 +174,7 @@ export function useGoalState() {
     if (error && error.code !== '23505') console.error('記録の保存エラー:', error)
   }
 
-  /** 進化の演出を流し終わった（EVOLUTION_PLAN 2章） */
+  /** 進化の演出を流し終わった（README 2章） */
   const markStageSeen = async (stage: number) => {
     const s = latest.current
     if (stage <= s.seenStage) return

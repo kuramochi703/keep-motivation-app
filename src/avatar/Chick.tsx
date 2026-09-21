@@ -382,7 +382,7 @@ function startTurn(m: Walker, next: 'idle' | 'walk') {
  * `amp`（気分の `liveliness`）が低いときは歩かず、座り込んで休む。
  * **閾値はうつむき（0.2）より下に置く。** ここを 0.25 のままにすると、
  * 「2サイクル放置」でいきなり座り込んでしまい、ぐったり（0.0）と区別が
- * つかなくなる（EVOLUTION_PLAN 2章）。
+ * つかなくなる（README 2章）。
  */
 function pick(m: Walker, amp: number, delta: number, jump?: THREE.AnimationAction | null) {
   const lively = amp > 0.15
