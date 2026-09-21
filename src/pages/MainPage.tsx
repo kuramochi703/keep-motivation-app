@@ -53,7 +53,8 @@ export default function MainPage({
   const doneToday = isDone(state, t)
   const vital = state.vitality
   const L = levelOf(vital)
-  useAccent(L)
+  // #6 で `moodOf(state)` と `state.hue` に置き換える
+  useAccent(L.h, L.s)
   const st = streak(state)
 
   const expired = isExpired(state)

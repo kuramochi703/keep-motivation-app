@@ -1,32 +1,46 @@
 import { Component, Suspense, lazy, type ReactNode, useEffect, useState } from 'react'
 import { lookOf } from './look'
+import { MOODS, type Mood } from '../state/logic'
 
 // three.js は容量が大きい。初回表示をこれに待たせたくないので
 // 別チャンクに切り出し、読み込み終わるまでは場所取りだけしておく。
 const AvatarCanvas = lazy(() => import('./AvatarCanvas'))
 
 type Props = {
-  /** 活力レベル 0〜4（logic.ts の levelOf が返す lv） */
-  lv: number
-  /** どのアバターか。logic.ts の AvatarId（0:もりお 1:だいち 2:こむぎ） */
-  variant?: number
-  /** 活力 0〜100。色と姿勢を連続的に変えるのに使う */
-  vitality?: number
-  /** のべ達成日数。成長ステージはここから決まる */
-  days?: number
-  /** トップページ用に卵の姿を表示する */
+  /** 進化のステージ 0〜3（avatar/stage.ts の `evolutionOf`）。0 はたまご */
+  stage?: number
+  /** 色相 0〜359。ユーザーが選んだ色 */
+  hue?: number
+  /** 今の気分（logic.ts の `moodOf`）。**たまごには渡さない** */
+  mood?: Mood | null
+  /** デバッグ画面用に、ステージを問わずたまごの姿を出す */
   egg?: boolean
   /**
    * たまごを割る（孵化の演出）。false → true になった瞬間に
    * `EggCrack` を1回だけ流し、割れた姿のまま止まる。
-   * **いまは呼ぶ側が手で立てる。** 進化した日を状態から出せるように
-   * なったら、そこから自動で立てる（→ EVOLUTION_PLAN.md「進化した日も返せる」）
    */
   hatching?: boolean
   /** 置き場いっぱいに広げる。ダッシュボードの背景ステージのように、
       決まった比率の枠ではなく与えられた面積すべてを使いたいときに */
   fill?: boolean
+
+  /* ---- ここから下は活力時代の旧 props。画面を移す #6 までの繋ぎ ---- */
+  /** @deprecated 活力レベル 0〜4。`mood` へ */
+  lv?: number
+  /** @deprecated アバターの種類 0〜2。`hue` へ */
+  variant?: number
+  /** @deprecated 活力 0〜100。`mood` へ */
+  vitality?: number
+  /** @deprecated のべ達成日数。`stage` へ */
+  days?: number
 }
+
+/** 旧 props で呼ばれたときの読み替え。#6 で呼ぶ側を移したら消す */
+const LEGACY_HUES = [150, 205, 344]
+const LEGACY_MOODS: Mood['id'][] = ['down', 'low', 'ok', 'good', 'lively']
+const legacyMood = (lv: number) =>
+  MOODS.find((m) => m.id === (LEGACY_MOODS[lv] ?? 'ok')) ?? null
+const legacyStage = (days: number) => (days >= 30 ? 3 : days >= 7 ? 2 : 1)
 
 /**
  * アバターの入口。
@@ -36,12 +50,31 @@ type Props = {
  * 「環境によって別のアバターが出る」状態になるのでやめた。
  * 3D を出せない場合は、レイアウトを崩さないための空の枠だけを置く。
  */
-export default function Avatar({ lv, variant = 0, vitality, days = 0, egg = false, fill = false, hatching = false }: Props) {
-  const look = lookOf(days, vitality ?? 0, lv, variant)
-  if (egg) {
-    look.stage = 0
-    look.isEgg = true
-  }
+export default function Avatar({
+  stage,
+  hue,
+  mood,
+  egg = false,
+  fill = false,
+  hatching = false,
+  lv,
+  variant,
+  vitality: _vitality,
+  days,
+}: Props) {
+  // **たまごかどうかはステージ判定の結果で決まる。** `egg` は
+  // デバッグ画面が殻の姿だけを見たいときの手動上書き
+  const resolvedStage = egg ? 0 : stage ?? (days !== undefined ? legacyStage(days) : 0)
+  const resolvedHue = hue ?? LEGACY_HUES[variant ?? 0] ?? 150
+  const resolvedMood = egg
+    ? null
+    : mood !== undefined
+      ? mood
+      : lv !== undefined
+        ? legacyMood(lv)
+        : null
+
+  const look = lookOf(resolvedStage, resolvedHue, resolvedMood)
   const animate = useAnimationAllowed()
 
   if (!hasWebGL()) {
