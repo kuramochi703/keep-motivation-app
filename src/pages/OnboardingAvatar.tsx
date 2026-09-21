@@ -1,24 +1,28 @@
 import { Component, lazy, Suspense, useState, type ReactNode } from 'react'
 import Avatar from '../avatar/Avatar'
-import { levelOf } from '../state/logic'
+import { MOODS, type Mood } from '../state/logic'
 
 const OnboardingAvatarModel = lazy(() => import('./OnboardingAvatarModel'))
 
 type Props = {
   src: string
-  days?: number
-  vitality?: number
+  /** 進化のステージ 0〜3 */
+  stage?: number
+  /** 気分。案内の絵なので、既定は「いきいき」 */
+  mood?: Mood | null
 }
 
-/** 素材が未指定ならもりおを表示し、画像・GLB / glTF で差し替えられる枠。 */
-export default function OnboardingAvatar({ src, days = 0, vitality = 90 }: Props) {
+const LIVELY = MOODS.find((m) => m.id === 'lively') ?? null
+
+/** 素材が未指定ならアプリ共通のアバターを表示し、画像・GLB / glTF で差し替えられる枠。 */
+export default function OnboardingAvatar({ src, stage = 1, mood = LIVELY }: Props) {
   const [failedSrc, setFailedSrc] = useState<string | null>(null)
 
   return (
     <div className="onboarding-avatar" aria-hidden="true">
       {!src ? (
         <div className="onboarding-morio">
-          <Avatar variant={0} lv={levelOf(vitality).lv} vitality={vitality} days={days} />
+          <Avatar stage={stage} hue={150} mood={mood} />
         </div>
       ) : /\.(glb|gltf)(?:[?#]|$)/i.test(src) ? (
         <ModelBoundary key={src}>
