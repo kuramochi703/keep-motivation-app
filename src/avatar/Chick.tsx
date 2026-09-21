@@ -173,7 +173,8 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM }: Props) {
     tone.uBib.value.set(look.bellyColor)
     // 翼と頭の羽は「胴体よりやや暗いみどり」（設計図）。
     // 胴体の色から作るので、アバターの種類が増えても勝手に付いてくる。
-    const accent = new THREE.Color(look.bodyColor).offsetHSL(0, 0.05, -0.16)
+    // 暗くしすぎると翼だけ沈んで見える。胴体がパステルなので、差は控えめでいい
+    const accent = new THREE.Color(look.bodyColor).offsetHSL(0, 0.04, -0.12)
     model.traverse((o) => {
       const mat = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined
       if (!mat) return
