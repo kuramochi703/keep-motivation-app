@@ -48,8 +48,16 @@ export type State = {
   goal: string
   deadline: string | null // YYYY-MM-DD（目標の期限）
   frequency: Frequency
+  /** 何日に1回つけるか。サイクル長（EVOLUTION_PLAN 2章） */
+  cycleDays: number
+  /** サイクルの起点。目標を作った日 YYYY-MM-DD */
+  startedAt: string | null
   avatarId: AvatarId
+  /** アバターの色相 0〜359。`avatarId` を置き換える */
+  hue: number
   name: string
+  /** 進化の演出をどこまで見せたか。記録から計算できない唯一の保存値 */
+  seenStage: number
   lastDate: string | null
   dayOffset: number
   done: string[]
@@ -70,8 +78,12 @@ export const initialState = (): State => ({
   goal: '資格の勉強',
   deadline: null,
   frequency: 'any',
+  cycleDays: 1,
+  startedAt: null,
   avatarId: 0,
+  hue: 150,
   name: 'もりお',
+  seenStage: 0,
   lastDate: null,
   dayOffset: 0,
   done: [],
@@ -171,6 +183,9 @@ export function resetGoal(state: State): State {
     goal: '',
     deadline: null,
     frequency: 'any',
+    cycleDays: 1,
+    startedAt: null,
+    seenStage: 0,
 
     done: [],
     best: 0,
@@ -182,3 +197,196 @@ export function resetGoal(state: State): State {
   }
 }
 
+
+/* ------------------------------------------------------------------
+ * サイクル ― すべての判定の単位（EVOLUTION_PLAN 2章）
+ *
+ * 「n日に1回」の n が `cycleDays`。連続もサボりも「日」ではなく
+ * 「サイクル」で数えるので、週1回の人が毎日しょんぼりすることがない。
+ * 判定はすべて日単位で、境界はサイクル初日の午前0時。
+ * ------------------------------------------------------------------ */
+
+/** 日付キーの差（日数）。`to` が後なら正 */
+export const diffDays = (from: string, to: string) =>
+  Math.round((parseKey(to).getTime() - parseKey(from).getTime()) / 86400000)
+
+/**
+ * その日が何番目のサイクルか。起点の日が 0 番。
+ * 起点より前の日は負になる（＝どのサイクルにも属さない）。
+ */
+export const cycleIndex = (day: string, startedAt: string, cycleDays: number) =>
+  Math.floor(diffDays(startedAt, day) / Math.max(1, cycleDays))
+
+/** サイクルの起点。目標がまだ無いときは今日を起点とみなす */
+export const startOf = (s: State) => s.startedAt ?? key(today(s))
+
+/** 今のサイクル番号 */
+export const currentCycle = (s: State) =>
+  cycleIndex(key(today(s)), startOf(s), s.cycleDays)
+
+/**
+ * 達成したサイクルの番号。1サイクルに何回つけても1サイクル達成なので集合で持つ。
+ * 起点より前の記録は捨てる（ペースを変えたときに「連続だけ切る」ため）。
+ */
+export const doneCycles = (done: string[], startedAt: string, cycleDays: number) => {
+  const set = new Set<number>()
+  for (const d of done) {
+    const i = cycleIndex(d, startedAt, cycleDays)
+    if (i >= 0) set.add(i)
+  }
+  return set
+}
+
+/** 達成の記録があるいちばん新しいサイクル。記録が無ければ null */
+export const lastDoneCycle = (s: State): number | null => {
+  const cycles = doneCycles(s.done, startOf(s), s.cycleDays)
+  let last: number | null = null
+  for (const i of cycles) if (last === null || i > last) last = i
+  return last
+}
+
+/** 放置しているサイクル数。今のサイクルを達成済みなら 0。記録が無ければ null */
+export const idleOf = (s: State): number | null => {
+  const last = lastDoneCycle(s)
+  return last === null ? null : currentCycle(s) - last
+}
+
+/**
+ * 連続達成サイクル数。進行中のサイクルも、つけた時点で数に入る。
+ *
+ * **1サイクルぶんの猶予**は `idle == 1` のとき連続を残すことで表す。
+ * 2サイクル放置したら 0 に落ちる。
+ */
+export const runOf = (s: State): number => {
+  const last = lastDoneCycle(s)
+  if (last === null) return 0
+  if (currentCycle(s) - last >= 2) return 0
+
+  const cycles = doneCycles(s.done, startOf(s), s.cycleDays)
+  let n = 0
+  for (let i = last; i >= 0 && cycles.has(i); i--) n++
+  return n
+}
+
+/** いちばん長かった連続達成サイクル数（旧 `best` の代わり） */
+export const bestRun = (s: State): number => {
+  const cycles = doneCycles(s.done, startOf(s), s.cycleDays)
+  let best = 0
+  let run = 0
+  const last = lastDoneCycle(s)
+  if (last === null) return 0
+  for (let i = 0; i <= last; i++) {
+    run = cycles.has(i) ? run + 1 : 0
+    if (run > best) best = run
+  }
+  return best
+}
+
+/* ------------------------------------------------------------------
+ * 連続ボーナス（気分）
+ *
+ * 気分はステージ1以上のもの。卵に気分は無い（記録が無ければ null）。
+ * **落ち込みは彩度で表し、明度は下げない**（下限 58）。暗く沈めると汚く
+ * 見えるし、前かがみ（droop）と汗で十分沈んで見える。
+ * ------------------------------------------------------------------ */
+
+export type MoodId = 'down' | 'low' | 'ok' | 'good' | 'lively' | 'shine'
+
+export type Mood = {
+  id: MoodId
+  name: string
+  say: string
+  /** 彩度 */
+  s: number
+  /** 明度 */
+  l: number
+  /** 0〜1。低いと歩き出さず、立ち止まったままになる */
+  liveliness: number
+  /** あぶら汗。しんどいときだけ */
+  sweat: boolean
+  /** 豪華なエフェクト。7サイクル連続から */
+  sparkle: boolean
+}
+
+/**
+ * 気分の表。**上から順に見て、最初に当てはまったものを採る。**
+ * 数字を動かしたいときはこの表だけを触ればいい。
+ */
+export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] = [
+  {
+    id: 'down',
+    name: 'ぐったり',
+    say: 'もう、うごけない…',
+    s: 8,
+    l: 58,
+    liveliness: 0,
+    sweat: true,
+    sparkle: false,
+    hit: (_run, idle) => idle >= 3,
+  },
+  {
+    id: 'low',
+    name: 'うつむき',
+    say: 'ちょっとしんどいかも。',
+    s: 18,
+    l: 58,
+    liveliness: 0.2,
+    sweat: false,
+    sparkle: false,
+    hit: (_run, idle) => idle >= 2,
+  },
+  {
+    id: 'ok',
+    name: 'すこし元気',
+    say: 'ここからだよ。',
+    s: 34,
+    l: 66,
+    liveliness: 0.4,
+    sweat: false,
+    sparkle: false,
+    hit: (run) => run <= 1,
+  },
+  {
+    id: 'good',
+    name: '元気',
+    say: '調子いいね。',
+    s: 44,
+    l: 72,
+    liveliness: 0.6,
+    sweat: false,
+    sparkle: false,
+    hit: (run) => run === 2,
+  },
+  {
+    id: 'lively',
+    name: 'いきいき',
+    say: '続いてるね。いい調子。',
+    s: 56,
+    l: 80,
+    liveliness: 0.9,
+    sweat: false,
+    sparkle: false,
+    hit: (run) => run <= 6,
+  },
+  {
+    id: 'shine',
+    name: 'かがやき',
+    say: '絶好調。今日もいける。',
+    s: 56,
+    l: 80,
+    liveliness: 1,
+    sweat: false,
+    sparkle: true,
+    hit: (run) => run >= 7,
+  },
+]
+
+/** 今の気分。記録が1つも無ければ「気分なし」（＝たまご） */
+export const moodOf = (s: State): Mood | null => {
+  const idle = idleOf(s)
+  if (idle === null) return null
+  const run = runOf(s)
+  const hit = MOODS.find((m) => m.hit(run, idle)) ?? MOODS[MOODS.length - 1]
+  const { hit: _drop, ...mood } = hit
+  return mood
+}
