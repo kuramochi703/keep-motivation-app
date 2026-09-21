@@ -68,6 +68,17 @@ const TURN_DONE = 0.12
 /** 立ち止まったあと、休憩に入る確率 */
 const REST_CHANCE = 0.3
 
+/**
+ * 目（EyeL / EyeR）のトラックを持たせるクリップ。
+ *
+ * 目は姿勢とは別に動く（歩きながらまばたきする）ので、**目のトラックだけを
+ * ここに挙げたクリップへ、残りを姿勢のクリップへ**振り分けて重ねて流す。
+ * まばたき（Blink）と、目を閉じたまま座る休憩（Rest）の2本が目を書くので、
+ * **この2本は重みを取り合わせる**（→ useFrame）。両方を重み1で流すと
+ * 平均されて半目になる。
+ */
+const EYE_CLIPS = ['Blink', 'Rest']
+
 /** 重みを取り合う姿勢クリップ。ここに無い Idle が、余ったぶんを受け持つ */
 const POSTURE = ['Walk', 'TurnL', 'TurnR', 'Rest', 'Jump'] as const
 type Posture = (typeof POSTURE)[number]
@@ -125,15 +136,18 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM }: Props) {
 
   // Blender の書き出しは**どのアクションにも全ボーンのキーを焼く**ので、
   // Blink にも脚や胴のトラック（素の姿勢）が入っている。そのまま重ねて流すと
-  // まばたきが歩きを素の姿勢へ引き戻してしまう。目のトラックだけを Blink に、
-  // それ以外を姿勢のクリップに振り分けて、同時に流せるようにする。
+  // まばたきが歩きを素の姿勢へ引き戻してしまう。目のトラックを持つのは
+  // EYE_CLIPS だけ、他は目のトラックを落とす、と振り分けて同時に流せるようにする。
   // 読み込んだクリップは three.js が使い回すので、複製してから削る。
   const clips = useMemo(
     () =>
       animations.map((source) => {
         const clip = source.clone()
-        const eyesOnly = clip.name === 'Blink'
-        clip.tracks = clip.tracks.filter((track) => track.name.startsWith('Eye') === eyesOnly)
+        clip.tracks = clip.tracks.filter((track) =>
+          // 目のトラックは EYE_CLIPS だけが持つ。
+          // 逆に Blink は目だけのクリップなので、姿勢のトラックを全部落とす
+          track.name.startsWith('Eye') ? EYE_CLIPS.includes(clip.name) : clip.name !== 'Blink'
+        )
         return clip
       }),
     [animations]
@@ -159,7 +173,8 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM }: Props) {
     tone.uBib.value.set(look.bellyColor)
     // 翼と頭の羽は「胴体よりやや暗いみどり」（設計図）。
     // 胴体の色から作るので、アバターの種類が増えても勝手に付いてくる。
-    const accent = new THREE.Color(look.bodyColor).offsetHSL(0, 0.05, -0.16)
+    // 暗くしすぎると翼だけ沈んで見える。胴体がパステルなので、差は控えめでいい
+    const accent = new THREE.Color(look.bodyColor).offsetHSL(0, 0.04, -0.12)
     model.traverse((o) => {
       const mat = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined
       if (!mat) return
@@ -228,10 +243,12 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM }: Props) {
     // クリップが持っている。ここが決めるのは「どれを流すか」「どれくらいの
     // 重みで混ぜるか」、そして「歩いた結果どこへ行くか」の3つだけ。
     mixer.timeScale = animate ? 1 : 0
-    actions.Blink?.setEffectiveWeight(animate ? 1 : 0)
     // 止めているときは状態機械ごと凍らせる（prefers-reduced-motion）。
     // 重みを寄せ続けると、クリップが止まっていても姿勢が動いてしまう
-    if (!animate) return
+    if (!animate) {
+      actions.Blink?.setEffectiveWeight(0)
+      return
+    }
 
     const m = playing.current
     pick(m, look.liveliness, delta, actions.Jump)
@@ -247,6 +264,10 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM }: Props) {
       idle -= m.weight[name]
     }
     actions.Idle?.setEffectiveWeight(Math.max(0, idle))
+    // **目は姿勢とは別の取り合い。** 目を書くのは Blink と Rest の2本だけで、
+    // 休憩は目を閉じたまま固定なので、Rest が入ってきたぶんだけ Blink を下げる。
+    // 両方を重み1で流すと、開いた目と閉じた目が平均されて半目のまま止まる
+    actions.Blink?.setEffectiveWeight(1 - m.weight.Rest)
 
     roam(m, delta, area)
     const g = walker.current

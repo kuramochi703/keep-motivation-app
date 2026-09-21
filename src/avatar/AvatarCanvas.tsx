@@ -46,15 +46,25 @@ export default function AvatarCanvas({ look, animate, fill = false }: Props) {
       // 枠いっぱいに広げるときは画素数がそもそも多いので、さらに抑える
       dpr={fill ? [1, 1.5] : [1, 2]}
       gl={{ alpha: true, antialias: true }}
+      // トーンマッピングを切る（既定は ACES フィルミック）。映画向けの曲線で、
+      // 明るい色ほど灰色へ寄せる。look.ts のパステルがくすんで見えるので、
+      // 指定した色をそのまま出す
+      flat
       camera={{ position: [0, 0.45, 4.6], fov: 32 }}
       // 見えていない間は回さない
       frameloop="always"
     >
-      <ambientLight intensity={0.65} />
+      {/* **光の強さは「指定した色がそのまま出る」ところに合わせてある。**
+          three.js の拡散反射は明るさを π で割る（物理的な単位）ので、
+          強さ1の光では色の 1/3 ほどの明るさにしかならない。素直に 1.0 前後で
+          組むと、look.ts で明るい色を指定しても画面では灰色っぽく沈む。
+          いちばん明るい所で 1 を少し超えるくらい（＝指定した色とほぼ同じ）に
+          なるよう、環境光と主光源を合わせて π 倍ぶんまで上げている */}
+      <ambientLight intensity={1.7} />
       {/* 主光源。右斜め上から当てて、丸みを出す */}
-      <directionalLight position={[2.6, 4.2, 3.2]} intensity={1.15} />
+      <directionalLight position={[2.6, 4.2, 3.2]} intensity={2.0} />
       {/* 逆光。輪郭をふちどって、背景から浮かせる */}
-      <directionalLight position={[-3, 2, -2.5]} intensity={0.45} color="#BBD9FF" />
+      <directionalLight position={[-3, 2, -2.5]} intensity={0.8} color="#BBD9FF" />
       {fill ? (
         <StageFit>{(roam) => <Chick look={look} animate={animate} roam={roam} />}</StageFit>
       ) : (
