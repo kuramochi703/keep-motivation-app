@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Calendar from '../features/calendar/Calendar'
 import Avatar from '../avatar/Avatar'
 import './main-page.css'
@@ -39,8 +39,13 @@ type Props = {
   onEditGoal: () => void
   onNewGoal: () => void
   onExtend: () => void
+  /** 進化の演出を流し終わったら呼ぶ。`avatars.seen_stage` を進める */
+  onStageSeen: (stage: number) => void
   onReset: () => void
 }
+
+/** 演出を流す長さ。たまごが割れるクリップ（3.0秒）に少し余裕を足した値 */
+const EFFECT_MS = 4200
 
 export default function MainPage({
   state,
@@ -52,6 +57,7 @@ export default function MainPage({
   onEditGoal,
   onNewGoal,
   onExtend,
+  onStageSeen,
   onReset,
 }: Props) {
   const t = today(state)
@@ -63,6 +69,26 @@ export default function MainPage({
   useAccent(state.hue, mood?.s ?? 24)
   const next = nextGoalOf(state.done, state.cycleDays, startOf(state), key(t))
   const run = runOf(state)
+
+  // **演出は条件を満たした瞬間に1回だけ。** 計算したステージが
+  // 「見せ終わったステージ」を超えていたら流し、終わってから記録を進める。
+  // localStorage と違って DB に置くので、別の端末で開いても1回で済む
+  const [celebrating, setCelebrating] = useState(false)
+  const pending = stage.id > state.seenStage
+  useEffect(() => {
+    if (!pending) return
+    setCelebrating(true)
+    const id = window.setTimeout(() => {
+      setCelebrating(false)
+      onStageSeen(stage.id)
+    }, EFFECT_MS)
+    return () => window.clearTimeout(id)
+    // onStageSeen は毎描画で作り直されるので、依存に入れると演出が流れ続ける
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pending, stage.id])
+
+  // 孵化（たまご → 幼体）だけは、殻が割れるところから見せる
+  const hatching = celebrating && state.seenStage === 0 && stage.id >= 1
 
   const expired = isExpired(state)
   const deadlineDays = daysUntil(state)
@@ -136,8 +162,23 @@ export default function MainPage({
               <p className="speech">{mood?.say ?? 'まだ殻の中。最初の1回をつけてみよう。'}</p>
             </div>
 
-            <div className="stage-avatar">
-              <Avatar stage={stage.id} hue={state.hue} mood={mood} fill />
+            {celebrating && (
+              <div className="evolve-banner" role="status">
+                <b>{state.seenStage === 0 ? `${state.name} がうまれた！` : `${stage.name} に進化！`}</b>
+                <span>{stage.gains}</span>
+              </div>
+            )}
+
+            <div className={`stage-avatar${celebrating ? ' evolving' : ''}`}>
+              <Avatar
+                key={hatching ? 'egg' : 'chick'}
+                stage={hatching ? 0 : stage.id}
+                hue={state.hue}
+                mood={hatching ? null : mood}
+                egg={hatching}
+                hatching={hatching}
+                fill
+              />
             </div>
 
             <p className="owner">{state.name}</p>
