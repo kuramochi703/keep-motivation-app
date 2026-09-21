@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { ContactShadows, useAnimations, useGLTF } from '@react-three/drei'
+import { ContactShadows, Sparkles, useAnimations, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import type { Look } from './look'
 import chickUrl from './models/chick.glb?url'
@@ -295,6 +295,18 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM }: Props) {
             {look.scarf && <Scarf />}
             {look.crown && <Crown />}
             {look.sweat && <Sweat />}
+            {/* かがやき（7サイクル連続）だけの豪華なエフェクト。
+                まわりを舞う光の粒。**色はアバターの色相に合わせる** */}
+            {look.sparkle && (
+              <Sparkles
+                count={26}
+                scale={[2.2, 2.4, 2.2]}
+                size={5}
+                speed={0.35}
+                opacity={0.9}
+                color={look.bellyColor}
+              />
+            )}
           </group>
         </group>
       </group>
