@@ -16,6 +16,13 @@ type Props = {
   days?: number
   /** トップページ用に卵の姿を表示する */
   egg?: boolean
+  /**
+   * たまごを割る（孵化の演出）。false → true になった瞬間に
+   * `EggCrack` を1回だけ流し、割れた姿のまま止まる。
+   * **いまは呼ぶ側が手で立てる。** 進化した日を状態から出せるように
+   * なったら、そこから自動で立てる（→ EVOLUTION_PLAN.md「進化した日も返せる」）
+   */
+  hatching?: boolean
   /** 置き場いっぱいに広げる。ダッシュボードの背景ステージのように、
       決まった比率の枠ではなく与えられた面積すべてを使いたいときに */
   fill?: boolean
@@ -29,7 +36,7 @@ type Props = {
  * 「環境によって別のアバターが出る」状態になるのでやめた。
  * 3D を出せない場合は、レイアウトを崩さないための空の枠だけを置く。
  */
-export default function Avatar({ lv, variant = 0, vitality, days = 0, egg = false, fill = false }: Props) {
+export default function Avatar({ lv, variant = 0, vitality, days = 0, egg = false, fill = false, hatching = false }: Props) {
   const look = lookOf(days, vitality ?? 0, lv, variant)
   if (egg) {
     look.stage = 0
@@ -44,7 +51,7 @@ export default function Avatar({ lv, variant = 0, vitality, days = 0, egg = fals
   return (
     <WebGLBoundary fill={fill}>
       <Suspense fallback={<AvatarPlaceholder fill={fill} />}>
-        <AvatarCanvas look={look} animate={animate} fill={fill} />
+        <AvatarCanvas look={look} animate={animate} fill={fill} hatching={hatching} />
       </Suspense>
     </WebGLBoundary>
   )

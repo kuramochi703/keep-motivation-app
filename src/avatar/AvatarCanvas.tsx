@@ -10,6 +10,8 @@ type Props = {
   /** 枠いっぱいに広げる（ダッシュボードの背景ステージ用）。
       枠の大きさに合わせてカメラを引き、歩き回れる範囲もそのぶん広がる */
   fill?: boolean
+  /** たまごを割る。ステージ0のときだけ効く（→ Chick.tsx の Egg） */
+  hatching?: boolean
 }
 
 /**
@@ -32,7 +34,7 @@ const EDGE_PAD = 0.9
  * 背景は透明にしてある（`gl.alpha`）。カードの背景色や、活力に連動する
  * アクセント色（ui/useAccent.ts）がそのまま透けるようにするため。
  */
-export default function AvatarCanvas({ look, animate, fill = false }: Props) {
+export default function AvatarCanvas({ look, animate, fill = false, hatching }: Props) {
   return (
     <Canvas
       className={`avatar avatar-3d${fill ? ' avatar-fill' : ''}`}
@@ -66,10 +68,10 @@ export default function AvatarCanvas({ look, animate, fill = false }: Props) {
       {/* 逆光。輪郭をふちどって、背景から浮かせる */}
       <directionalLight position={[-3, 2, -2.5]} intensity={0.8} color="#BBD9FF" />
       {fill ? (
-        <StageFit>{(roam) => <Chick look={look} animate={animate} roam={roam} />}</StageFit>
+        <StageFit>{(roam) => <Chick look={look} animate={animate} roam={roam} hatching={hatching} />}</StageFit>
       ) : (
         <group position={[0, -0.85, 0]}>
-          <Chick look={look} animate={animate} roam={DEFAULT_ROAM} />
+          <Chick look={look} animate={animate} roam={DEFAULT_ROAM} hatching={hatching} />
         </group>
       )}
     </Canvas>
