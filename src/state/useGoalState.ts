@@ -7,8 +7,6 @@ import {
   parseKey,
   resetGoal,
   today,
-  type AvatarId,
-  type Frequency,
   type SetupInput,
   type State,
 } from './logic'
@@ -32,13 +30,6 @@ const SESSION_MINUTES = 5
 /** join の結果。1目標に1体だが、返りが配列になることがある */
 const oneOf = <T,>(v: T | T[] | null | undefined): T | null =>
   Array.isArray(v) ? v[0] ?? null : v ?? null
-
-/**
- * 旧 `SetupInput`（頻度・アバター3種）から新しい列への変換。
- * **目標設定画面を作り替える #6 で消す**、それまでの繋ぎ。
- */
-const cycleDaysOf = (f: Frequency) => (f === 'week1' ? 7 : f === 'week3' ? 3 : 1)
-const hueOf = (id: AvatarId) => [150, 205, 344][id] ?? 150
 
 export function useGoalState() {
   const [state, setState] = useState<State>(() => initialState())
@@ -116,16 +107,13 @@ export function useGoalState() {
       return false
     }
 
-    const cycleDays = cycleDaysOf(input.frequency)
-    const hue = hueOf(input.avatarId)
-
     const { data, error } = await supabase
       .from('goals')
       .insert({
         user_id: USER_ID,
         goal: input.goal,
         deadline: input.deadline,
-        cycle_days: cycleDays,
+        cycle_days: input.cycleDays,
         started_at: startedAt,
       })
       .select('id')
@@ -138,7 +126,7 @@ export function useGoalState() {
 
     const { error: avatarError } = await supabase
       .from('avatars')
-      .insert({ goal_id: data.id, name: input.name, hue })
+      .insert({ goal_id: data.id, name: input.name, hue: input.hue })
 
     if (avatarError) {
       console.error('アバター作成エラー:', avatarError)
@@ -151,9 +139,9 @@ export function useGoalState() {
       goalId: data.id,
       goal: input.goal,
       deadline: input.deadline,
-      cycleDays,
+      cycleDays: input.cycleDays,
       startedAt,
-      hue,
+      hue: input.hue,
       name: input.name,
       seenStage: 0,
       done: [],

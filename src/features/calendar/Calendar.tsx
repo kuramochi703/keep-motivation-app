@@ -1,5 +1,5 @@
 import { useState, type CSSProperties } from 'react'
-import { isDone, key, shift, streak, today, type State } from '../../state/logic'
+import { isDone, key, runOf, shift, today, type State } from '../../state/logic'
 import MonthlyCalendar from './MonthlyCalendar'
 import './calendar.css'
 
@@ -43,7 +43,7 @@ export default function Calendar({ state }: { state: State }) {
               </button>
             })}
           </div>
-          <div className="week-legend"><span><i className="legend-done">✓</i>達成した日</span><span><i className="legend-missed" />達成の記録なし</span><span><i className="legend-today" />今日</span><span className="legend-streak">●　連続 {streak(state)}日</span></div>
+          <div className="week-legend"><span><i className="legend-done">✓</i>達成した日</span><span><i className="legend-missed" />達成の記録なし</span><span><i className="legend-today" />今日</span><span className="legend-streak">●　連続 {runOf(state)}サイクル</span></div>
         </div>
         {selected && <p className="cal-detail" aria-live="polite"><time dateTime={selected}>{selected.replaceAll('-', '/')}</time><strong>{state.done.includes(selected) ? '達成済み' : selected > currentKey ? 'これからの日付です' : '達成の記録はありません'}</strong></p>}
       </>}

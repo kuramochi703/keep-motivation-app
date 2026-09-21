@@ -1,8 +1,19 @@
 import { useState } from 'react'
 import Avatar from '../avatar/Avatar'
-import { stageOf } from '../avatar/stage'
+import { evolutionOf, nextGoalOf } from '../avatar/stage'
 import { supabase } from '../lib/supabase'
-import { isDone, key, levelOf, today, type State } from '../state/logic'
+import {
+  currentCycle,
+  cycleLabel,
+  idleOf,
+  isDone,
+  key,
+  moodOf,
+  runOf,
+  startOf,
+  today,
+  type State,
+} from '../state/logic'
 import './debug-page.css'
 
 type Props = {
@@ -17,6 +28,10 @@ type Props = {
 }
 
 export default function DebugPage({ state, loaded, hasStarted, elapsed, running, onRecord, onNextDay, onNewGoal }: Props) {
+  // 保存値ではなく、記録から毎回その場で計算した値を出す
+  const stage = evolutionOf(state.done, state.cycleDays, startOf(state), key(today(state)))
+  const mood = stage.id === 0 ? null : moodOf(state)
+  const next = nextGoalOf(state.done, state.cycleDays, startOf(state), key(today(state)))
   const [snapshot, setSnapshot] = useState<{ data: unknown; at: string } | null>(null)
   // たまごの孵化。**モデルのクリップは1回きり**で、割れた姿のまま止まる。
   // もう一度見るには「閉じる」でアバターごと作り直す（key を変える）
@@ -29,9 +44,9 @@ export default function DebugPage({ state, loaded, hasStarted, elapsed, running,
     setBusy(true)
     setError('')
     try {
-      const { data, error } = await supabase.from('user_state')
-        .select('id, goal_id, vitality, avatar_id, name, done, best, goals(id, goal, deadline, frequency)')
-        .eq('id', 1).maybeSingle()
+      const { data, error } = await supabase.from('goals')
+        .select('id, goal, deadline, cycle_days, started_at, archived_at, avatars(name, hue, seen_stage), records(done_on, minutes)')
+        .is('archived_at', null).order('id', { ascending: false }).limit(1).maybeSingle()
       if (error) throw error
       setSnapshot({ data, at: new Date().toLocaleTimeString('ja-JP') })
     } catch (cause) {
@@ -53,18 +68,22 @@ export default function DebugPage({ state, loaded, hasStarted, elapsed, running,
       <section className="card debug-avatar" aria-label="現在のアバター">
         <div>
           <h2>{state.name || 'アバター'}</h2>
-          <p className="debug-note">活力 {state.vitality} / 100 · 達成 {state.done.length}日 · {stageOf(state.done.length).name}</p>
-          <p>{levelOf(state.vitality).say}</p>
+          <p className="debug-note">
+            {stage.name}（{stage.id}） · {mood?.name ?? '気分なし'} · 連続 {runOf(state)}サイクル · 放置 {idleOf(state) ?? '—'}
+          </p>
+          <p>{mood?.say ?? 'まだ殻の中。'}</p>
         </div>
         <div className="debug-avatar-preview">
-          <Avatar lv={levelOf(state.vitality).lv} variant={state.avatarId}
-            vitality={state.vitality} days={state.done.length} />
+          <Avatar stage={stage.id} hue={state.hue} mood={mood} />
         </div>
       </section>
 
       <section className="card" aria-label="現在の状態">
         <dl className="debug-summary">
-          <div><dt>活力</dt><dd>{state.vitality} <small>/ 100 · {levelOf(state.vitality).name}</small></dd></div>
+          <div><dt>気分</dt><dd>{mood?.name ?? '気分なし'} <small>· 彩度 {mood?.s ?? '—'}</small></dd></div>
+          <div><dt>ステージ</dt><dd>{stage.name} <small>· 見せ済み {state.seenStage}</small></dd></div>
+          <div><dt>つぎの条件</dt><dd>{next ? `${next.kind === 'run' ? '連続' : `直近${next.window}サイクルで`} ${next.have} / ${next.need}` : '最終ステージ'}</dd></div>
+          <div><dt>サイクル</dt><dd>{cycleLabel(state.cycleDays)} <small>· 今 {currentCycle(state)}番目 · 起点 {startOf(state)}</small></dd></div>
           <div><dt>目標ID</dt><dd>{state.goalId ?? '未設定'}</dd></div>
           <div><dt>アプリ内の日付</dt><dd>{key(today(state))}</dd></div>
           <div><dt>自動保存の条件</dt><dd>{loaded && hasStarted ? '有効' : '停止中'}</dd></div>
@@ -84,8 +103,7 @@ export default function DebugPage({ state, loaded, hasStarted, elapsed, running,
           </div>
         </div>
         <div className="debug-avatar-preview">
-          <Avatar key={eggKey} egg lv={levelOf(state.vitality).lv} variant={state.avatarId}
-            vitality={state.vitality} hatching={hatching} />
+          <Avatar key={eggKey} egg hue={state.hue} hatching={hatching} />
         </div>
       </section>
 
@@ -95,7 +113,7 @@ export default function DebugPage({ state, loaded, hasStarted, elapsed, running,
         <div className="tools">
           <button className="btn sec" disabled={!hasStarted || isDone(state, today(state))} onClick={onRecord}>今日を達成にする</button>
           <button className="btn sec" disabled={!hasStarted} onClick={onNextDay}>1日進める</button>
-          <button className="btn sec" onClick={onNewGoal}>目標を作り直す（活力50）</button>
+          <button className="btn sec" onClick={onNewGoal}>目標を作り直す（たまごから）</button>
         </div>
       </section>
 
@@ -109,7 +127,7 @@ export default function DebugPage({ state, loaded, hasStarted, elapsed, running,
         </section>
         <section className="card" aria-busy={busy}>
           <h2>DBの保存値</h2>
-          <p className="debug-note">user_state.id = 1 と関連する目標を取得します。アプリのStateは変更しません。</p>
+          <p className="debug-note">いまの目標（archived_at が NULL の最新1件）と、そのアバター・記録を取得します。アプリのStateは変更しません。</p>
           <button className="btn" disabled={busy} onClick={readDatabase}>{busy ? '取得中...' : 'DBの最新値を取得'}</button>
           {error && <p className="debug-error" role="alert">{error}</p>}
           <p className="debug-note" role="status">{snapshot ? `最終取得: ${snapshot.at}（取得時点の値）` : 'まだ取得していません。'}</p>

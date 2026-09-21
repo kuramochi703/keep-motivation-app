@@ -67,10 +67,36 @@ export type State = {
 export type SetupInput = {
   goal: string
   deadline: string
-  frequency: Frequency
-  avatarId: AvatarId
+  /** 何日に1回つけるか。**あとから変えられない**（EVOLUTION_PLAN 2章） */
+  cycleDays: number
+  /** アバターの色相 0〜359 */
+  hue: number
   name: string
 }
+
+/** 「n日に1回」の選択肢。**頻度が難易度設定として働く** */
+export const CYCLES: { days: number; label: string; note: string }[] = [
+  { days: 1, label: '毎日', note: '1日に1回つける' },
+  { days: 2, label: '2日に1回', note: '2日で1サイクル' },
+  { days: 3, label: '3日に1回', note: '3日で1サイクル' },
+  { days: 7, label: '週に1回', note: '7日で1サイクル' },
+]
+
+export const cycleLabel = (days: number) =>
+  CYCLES.find((c) => c.days === days)?.label ?? `${days}日に1回`
+
+/**
+ * 色の選択肢。**数字は色相そのもの**なので、増やしたければ足すだけでいい。
+ * 最初の3つは、アバター3種（もりお / だいち / こむぎ）だった頃の色。
+ */
+export const HUES: { hue: number; label: string }[] = [
+  { hue: 150, label: 'みどり' },
+  { hue: 205, label: 'あお' },
+  { hue: 344, label: 'ピンク' },
+  { hue: 38, label: 'きいろ' },
+  { hue: 275, label: 'むらさき' },
+  { hue: 12, label: 'オレンジ' },
+]
 
 export const initialState = (): State => ({
   goalId: null,
@@ -237,11 +263,18 @@ export const doneCycles = (done: string[], startedAt: string, cycleDays: number)
   return set
 }
 
-/** 達成の記録があるいちばん新しいサイクル。記録が無ければ null */
+/**
+ * 達成の記録があるいちばん新しいサイクル。記録が無ければ null。
+ *
+ * **今より先のサイクルは数えない。** 端末の時計がずれていたり、お試しの
+ * 「翌日にする」で進めたあとに読み直したりすると、未来の記録が残っていることが
+ * ある。数えてしまうと、ステージ（今のサイクルまでしか見ない）と連続数が食い違う。
+ */
 export const lastDoneCycle = (s: State): number | null => {
   const cycles = doneCycles(s.done, startOf(s), s.cycleDays)
+  const now = currentCycle(s)
   let last: number | null = null
-  for (const i of cycles) if (last === null || i > last) last = i
+  for (const i of cycles) if (i <= now && (last === null || i > last)) last = i
   return last
 }
 
