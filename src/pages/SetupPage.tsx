@@ -1,13 +1,12 @@
-import { useState } from 'react'
+import { useState, type CSSProperties } from 'react'
 import Avatar from '../avatar/Avatar'
 import {
-  AVATARS,
-  FREQUENCIES,
+  CYCLES,
+  HUES,
+  MOODS,
   addMonths,
   key,
   parseKey,
-  type AvatarId,
-  type Frequency,
   type SetupInput,
   type State,
 } from '../state/logic'
@@ -24,11 +23,14 @@ const PRESETS = [
   { n: 12, label: '1年後' },
 ]
 
+/** 見本のアバター。**気分は「いきいき」で固定**。色で選べるように一番のびのびした姿を出す */
+const SAMPLE_MOOD = MOODS.find((m) => m.id === 'lively') ?? null
+
 export default function SetupPage({ state, onStart }: Props) {
   const [draft, setDraft] = useState(state.goal)
   const [deadline, setDeadline] = useState(state.deadline ?? '')
-  const [frequency, setFrequency] = useState<Frequency>(state.frequency)
-  const [avatarId, setAvatarId] = useState<AvatarId>(state.avatarId)
+  const [cycleDays, setCycleDays] = useState(state.cycleDays || 1)
+  const [hue, setHue] = useState(state.hue)
   const [name, setName] = useState(state.name)
 
   const todayKey = key(new Date())
@@ -36,24 +38,12 @@ export default function SetupPage({ state, onStart }: Props) {
     ? Math.round((parseKey(deadline).getTime() - parseKey(todayKey).getTime()) / 86400000)
     : null
 
-  const ready = draft.trim().length > 0 && deadline.length > 0
-
-  const pickAvatar = (id: AvatarId) => {
-    setAvatarId(id)
-    setName((prev) =>
-      prev === '' || prev === AVATARS[avatarId].name ? AVATARS[id].name : prev
-    )
-  }
+  // 名前は必須。アバター3種が無くなったので、既定値の出どころが無い
+  const ready = draft.trim().length > 0 && deadline.length > 0 && name.trim().length > 0
 
   const submit = () => {
     if (!ready) return
-    onStart({
-      goal: draft.trim(),
-      deadline,
-      frequency,
-      avatarId,
-      name: name.trim() || AVATARS[avatarId].name,
-    })
+    onStart({ goal: draft.trim(), deadline, cycleDays, hue, name: name.trim() })
   }
 
   return (
@@ -61,7 +51,8 @@ export default function SetupPage({ state, onStart }: Props) {
       <header>
         <h1>がんばり畑</h1>
         <p>
-          やることを細かく決めなくていい。1日5分でも机に向かえば、その日は達成。手を止めた日数だけ、アバターは痩せていく。
+          やることを細かく決めなくていい。決めたペースで机に向かえば、そのサイクルは達成。
+          サイクルを続けるほどアバターは色づき、止まると色が抜けていく。
         </p>
       </header>
 
@@ -111,57 +102,68 @@ export default function SetupPage({ state, onStart }: Props) {
         </div>
 
         <div className="setup-block">
-          <label className="setup-label">取り組む頻度（任意）</label>
+          <label className="setup-label">
+            取り組むペース <em>必須</em>
+          </label>
           <div className="freqs">
-            {FREQUENCIES.map((f) => (
+            {CYCLES.map((c) => (
               <button
-                key={f.id}
+                key={c.days}
                 type="button"
-                className={`seg${frequency === f.id ? ' active' : ''}`}
-                aria-pressed={frequency === f.id}
-                onClick={() => setFrequency(f.id)}
+                className={`seg${cycleDays === c.days ? ' active' : ''}`}
+                aria-pressed={cycleDays === c.days}
+                onClick={() => setCycleDays(c.days)}
               >
-                {f.label}
+                {c.label}
               </button>
             ))}
           </div>
+          <p className="hint">
+            連続もお休みも「日」ではなく<b>サイクル</b>で数えます。
+            {cycleLabelNote(cycleDays)}
+            <br />
+            <b>あとから変えられません。</b>変えたくなったら、新しい目標をたまごから始めます。
+          </p>
         </div>
 
         <div className="setup-block">
           <label className="setup-label">
-            育てるアバター <em>必須</em>
+            アバターの色 <em>必須</em>
           </label>
-          <div className="avators">
-            {AVATARS.map((a) => (
-              <button
-                key={a.id}
-                type="button"
-                className={`avator-card${avatarId === a.id ? ' active' : ''}`}
-                aria-pressed={avatarId === a.id}
-                onClick={() => pickAvatar(a.id)}
-              >
-                {/* 3D は活力とステージで見た目が決まる。選ぶ時の見本なので、
-                    初期のひよこではなく育った姿を固定値で見せる。
-                    **活力は高めにする。** 低いと色が灰色に寄って、どの子も
-                    くすんで見え、色で選べなくなる */}
-                <Avatar lv={4} variant={a.id} vitality={92} days={7} />
-                <b>{a.name}</b>
-                <span>{a.desc}</span>
-              </button>
-            ))}
+          {/* 見本の3D は1体だけ。色は CSS の丸で選ぶ。
+              選択肢ごとに WebGL キャンバスを並べると、端末によっては
+              それだけで描画が重くなる */}
+          <div className="avatar-picker">
+            <div className="avatar-sample">
+              <Avatar stage={2} hue={hue} mood={SAMPLE_MOOD} />
+            </div>
+            <div className="hues" role="group" aria-label="アバターの色">
+              {HUES.map((h) => (
+                <button
+                  key={h.hue}
+                  type="button"
+                  className={`hue-dot${hue === h.hue ? ' active' : ''}`}
+                  style={{ '--dot': `hsl(${h.hue}, 56%, 70%)` } as CSSProperties}
+                  aria-pressed={hue === h.hue}
+                  aria-label={h.label}
+                  title={h.label}
+                  onClick={() => setHue(h.hue)}
+                />
+              ))}
+            </div>
           </div>
         </div>
 
         <div className="setup-block">
           <label className="setup-label" htmlFor="name-input">
-            アバターの名前（任意）
+            アバターの名前 <em>必須</em>
           </label>
           <input
             className="setup-input"
             id="name-input"
             type="text"
             maxLength={12}
-            placeholder={AVATARS[avatarId].name}
+            placeholder="例: もりお"
             value={name}
             onChange={(e) => setName(e.target.value)}
           />
@@ -174,3 +176,6 @@ export default function SetupPage({ state, onStart }: Props) {
     </div>
   )
 }
+
+const cycleLabelNote = (days: number) =>
+  days === 1 ? '1日が1サイクルです。' : `${days}日が1サイクルです。`
