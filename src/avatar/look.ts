@@ -100,9 +100,10 @@ export function lookOf(stage: number, hue: number, mood: Mood | null): Look {
 
   // **落ち込みは彩度で表し、明度は下げない**（下限 58）。暗く沈めると汚く
   // 見えるうえ、前かがみ（droop）と汗で十分しんどそうに見える
-  const sat = mood?.s ?? EGG_S
-  const lum = mood?.l ?? EGG_L
-  const liveliness = mood?.liveliness ?? 0
+  // **たまごは気分を持たない。** 気分が渡ってきても色は固定値で塗る
+  const sat = isEgg ? EGG_S : mood?.s ?? EGG_S
+  const lum = isEgg ? EGG_L : mood?.l ?? EGG_L
+  const liveliness = isEgg ? 0 : mood?.liveliness ?? 0
 
   return {
     stage: isEgg ? 0 : stage,
@@ -123,7 +124,7 @@ export function lookOf(stage: number, hue: number, mood: Mood | null): Look {
     // くちばしと足。ここだけ彩度が高いと浮くので、杏子色くらいで止める
     beakColor: hsl(30, 24 + sat * 0.5, 66),
 
-    eye: mood ? EYE_OF[mood.id] : 'open',
+    eye: !isEgg && mood ? EYE_OF[mood.id] : 'open',
     // 元気なほど背筋が伸びる。いきいき（0.9）以上で完全にまっすぐ
     droop: unit((0.6 - liveliness) / 0.6),
     liveliness,
@@ -134,7 +135,7 @@ export function lookOf(stage: number, hue: number, mood: Mood | null): Look {
     crestScale: stage >= 2 ? 1 : 0.62,
     scarf: stage >= 3,
     crown: stage >= 3,
-    sweat: mood?.sweat ?? false,
-    sparkle: mood?.sparkle ?? false,
+    sweat: !isEgg && (mood?.sweat ?? false),
+    sparkle: !isEgg && (mood?.sparkle ?? false),
   }
 }

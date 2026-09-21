@@ -95,6 +95,13 @@ describe('runOf() / idleOf()', () => {
     expect(runOf(s)).toBe(3)
   })
 
+  it('今より先のサイクルの記録は数えない', () => {
+    // 「翌日にする」で進めたあとに読み直すと、未来の日付の記録が残ることがある
+    const s: State = { ...mk({ cycleDays: 1, startedDaysAgo: 1, doneDaysAgo: [1, 0] }), done: [ago(1), ago(0), ago(-1)] }
+    expect(idleOf(s)).toBe(0)
+    expect(runOf(s)).toBe(2)
+  })
+
   it('記録が無ければ idle は null', () => {
     expect(idleOf(mk({ cycleDays: 1, startedDaysAgo: 0, doneDaysAgo: [] }))).toBeNull()
   })
