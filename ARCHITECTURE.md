@@ -72,13 +72,13 @@ src/
 │
 ├── app/                        画面の骨組み
 │   ├── App.tsx                   どの画面を出すか決める。状態は持たない
-│   └── Sidebar.tsx               メニュー（トップ/目標一覧/目標設定/ダッシュボード）＋ 表示名・ログアウト
+│   └── Sidebar.tsx               メニュー（トップ/目標一覧/ダッシュボード）＋ 表示名・ログアウト
 │
 ├── pages/                      画面（1画面 = 1ファイル）
 │   ├── LoginPage.tsx             ログイン（メールアドレス＋パスワード）
 │   ├── TopPage.tsx               トップ
 │   ├── GoalsPage.tsx             目標一覧（どの目標を開くか選ぶ）
-│   ├── SetupPage.tsx             目標設定
+│   ├── SetupPage.tsx             目標設定（新しい目標を作る。メニューには出さない）
 │   ├── MainPage.tsx              ダッシュボード
 │   ├── DebugPage.tsx             デバッグ（開発時だけ。`/debugPage`）
 │   ├── main-page.css
