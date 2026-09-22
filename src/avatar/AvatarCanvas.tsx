@@ -13,6 +13,8 @@ type Props = {
   fill?: boolean
   /** たまごを割る。ステージ0のときだけ効く（→ Chick.tsx の Egg） */
   hatching?: boolean
+  /** ひよこを叩けるようにする（→ Chick.tsx の TapSparkle） */
+  interactive?: boolean
 }
 
 /**
@@ -35,10 +37,12 @@ const EDGE_PAD = 0.9
  * 背景は透明にしてある（`gl.alpha`）。カードの背景色や、気分に連動する
  * アクセント色（ui/useAccent.ts）がそのまま透けるようにするため。
  */
-export default function AvatarCanvas({ look, animate, fill = false, hatching }: Props) {
+export default function AvatarCanvas({ look, animate, fill = false, hatching, interactive }: Props) {
   return (
     <Canvas
-      className={`avatar avatar-3d${fill ? ' avatar-fill' : ''}`}
+      // **枠いっぱいのときは CSS が pointer-events を切っている**（avatar.css）。
+      // 触れるようにするなら戻さないと、クリックがキャンバスに届かない
+      className={`avatar avatar-3d${fill ? ' avatar-fill' : ''}${interactive ? ' avatar-interactive' : ''}`}
       // 枠いっぱいのときだけ絶対位置に。three.js の入れ物は height:100% の
       // インライン指定で来るので、CSS からは position を上書きできない。
       // 絶対位置にしておかないと高さが伝わらず、既定の 150px に潰れる
@@ -73,10 +77,14 @@ export default function AvatarCanvas({ look, animate, fill = false, hatching }: 
       {/* 逆光。輪郭をふちどって、背景から浮かせる */}
       <directionalLight position={[-3, 2, -2.5]} intensity={0.8} color="#BBD9FF" />
       {fill ? (
-        <StageFit>{(roam) => <Chick look={look} animate={animate} roam={roam} hatching={hatching} />}</StageFit>
+        <StageFit>
+          {(roam) => (
+            <Chick look={look} animate={animate} roam={roam} hatching={hatching} interactive={interactive} />
+          )}
+        </StageFit>
       ) : (
         <group position={[0, -0.85, 0]}>
-          <Chick look={look} animate={animate} roam={DEFAULT_ROAM} hatching={hatching} />
+          <Chick look={look} animate={animate} roam={DEFAULT_ROAM} hatching={hatching} interactive={interactive} />
         </group>
       )}
     </Canvas>

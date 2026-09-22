@@ -178,6 +178,7 @@ export default function MainPage({
                 egg={hatching}
                 hatching={hatching}
                 fill
+                interactive
               />
             </div>
 
