@@ -80,6 +80,7 @@ const EGG_S = 24
 const EGG_L = 88
 
 const EYE_OF: Record<MoodId, EyeShape> = {
+  sink: 'closed',
   down: 'closed',
   low: 'half',
   ok: 'open',
