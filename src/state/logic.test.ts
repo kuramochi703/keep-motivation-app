@@ -154,6 +154,15 @@ describe('moodOf()', () => {
     expect(mood({ cycleDays: 1, startedDaysAgo: 4, doneDaysAgo: [4, 3] })).toBe('down')
   })
 
+  it('4サイクル放置から しずみこみ', () => {
+    expect(mood({ cycleDays: 1, startedDaysAgo: 5, doneDaysAgo: [5, 4] })).toBe('sink')
+    expect(mood({ cycleDays: 1, startedDaysAgo: 9, doneDaysAgo: [9, 8] })).toBe('sink')
+  })
+
+  it('サイクルが長くても段は同じ（4サイクル＝12日 放置）', () => {
+    expect(mood({ cycleDays: 3, startedDaysAgo: 15, doneDaysAgo: [15, 12] })).toBe('sink')
+  })
+
   it('落ち込んでも明度は 58 より下げない', () => {
     for (const m of MOODS) expect(m.l).toBeGreaterThanOrEqual(58)
   })

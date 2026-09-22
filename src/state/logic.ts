@@ -230,9 +230,12 @@ export const bestRun = (s: State): number => {
  * 気分はステージ1以上のもの。卵に気分は無い（記録が無ければ null）。
  * **落ち込みは彩度で表し、明度は下げない**（下限 58）。暗く沈めると汚く
  * 見えるし、前かがみ（droop）と汗で十分沈んで見える。
+ *
+ * **落ち込みは2段ある**（3サイクル放置と4サイクル放置）。2段の差は彩度では
+ * ほとんど読めないので、**姿勢のクリップで見せる**（avatar/look.ts の `SIT_OF`）。
  * ------------------------------------------------------------------ */
 
-export type MoodId = 'down' | 'low' | 'ok' | 'good' | 'lively' | 'shine'
+export type MoodId = 'sink' | 'down' | 'low' | 'ok' | 'good' | 'lively' | 'shine'
 
 export type Mood = {
   id: MoodId
@@ -255,6 +258,19 @@ export type Mood = {
  * 数字を動かしたいときはこの表だけを触ればいい。
  */
 export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] = [
+  {
+    id: 'sink',
+    name: 'しずみこみ',
+    say: 'なにも かんがえられない…',
+    // 彩度をここまで落とすと色味がほとんど消える。**明度は下げない**ので
+    // 汚くはならず、沈んで見えるぶんは姿勢（Sink クリップ）が受け持つ
+    s: 4,
+    l: 58,
+    liveliness: 0,
+    sweat: true,
+    sparkle: false,
+    hit: (_run, idle) => idle >= 4,
+  },
   {
     id: 'down',
     name: 'ぐったり',
