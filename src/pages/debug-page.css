@@ -13,4 +13,15 @@
 .debug-columns > .card { min-width: 0; }
 .debug-page pre { padding: 16px; border-radius: 12px; background: #14231f; color: #e1f3e9; font-size: 12px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 540px; overflow: auto; }
 .debug-error { color: var(--danger); overflow-wrap: anywhere; }
+.debug-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
+.debug-row label { color: var(--muted); font-size: 13px; }
+.debug-row input[type="date"] { padding: 8px 10px; border: 1px solid #cfe0d8; border-radius: 10px; font: inherit; }
+/* 1行＝records の1行。数が増えるので、はみ出したらここだけスクロールさせる */
+.debug-records { list-style: none; margin: 12px 0 0; padding: 0; max-height: 300px; overflow: auto; }
+.debug-records li { display: flex; align-items: center; gap: 12px; padding: 6px 4px; border-top: 1px solid #e7efeb; }
+.debug-records li.now { background: #f2f9f5; }
+.debug-record-day { font-variant-numeric: tabular-nums; font-weight: 700; }
+.debug-records li > .btn { margin-left: auto; }
+/* 取り消せない操作。枠の色だけで区別する（ボタンの形は変えない） */
+.debug-danger { border: 1px solid var(--danger); }
 @media (max-width: 760px) { .debug-columns, .debug-summary { grid-template-columns: 1fr; } }
