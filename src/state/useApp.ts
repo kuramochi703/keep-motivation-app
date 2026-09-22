@@ -1,5 +1,6 @@
 import type { SetupInput } from './logic'
 import { useEffect } from 'react'
+import { useAuth } from './useAuth'
 import { useGoalState } from './useGoalState'
 import { isDebugPath, useScreen, type Screen } from './useScreen'
 import { useTimer } from './useTimer'
@@ -7,12 +8,15 @@ import { useTimer } from './useTimer'
 export type { Screen }
 
 /**
- * 画面遷移（useScreen）・タイマー（useTimer）・目標の状態と保存（useGoalState）を
- * 1つのAPIにまとめる合成層。3つの間をまたぐ操作（達成でタイマーを止める、など）はここで配線する。
+ * ログイン状態（useAuth）・画面遷移（useScreen）・タイマー（useTimer）・
+ * 目標の状態と保存（useGoalState）を1つのAPIにまとめる合成層。
+ * 4つの間をまたぐ操作（達成でタイマーを止める、ログアウトで全部戻す、など）はここで配線する。
  */
 export function useApp() {
   const { screen, setScreen } = useScreen()
-  const goal = useGoalState()
+  const auth = useAuth()
+  // useGoalState が知るのは uuid 1つだけ。誰かはここで渡す
+  const goal = useGoalState(auth.user?.id ?? null)
   const timer = useTimer(goal.markSessionDone)
 
   useEffect(() => {
@@ -54,7 +58,18 @@ export function useApp() {
     setScreen('setup')
   }
 
+  /** ログアウト。目標の状態は user が null になった useGoalState 側で戻る */
+  const signOut = async () => {
+    timer.reset()
+    setScreen('top')
+    await auth.signOut()
+  }
+
   return {
+    user: auth.user,
+    ready: auth.ready,
+    signIn: auth.signIn,
+    signOut,
     state: goal.state,
     loaded: goal.loaded,
     hasStarted: goal.hasStarted,

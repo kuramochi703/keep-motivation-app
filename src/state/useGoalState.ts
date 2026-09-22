@@ -19,10 +19,11 @@ import {
  * 「何日つけたか」と「進化の演出をどこまで見せたか」だけで、連続サイクル数も
  * 気分もステージも画面を描くたびにその場で計算する。丸ごと UPSERT はやめて、
  * 変わったものだけを INSERT / UPDATE する。
+ *
+ * 持ち主が誰かは知らない。`userId`（`auth.users.id` の uuid）を1つ受け取るだけで、
+ * ログインの面倒は useAuth が見る（AUTH_PLAN 4章）。
+ * RLS が同じ条件で絞るので、`.eq('user_id', ...)` はもう防御ではなく「最新1件」の絞り込み。
  */
-
-/** 認証を入れるまでは1行目のユーザーで固定（ARCHITECTURE 4章） */
-const USER_ID = 1
 
 /** 1セッションの長さ。`records.minutes` に入れる */
 const SESSION_MINUTES = 5
@@ -31,7 +32,7 @@ const SESSION_MINUTES = 5
 const oneOf = <T,>(v: T | T[] | null | undefined): T | null =>
   Array.isArray(v) ? v[0] ?? null : v ?? null
 
-export function useGoalState() {
+export function useGoalState(userId: string | null) {
   const [state, setState] = useState<State>(() => initialState())
   const [hasStarted, setHasStarted] = useState(false)
   const [loaded, setLoaded] = useState(false)
@@ -42,15 +43,27 @@ export function useGoalState() {
 
   // いまの目標（archived_at が NULL の最新1件）と、その記録を読む
   useEffect(() => {
+    // 未ログインの間は何も読まない。ログアウトすると初期状態に戻る
+    if (!userId) {
+      setState(initialState())
+      setHasStarted(false)
+      setLoaded(false)
+      return
+    }
+
+    let alive = true
+
     async function loadGoal() {
       const { data, error } = await supabase
         .from('goals')
         .select('id, goal, deadline, cycle_days, started_at, avatars(name, hue, seen_stage)')
-        .eq('user_id', USER_ID)
+        .eq('user_id', userId)
         .is('archived_at', null)
         .order('id', { ascending: false })
         .limit(1)
         .maybeSingle()
+
+      if (!alive) return
 
       if (error) {
         console.error('Supabase読み込みエラー:', error)
@@ -67,6 +80,7 @@ export function useGoalState() {
           .order('done_on')
 
         if (recordsError) console.error('記録の読み込みエラー:', recordsError)
+        if (!alive) return
 
         setState({
           ...initialState(),
@@ -87,19 +101,24 @@ export function useGoalState() {
     }
 
     loadGoal()
-  }, [])
+
+    return () => {
+      alive = false
+    }
+  }, [userId])
 
   const markStarted = () => setHasStarted(true)
 
   /** 目標を作る。`goals` → `avatars` の2回。片方だけ成功する余地は残っている */
   const start = async (input: SetupInput) => {
+    if (!userId) return false
     const startedAt = key(new Date())
 
     // 前の目標はしまっておく。記録もアバターも消さない
     const { error: archiveError } = await supabase
       .from('goals')
       .update({ archived_at: new Date().toISOString() })
-      .eq('user_id', USER_ID)
+      .eq('user_id', userId)
       .is('archived_at', null)
 
     if (archiveError) {
@@ -110,7 +129,7 @@ export function useGoalState() {
     const { data, error } = await supabase
       .from('goals')
       .insert({
-        user_id: USER_ID,
+        user_id: userId,
         goal: input.goal,
         deadline: input.deadline,
         cycle_days: input.cycleDays,
