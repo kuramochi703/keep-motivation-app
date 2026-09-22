@@ -24,9 +24,8 @@ import {
  * ログインの面倒は useAuth が見る（AUTH_PLAN 4章）。
  * RLS が同じ条件で絞るので、`.eq('user_id', ...)` はもう防御ではなく「最新1件」の絞り込み。
  *
- * **消す操作はここに置かない。** 本番の画面からは記録も目標も消えない
- * （前の目標は archive するだけ）。消せるのはデバッグ画面だけで、実体は
- * `state/debug.ts` にある。
+ * **消す操作はここに置かない。** 本番の画面からは記録も目標も消えない（行は増える
+ * だけ）。消せるのはデバッグ画面だけで、実体は `state/debug.ts` にある。
  */
 
 /** 1セッションの長さ。`records.minutes` に入れる */
@@ -43,13 +42,19 @@ const oneOf = <T,>(v: T | T[] | null | undefined): T | null =>
  */
 type Loaded = { ok: true; state: State | null } | { ok: false }
 
-/** いまの目標（archived_at が NULL の最新1件）と、その記録を読む */
+/**
+ * いまの目標と、その記録を読む。
+ *
+ * **「いまの目標」＝ その人の `goals` のうち `id` がいちばん大きい1件。**
+ * 以前は `archived_at` に時刻を入れて「終わった印」を付けていたが、
+ * 目標は作った順に並ぶので、最新が現役だと決めれば印は要らない。
+ * 過去の目標は行として残るので、記録もアバターも消えない。
+ */
 async function fetchGoal(userId: string): Promise<Loaded> {
   const { data, error } = await supabase
     .from('goals')
     .select('id, goal, deadline, cycle_days, started_at, avatars(name, hue, seen_stage)')
     .eq('user_id', userId)
-    .is('archived_at', null)
     .order('id', { ascending: false })
     .limit(1)
     .maybeSingle()
@@ -144,22 +149,15 @@ export function useGoalState(userId: string | null) {
 
   const markStarted = () => setHasStarted(true)
 
-  /** 目標を作る。`goals` → `avatars` の2回。片方だけ成功する余地は残っている */
+  /**
+   * 目標を作る。`goals` → `avatars` の2回。片方だけ成功する余地は残っている。
+   *
+   * **前の目標には何もしません。** 行を足すだけで、新しい方が `id` の大きい
+   * 1件になるので自動的に現役が入れ替わります。記録もアバターもそのまま残ります。
+   */
   const start = async (input: SetupInput) => {
     if (!userId) return false
     const startedAt = key(new Date())
-
-    // 前の目標はしまっておく。記録もアバターも消さない
-    const { error: archiveError } = await supabase
-      .from('goals')
-      .update({ archived_at: new Date().toISOString() })
-      .eq('user_id', userId)
-      .is('archived_at', null)
-
-    if (archiveError) {
-      console.error('前の目標のアーカイブに失敗:', archiveError)
-      return false
-    }
 
     const { data, error } = await supabase
       .from('goals')

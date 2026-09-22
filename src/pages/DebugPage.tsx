@@ -91,8 +91,8 @@ export default function DebugPage({
     setError('')
     try {
       const { data, error } = await supabase.from('goals')
-        .select('id, goal, deadline, cycle_days, started_at, archived_at, avatars(name, hue, seen_stage), records(done_on, minutes)')
-        .is('archived_at', null).order('id', { ascending: false }).limit(1).maybeSingle()
+        .select('id, goal, deadline, cycle_days, started_at, avatars(name, hue, seen_stage), records(done_on, minutes)')
+        .order('id', { ascending: false }).limit(1).maybeSingle()
       if (error) throw error
       setSnapshot({ data, at: new Date().toLocaleTimeString('ja-JP') })
     } catch (cause) {
@@ -290,13 +290,13 @@ export default function DebugPage({
       <section className="card debug-danger" aria-label="目標を消す" aria-busy={working}>
         <h2>目標を消す</h2>
         {/*
-          本番の「新しい目標をはじめる」は archive するだけで行を消さない。
+          本番の「新しい目標をはじめる」は行を足すだけで、前の目標を消さない。
           デバッグしていると goals が積み上がるので、ここだけが消せる。
           子（records / avatars）から先に消す理由は state/debug.ts を参照。
         */}
         <p className="debug-note">
           <b>取り消せません。</b>記録・アバターごとDBから消えます。本番の「新しい目標をはじめる」は
-          しまう（archive）だけなので、行が消えるのはここだけです。
+          新しい行を足すだけなので、行が消えるのはここだけです。
         </p>
         <div className="tools">
           <button
@@ -314,12 +314,12 @@ export default function DebugPage({
             className="btn ghost"
             disabled={working}
             onClick={() => {
-              if (window.confirm('この人の目標を、しまってあるもの（archive済み）も含めて全部消します。取り消せません。')) {
+              if (window.confirm('この人の目標を、過去のものも含めて全部消します。取り消せません。')) {
                 run(() => deleteAllGoals(userId))
               }
             }}
           >
-            全部の目標を消す（archive済みも）
+            過去のぶんも含めて全部消す
           </button>
           <button className="btn sec" disabled={working} onClick={onNewGoal}>
             目標を作り直す（たまごから）
@@ -337,7 +337,7 @@ export default function DebugPage({
         </section>
         <section className="card" aria-busy={busy}>
           <h2>DBの保存値</h2>
-          <p className="debug-note">いまの目標（archived_at が NULL の最新1件）と、そのアバター・記録を取得します。アプリのStateは変更しません。</p>
+          <p className="debug-note">いまの目標（<code>id</code> がいちばん大きい1件）と、そのアバター・記録を取得します。アプリのStateは変更しません。</p>
           <button className="btn" disabled={busy} onClick={readDatabase}>{busy ? '取得中...' : 'DBの最新値を取得'}</button>
           {error && <p className="debug-error" role="alert">{error}</p>}
           <p className="debug-note" role="status">{snapshot ? `最終取得: ${snapshot.at}（取得時点の値）` : 'まだ取得していません。'}</p>
