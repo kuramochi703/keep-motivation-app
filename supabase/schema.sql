@@ -12,13 +12,16 @@
 -- パスワードのハッシュは auth.users.encrypted_password にあり、照合は Supabase 内で完結する。
 -- アカウントは管理画面の Authentication → Users で手作業で配る（登録画面は無い）。
 
--- **いまの目標は「id がいちばん大きい1件」。** 印を付ける列は置かない。
--- 目標は作った順に id が増えるので、最新が現役だと決めれば状態を持たずに済む。
--- 以前は archived_at に時刻を入れて「終わった印」にしていたが、
---   * 「NULL は1件だけ」を DB が保証できず（部分ユニークが要る）
---   * 印を付ける UPDATE と INSERT がトランザクションでないので、途中で失敗すると
---     現役が0件にも2件にもなりえた
--- 最新1件と決めれば、どちらの問題も起こりようがない。
+-- **目標は同時に何本あってもいい。** 現役を示す列は置かない。
+-- 目標ごとにアバター（avatars）と記録（records）がぶら下がるので、行が並んでいれば
+-- それだけで並行になる。**どれを開いているかは DB の関心事ではない**ので、
+-- 画面側（useGoalState の currentId）が持ち、目標一覧で選び替える。
+--
+-- **現役を列で持たないのは意図的。** 印を1本だけ立てる形にすると、
+--   * 「立っている印は1件だけ」を DB が保証できない（部分ユニークが要る）
+--   * 印を移す UPDATE と INSERT がトランザクションでないので、途中で失敗すると
+--     現役が0件にも2件にもなりえる
+-- 並行に持てるなら、そもそも現役を1本に決める必要がない。
 CREATE TABLE goals (
   id          bigserial PRIMARY KEY,
   user_id     uuid   NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -49,12 +52,9 @@ CREATE TABLE records (
   UNIQUE (goal_id, done_on)
 );
 
+-- 目標一覧は「自分の目標を新しい順に全部」なので、この2列でそのまま引ける
 CREATE INDEX goals_current_idx ON goals (user_id, id DESC);
 CREATE INDEX records_goal_idx  ON records (goal_id, done_on);
-
--- 既に archived_at のある DB を使っている場合は、これを1回流せば揃う。
--- アプリはもうこの列を読み書きしないので、残っていても動作には影響しない。
---   ALTER TABLE goals DROP COLUMN archived_at;
 
 -- RLS（ARCHITECTURE 4章）
 --

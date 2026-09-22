@@ -72,15 +72,17 @@ src/
 │
 ├── app/                        画面の骨組み
 │   ├── App.tsx                   どの画面を出すか決める。状態は持たない
-│   └── Sidebar.tsx               メニュー（トップ/目標設定/ダッシュボード）＋ 表示名・ログアウト
+│   └── Sidebar.tsx               メニュー（トップ/目標一覧/目標設定/ダッシュボード）＋ 表示名・ログアウト
 │
 ├── pages/                      画面（1画面 = 1ファイル）
 │   ├── LoginPage.tsx             ログイン（メールアドレス＋パスワード）
 │   ├── TopPage.tsx               トップ
+│   ├── GoalsPage.tsx             目標一覧（どの目標を開くか選ぶ）
 │   ├── SetupPage.tsx             目標設定
 │   ├── MainPage.tsx              ダッシュボード
 │   ├── DebugPage.tsx             デバッグ（開発時だけ。`/debugPage`）
 │   ├── main-page.css
+│   ├── goals-page.css
 │   ├── debug-page.css
 │   └── onboarding-page.css
 │
@@ -129,6 +131,7 @@ flowchart TB
             direction LR
             login["LoginPage.tsx"]
             top["TopPage.tsx"]
+            goalsp["GoalsPage.tsx"]
             setup["SetupPage.tsx"]
             main["MainPage.tsx"]
         end
@@ -158,9 +161,11 @@ flowchart TB
     app --> sidebar
     app -->|"未ログインなら"| login
     app --> top
+    app --> goalsp
     app --> setup
     app --> main
 
+    goalsp -->|"selectGoal(id) で開く目標を替える"| useapp
     setup -->|"start() で目標を確定"| useapp
     main -->|"タイマー操作・達成記録"| useapp
     useapp --> useauth
@@ -181,6 +186,7 @@ flowchart TB
 
     login --> ui
     top --> ui
+    goalsp --> ui
     setup --> ui
     main --> ui
     sidebar --> ui
@@ -189,7 +195,7 @@ flowchart TB
     classDef dbx fill:#438dd5,stroke:#2e6295,color:#ffffff
     classDef boundary fill:none,stroke:#444444,stroke-dasharray:5 5,color:#444444
 
-    class app,sidebar,login,top,setup,main,useapp,useauth,usescreen,usetimer,usegoal,logic,avatar,calendar,ui,client component
+    class app,sidebar,login,top,goalsp,setup,main,useapp,useauth,usescreen,usetimer,usegoal,logic,avatar,calendar,ui,client component
     class db dbx
     class spa,shell,pages,parts,core boundary
 ```
@@ -304,16 +310,16 @@ flowchart LR
 | `cycle_days` | `int` | サイクル長。「n日に1回」の n |
 | `started_at` | `date` | サイクルの起点（目標を作った日） |
 
-**いまの目標は「`id` がいちばん大きい1件」です。** 終わった印を付ける列は持ちません。
-目標は作った順に `id` が増えるので、最新が現役だと決めれば状態を持たずに済みます。
-過去の目標は行として残り、記録もアバターも消えません。
+**目標は同時に何本あってもかまいません。** 現役を示す列は持ちません。
+目標ごとにアバターと記録がぶら下がるので、行が並んでいればそれだけで並行になります。
+**どれを開いているかは DB の関心事ではない**ので、画面側（`useGoalState` の `currentId`）が持ち、
+目標一覧（`pages/GoalsPage.tsx`）で選び替えます。切り替えても記録もアバターも消えません。
 
-> 以前は `archived_at` に時刻を入れて論理削除（アーカイブ）していました。やめた理由は2つです。
-> **①「NULL は1件だけ」を DB が保証できない**（部分ユニークインデックスが別途要る）。
-> **② 印を付ける UPDATE と新しい目標の INSERT がトランザクションではない**ので、
-> 途中で失敗すると現役が0件にも2件にもなりえました。最新1件と決めれば、どちらも起こりません。
-> 既存 DB には `ALTER TABLE goals DROP COLUMN archived_at;` が要ります
-> （アプリはもう読み書きしないので、残っていても動きます）。
+> **「現役の目標」を列で持たないのは意図的です。** 印を1本だけ立てる形にすると、
+> 「立っている印は1件だけ」を DB が保証できず（部分ユニークインデックスが別途要る）、
+> 印を移す UPDATE と新しい目標の INSERT もトランザクションではないので、
+> 途中で失敗すると現役が0件にも2件にもなりえます。
+> 並行に持てるなら、そもそも現役を1本に決める必要がありません。
 
 ### `avatars` — 育てる1体（目標と 1:1）
 
@@ -400,7 +406,7 @@ anon key はブラウザに配られるので、**誰が何を読めるかを決
 `WITH CHECK` が書こうとしている行の条件で、他人の `goal_id` を書き込まれないよう両方に同じ条件を置いています。
 
 JWT は `supabase.from(...)` に自動で付くので、アプリ側に `Authorization` を書く場所はありません。
-`useGoalState.ts` に残っている `.eq('user_id', ...)` はもう防御ではなく「最新1件」の絞り込みです。
+`useGoalState.ts` に残っている `.eq('user_id', ...)` はもう防御ではなく、自分の目標だけを引く絞り込みです。
 
 ### DBに保存していないもの
 
@@ -426,9 +432,12 @@ JWT は `supabase.from(...)` に自動で付くので、アプリ側に `Authori
   未解決の宿題です
 - 目標作成は `goals` → `avatars` の2回の INSERT で、**トランザクションではありません。**
   片方だけ成功する余地が残っています（失敗時は Console にエラー）。
-  `goals` だけ入ると、アバターの無い目標がそのまま現役になります
-- **目標は増える一方で、古いものを片付ける導線がありません。** 作り直すたびに `goals` が
-  1行ずつ積まれ、本番の画面からは見えないまま残ります（見えるのはデバッグ画面だけ）
+  `goals` だけ入ると、アバターの無い目標が目標一覧に並びます
+- **目標は増える一方で、古いものを片付ける導線がありません。** 作るたびに `goals` が
+  1行ずつ積まれ、**全部が目標一覧に並び続けます**。並行に持てるようになったぶん、
+  終わった目標を畳む導線（並べ替え・非表示）が要るのはこれからの宿題です
+- **どの目標を開いているかは端末ごとです。** `localStorage` に置いているので、
+  別の端末やプライベートウィンドウで開くと、いちばん新しい目標から始まります
 
 **コードまわり**
 

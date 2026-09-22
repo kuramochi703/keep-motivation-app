@@ -1,3 +1,4 @@
+import GoalsPage from '../pages/GoalsPage'
 import LoginPage from '../pages/LoginPage'
 import MainPage from '../pages/MainPage'
 import SetupPage from '../pages/SetupPage'
@@ -12,15 +13,16 @@ const DebugPage = import.meta.env.DEV
 
 const NAV: NavItem[] = [
   { id: 'top', label: 'トップ' },
+  { id: 'goals', label: '目標一覧' },
   { id: 'setup', label: '目標設定' },
   { id: 'main', label: 'ダッシュボード' },
 ]
 
 export default function App() {
-  const { user, ready, signIn, signOut, state, loaded, hasStarted, screen, go, start, reset, extendDeadline, markStageSeen, newGoal, elapsed, running, toggleTimer, recordOnly, nextDay, setDayOffset, reload } = useApp()
+  const { user, ready, signIn, signOut, state, goals, currentGoalId, loaded, hasStarted, screen, go, start, selectGoal, reset, extendDeadline, markStageSeen, newGoal, elapsed, running, toggleTimer, recordOnly, nextDay, setDayOffset, reload } = useApp()
 
   const select = (id: string) => {
-    if (id === 'top' || id === 'setup' || id === 'main') go(id)
+    if (id === 'top' || id === 'goals' || id === 'setup' || id === 'main') go(id)
   }
 
   // ゲートは3段。セッションの確認 → ログイン → 目標の読み込み（AUTH_PLAN 4章）
@@ -54,6 +56,13 @@ export default function App() {
           </Suspense>
         ) : screen === 'top' ? (
           <TopPage onStart={() => go('setup')} />
+        ) : screen === 'goals' ? (
+          <GoalsPage
+            goals={goals}
+            currentGoalId={currentGoalId}
+            onSelect={selectGoal}
+            onNewGoal={newGoal}
+          />
         ) : screen === 'setup' ? (
           <SetupPage state={state} onStart={start} />
         ) : (
