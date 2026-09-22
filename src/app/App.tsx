@@ -78,8 +78,8 @@ export default function App() {
             onToggleTimer={toggleTimer}
             onRecordOnly={recordOnly}
             onNextDay={nextDay}
-            onEditGoal={() => go('setup')}
             onNewGoal={newGoal}
+            onGoalList={() => go('goals')}
             onExtend={extendDeadline}
             onStageSeen={markStageSeen}
             onReset={reset}

@@ -36,8 +36,9 @@ type Props = {
   onToggleTimer: () => void
   onRecordOnly: () => void
   onNextDay: () => void
-  onEditGoal: () => void
   onNewGoal: () => void
+  /** 目標一覧へ。期限が切れたときの行き先 */
+  onGoalList: () => void
   onExtend: () => void
   /** 進化の演出を流し終わったら呼ぶ。`avatars.seen_stage` を進める */
   onStageSeen: (stage: number) => void
@@ -54,8 +55,8 @@ export default function MainPage({
   onToggleTimer,
   onRecordOnly,
   onNextDay,
-  onEditGoal,
   onNewGoal,
+  onGoalList,
   onExtend,
   onStageSeen,
   onReset,
@@ -109,9 +110,6 @@ export default function MainPage({
   const confirmNewGoal = () => {
     if (askNewGoal()) onNewGoal()
   }
-  const confirmEditGoal = () => {
-    if (askNewGoal()) onEditGoal()
-  }
 
   return (
     <div className="wrap dashboard">
@@ -141,9 +139,12 @@ export default function MainPage({
                 <span>最長記録</span>
               </div>
             </div>
+            {/* **ここから新しい目標は作らせない。** 期限が切れた直後は、
+                作るより「他に育てているものがあったか」を見にいくほうが先。
+                作りたければ目標一覧の「新しい目標を作る」から入れる */}
             <div className="acts done-acts">
-              <button className="btn" onClick={confirmNewGoal}>
-                新しい目標をはじめる
+              <button className="btn" onClick={onGoalList}>
+                目標一覧を見る
               </button>
               <button className="btn sec" onClick={onExtend}>
                 期限を1ヶ月伸ばす
@@ -291,7 +292,7 @@ export default function MainPage({
                   {deadlineDays !== null && deadlineDays <= 3 ? 'あと少し！今日の1つを積んでいこう。' : '自分のペースで続ければ、きっと大丈夫。'}
                 </p>
 
-                <button className="btn new-goal-cta" onClick={confirmEditGoal}>
+                <button className="btn new-goal-cta" onClick={confirmNewGoal}>
                   新しい目標をはじめる
                 </button>
 

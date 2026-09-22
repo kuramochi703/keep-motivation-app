@@ -347,7 +347,8 @@ flowchart LR
 | 1日達成 | `records` に **INSERT 1行**（同日は UNIQUE が弾く） |
 | 進化の演出を流し終わった | `avatars.seen_stage` を UPDATE |
 | 期限延長 | `goals.deadline` を UPDATE |
-| 目標の作り直し | 新しい `goals` ＋ `avatars` を INSERT するだけ。**前の目標には触らない**（記録もアバターも残る） |
+| 新しい目標をはじめる | 新しい `goals` ＋ `avatars` を INSERT するだけ。**前の目標には触らない**（記録もアバターも残り、目標一覧に並ぶ） |
+| 目標を切り替える | **なし**（どれを開いているかは DB に持たない） |
 | 画面を描くとき | **なし**（`records` と `cycle_days` / `started_at` から毎回その場で計算） |
 
 **本番の画面から行が減ることはありません。** 記録も目標も増えるだけです。
