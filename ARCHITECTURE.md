@@ -79,7 +79,9 @@ src/
 │   ├── TopPage.tsx               トップ
 │   ├── SetupPage.tsx             目標設定
 │   ├── MainPage.tsx              ダッシュボード
+│   ├── DebugPage.tsx             デバッグ（開発時だけ。`/debugPage`）
 │   ├── main-page.css
+│   ├── debug-page.css
 │   └── onboarding-page.css
 │
 ├── features/
@@ -94,6 +96,7 @@ src/
 │   ├── useScreen.ts              画面遷移だけ
 │   ├── useTimer.ts               5分タイマーだけ
 │   ├── useGoalState.ts           目標の状態管理と Supabase の読み書き
+│   ├── debug.ts                  **消す**操作。DebugPage だけが import する
 │   └── logic.ts                  ルールブック。サイクル・連続・気分・日付計算
 │
 ├── lib/
@@ -330,6 +333,44 @@ flowchart LR
 | 期限延長 | `goals.deadline` を UPDATE |
 | 目標の作り直し | 旧 `goals.archived_at` を入れて、新しい `goals` ＋ `avatars` を INSERT。**記録もアバターも消さない** |
 | 画面を描くとき | **なし**（`records` と `cycle_days` / `started_at` から毎回その場で計算） |
+
+**本番の画面から行が減ることはありません。** 記録は INSERT だけ、前の目標は
+`archived_at` を入れてしまうだけです。DELETE はデバッグ画面にしかありません。
+
+### デバッグ画面（開発時だけ）
+
+`npm run dev` 中に `/debugPage` を開くと出ます。`import.meta.env.DEV` で
+遅延読み込みしているので（`app/App.tsx`）、**本番のバンドルには入りません**。
+
+デバッグが操作するのは**2つだけ**です。気分もステージも `cycleIndex()` でサイクル番号に
+直してからしか判定していないので（`state/logic.ts` / `avatar/stage.ts`）、
+**日付と記録さえ動かせれば、気分7段もステージ4段も全部再現できます。**
+
+| 軸 | 何を動かすか | DB |
+| --- | --- | --- |
+| 日付 | `dayOffset`（±1日 / ±1サイクル / 日付を直接指定 / 今日に戻す） | 触らない |
+| 記録 | `records` の1行＝1日を、つける / 消す | 書く |
+
+`dayOffset` は**負の値も入ります**。行き過ぎた日送りを戻せないと、やり直しがききません。
+日付を戻しても計算は壊れません（`lastDoneCycle()` が今より先のサイクルを数えないため）。
+
+DELETE 系は `state/debug.ts` に隔離してあります。`useGoalState` に置くと
+「押せてしまう導線」が本番の画面に生まれるためです。
+
+| 操作 | DBへの処理 |
+| --- | --- |
+| 1日ぶんの記録を消す | `records` から `(goal_id, done_on)` で DELETE |
+| 記録を全部消す | `records` から `goal_id` で DELETE（目標とアバターは残る＝たまごに戻る） |
+| 目標を消す | `records` → `avatars` → `goals` の順に DELETE |
+| 全部の目標を消す | archive 済みも含めて、上を全件ぶん繰り返す |
+| 演出の見せ済みを戻す | `avatars.seen_stage` を UPDATE（**下げる**） |
+
+- **子から先に消します。** `records.goal_id` と `avatars.goal_id` に `ON DELETE CASCADE` が
+  無いので（`supabase/schema.sql`）、親から消すと外部キー違反で落ちます
+- 消したあとは必ず DB から読み直します（`useGoalState` の `reload`）。画面の値を手で
+  合わせると「消えたつもりで消えていない」を見逃します
+- **進化の演出は `ステージ > avatars.seen_stage` の間しか流れません**（`pages/MainPage.tsx`）。
+  流し終わると `seen_stage` が上がるので、もう一度見るには戻すしかありません
 
 ### RLS（行レベルセキュリティ）
 
