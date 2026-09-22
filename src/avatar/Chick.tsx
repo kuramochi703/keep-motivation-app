@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import { ContactShadows, Sparkles, useAnimations, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
@@ -261,17 +261,15 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM, interactive = fa
 
   const s = look.bodyRadius * SIZE
 
-  // 叩かれた回数。**0 は「いま光っていない」。** 数を増やすことで、
-  // 連打されたときに前の粒を捨てて頭から出し直す（→ key）。
-  // ここは1タップにつき1回しか変わらないので、state に置いてよい
-  const [tapped, setTapped] = useState(0)
+  // 叩かれたときに、反応のクリップを1本流す。
+  // **再描画は起こさない。** 流すクリップは毎フレーム見る側（useFrame）の
+  // 持ち物なので、ref に書いて状態機械へ渡すだけでいい
   const poke = useCallback((e: ThreeEvent<PointerEvent>) => {
     // 3D の当たり判定は奥のものまで一度に拾う。手前の1つで止める
     e.stopPropagation()
-    // 「視差効果を減らす」設定のときは動かさない。飛び散る粒も跳ねる動きも、
-    // まさにその設定が避けたいものなので、姿勢と同じ扱いにする
+    // 「視差効果を減らす」設定のときは動かさない。跳ねる・仰け反るは
+    // まさにその設定が避けたい動きなので、姿勢と同じ扱いにする
     if (!animate) return
-    setTapped((n) => n + 1)
 
     // **直前と違うものを引く。** 同じ動きが2回続くと、反応しているのではなく
     // 決まった演出が再生されているように見える
@@ -381,11 +379,6 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM, interactive = fa
                 <boxGeometry args={[BODY_R * 2.4, HEAD_TOP - FOOT_Y, BODY_R * 2.4]} />
                 <meshBasicMaterial transparent opacity={0} depthWrite={false} />
               </mesh>
-            )}
-            {/* 叩かれたときの光の粒。**key を変えて出し直す**ので、
-                連打されても前の粒が残らない */}
-            {tapped > 0 && (
-              <TapSparkle key={tapped} color={look.bodyColor} onDone={() => setTapped(0)} />
             )}
             {look.scarf && <Scarf />}
             {look.crown && <Crown />}
@@ -632,116 +625,6 @@ function Sweat() {
       <sphereGeometry args={[0.085, 16, 12]} />
       <meshStandardMaterial color="#5FA8D3" roughness={0.2} transparent opacity={0.85} />
     </mesh>
-  )
-}
-
-/** 弾ける粒の数。多くしすぎると「爆発」に見えて、かわいさが消える */
-const SPARK_COUNT = 12
-/** 粒が消えるまでの秒数。手応えなので短く */
-const SPARK_LIFE = 0.9
-/** 粒が飛ぶ距離（モデル基準の単位）。**からだのすぐ外まで。**
-    これより遠くへ飛ばすと、枠の外へ出ていって「消えた」ようにしか見えない */
-const SPARK_REACH = BODY_R * 1.55
-
-/**
- * 叩かれたときに弾ける光の粒。
- *
- * **これは姿勢ではなくエフェクトなので、Blender には置かない。**
- * ひよこ自身の動き（立つ・歩く・座る）はモデルのクリップが持つという
- * 決めごとはそのままで、まわりに飛ぶ飾りは Sparkles や Sweat と同じく
- * ここで作る。ひよこを叩いて喜ばせる動きそのものを足すときは、
- * Blender に専用のクリップを追加して `POSTURE` に並べること。
- *
- * マウントされた瞬間から数えて `SPARK_LIFE` 秒で消え、`onDone` を呼ぶ。
- * 出し直しは key の付け替えでやるので、ここは「1回ぶん」しか知らない。
- */
-function TapSparkle({ color, onDone }: { color: string; onDone: () => void }) {
-  const group = useRef<THREE.Group>(null)
-  const age = useRef(0)
-  const done = useRef(false)
-
-  // 飛ぶ向きと大きさは**マウント時に一度だけ**決める。毎フレーム作ると
-  // 粒が場所を変えてちらつく。上向き成分を必ず足して、床へ潜らせない
-  const seeds = useMemo(
-    () =>
-      Array.from({ length: SPARK_COUNT }, () => {
-        const a = Math.random() * Math.PI * 2
-        const spread = 0.8 + Math.random() * 0.5
-        return {
-          // 横に開き気味、少しだけ上。真上に上げると頭の飾りに紛れ、
-          // 真横に飛ばすと胴に隠れる
-          dir: new THREE.Vector3(
-            Math.cos(a) * spread,
-            0.2 + Math.random() * 0.5,
-            Math.sin(a) * spread
-          ).normalize(),
-          reach: SPARK_REACH * (0.75 + Math.random() * 0.5),
-          size: 0.75 + Math.random() * 0.6,
-        }
-      }),
-    []
-  )
-
-  // 形と材質は粒どうしで使い回す。12個ぶん作ると描画のたびに切り替えが増える。
-  // 八面体なのは、丸より「きらっ」と見えるから
-  const geometry = useMemo(() => new THREE.OctahedronGeometry(0.07), [])
-  const material = useMemo(
-    // 光り物なので、影も陰影も要らない（MeshBasic）。
-    // AvatarCanvas は `flat` なので、指定した色がそのまま出る。
-    // **奥行きを見ない（depthTest: false）。** 粒は胴体の中から湧いて出るので、
-    // まじめに前後を見ると半分がからだに隠れて、叩いた手応えにならない
-    () =>
-      new THREE.MeshBasicMaterial({
-        transparent: true,
-        depthWrite: false,
-        depthTest: false,
-      }),
-    []
-  )
-  useEffect(() => {
-    // **からだの色をそのまま使わない。** 背景もアバターも淡い色なので、
-    // そのままだと粒が背景に溶けて見えない。鮮やかに寄せて、少し濃くする
-    material.color.set(color).offsetHSL(0, 0.3, -0.12)
-  }, [material, color])
-  // three.js の資源は React が片付けてくれない。ここで作ったものは自分で捨てる
-  useEffect(() => () => {
-    geometry.dispose()
-    material.dispose()
-  }, [geometry, material])
-
-  useFrame((_, delta) => {
-    if (done.current) return
-    age.current += delta
-    const t = Math.min(1, age.current / SPARK_LIFE)
-    // 出だしを速く、終わりをゆっくり。等速だと「飛び散った」感じが出ない
-    const ease = 1 - (1 - t) * (1 - t)
-    // 薄れるのは終わりぎわだけ。最初から等速で薄めると、飛び切る前に消える
-    material.opacity = 1 - t * t * t
-    const g = group.current
-    if (g) {
-      g.children.forEach((child, i) => {
-        const seed = seeds[i]
-        child.position.copy(seed.dir).multiplyScalar(seed.reach * ease)
-        // 飛びながら縮んで消える
-        child.scale.setScalar(seed.size * (1 - t * 0.7))
-        child.rotation.y += delta * 6
-      })
-    }
-    if (t >= 1) {
-      done.current = true
-      onDone()
-    }
-  })
-
-  // からだの真ん中あたりから弾ける。足元だと埋もれ、頭の上だと
-  // 「叩いた所」に見えない
-  return (
-    <group ref={group} position={[0, 0.1, 0]}>
-      {seeds.map((_, i) => (
-        // 奥行きを見ないので、**最後に描かないと**下の絵に上書きされる
-        <mesh key={i} geometry={geometry} material={material} renderOrder={10} />
-      ))}
-    </group>
   )
 }
 
