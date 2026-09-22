@@ -36,3 +36,6 @@ src/avatar/*.md
 
 # Blender 自動バックアップ
 *.blend1
+
+# モデルのビルドスクリプトを import した時に出る
+__pycache__/
