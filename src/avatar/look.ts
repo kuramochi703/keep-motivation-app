@@ -25,6 +25,18 @@ export type EyeShape =
   /** ボロボロ。閉じている */
   | 'closed'
 
+/**
+ * 座り込むときに流すクリップ。**落ち込みの2段は、色ではほとんど読めない。**
+ * 彩度はもう下限近く、明度は下げない決まりなので、差は姿勢で見せる。
+ */
+export type SitClip =
+  /** ひと休み。背中側へ倒れてくつろぐ。元気なときも流す */
+  | 'Rest'
+  /** 3サイクル放置。うずくまってうなだれる */
+  | 'Slump'
+  /** 4サイクル放置。ぺたんと伏せて、ほとんど動かない */
+  | 'Sink'
+
 export type Look = {
   /** 0〜3。0 はたまご */
   stage: number
@@ -49,6 +61,8 @@ export type Look = {
   droop: number
   /** 0〜1。元気さ。低いと歩き出さず、立ち止まったままになる */
   liveliness: number
+  /** 座り込むときに流すクリップ。気分で変わる */
+  sit: SitClip
 
   /** 翼。モデルの Wing_L / Wing_R を出し入れする */
   wings: boolean
@@ -87,6 +101,21 @@ const EYE_OF: Record<MoodId, EyeShape> = {
   good: 'open',
   lively: 'happy',
   shine: 'happy',
+}
+
+/**
+ * 座り込む姿勢。**落ち込んだときだけ専用のクリップ**にする。
+ * 休憩（Rest）は元気なときのひと休みでもあるので、落ち込みに使い回すと
+ * 「休んでいる」のか「へこんでいる」のかが区別できない。
+ */
+const SIT_OF: Record<MoodId, SitClip> = {
+  sink: 'Sink',
+  down: 'Slump',
+  low: 'Rest',
+  ok: 'Rest',
+  good: 'Rest',
+  lively: 'Rest',
+  shine: 'Rest',
 }
 
 /**
@@ -129,6 +158,7 @@ export function lookOf(stage: number, hue: number, mood: Mood | null): Look {
     // 元気なほど背筋が伸びる。いきいき（0.9）以上で完全にまっすぐ
     droop: unit((0.6 - liveliness) / 0.6),
     liveliness,
+    sit: !isEgg && mood ? SIT_OF[mood.id] : 'Rest',
 
     wings: stage >= 2,
     // とさかは常に出す。ステージ2で「生える」のではなく、そこから立派になる

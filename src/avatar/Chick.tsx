@@ -26,7 +26,7 @@ export type Roam = { x: number; z: number }
  * chick.glb に書き出したものを使う。**形を直したら書き出し直すこと。**
  *
  * **姿勢の動きは全部モデルの中のクリップ**（Idle / Walk / TurnL / TurnR /
- * Rest / Jump / Blink）で、
+ * Rest / Slump / Sink / Jump / Blink）で、
  * ここがやるのは「どれを流すか」と「歩いた結果どこへ行くか」だけ。
  * 時刻から角度や大きさを作るような動きはここには置かない。
  * 足の運びや揺れを直したいときは Blender を開く。
@@ -76,18 +76,27 @@ const REST_CHANCE = 0.3
  *
  * 目は姿勢とは別に動く（歩きながらまばたきする）ので、**目のトラックだけを
  * ここに挙げたクリップへ、残りを姿勢のクリップへ**振り分けて重ねて流す。
- * まばたき（Blink）と、目を閉じたまま座る休憩（Rest）の2本が目を書くので、
- * **この2本は重みを取り合わせる**（→ useFrame）。両方を重み1で流すと
- * 平均されて半目になる。
+ * まばたき（Blink）と、**目を閉じたまま座る3本**（Rest / Slump / Sink）が
+ * 目を書くので、**これらは重みを取り合わせる**（→ useFrame）。両方を重み1で
+ * 流すと平均されて半目になる。
  */
-const EYE_CLIPS = ['Blink', 'Rest']
+const EYE_CLIPS = ['Blink', 'Rest', 'Slump', 'Sink']
 
 /** 重みを取り合う姿勢クリップ。ここに無い Idle が、余ったぶんを受け持つ */
-const POSTURE = ['Walk', 'TurnL', 'TurnR', 'Rest', 'Jump'] as const
+const POSTURE = ['Walk', 'TurnL', 'TurnR', 'Rest', 'Slump', 'Sink', 'Jump'] as const
 type Posture = (typeof POSTURE)[number]
 
-/** 重みの寄せ方の速さ。休憩は遅くして「座り込む」間合いを作り、跳躍は即座に */
-const RATE: Record<Posture, number> = { Walk: 9, TurnL: 9, TurnR: 9, Rest: 3.5, Jump: 20 }
+/**
+ * 重みの寄せ方の速さ。休憩は遅くして「座り込む」間合いを作り、跳躍は即座に。
+ * **落ち込みは休憩よりさらに遅い。** 崩れ落ちるところを見せたいので、
+ * 沈むほど時間をかける
+ */
+const RATE: Record<Posture, number> = {
+  Walk: 9, TurnL: 9, TurnR: 9, Rest: 3.5, Slump: 2.4, Sink: 1.6, Jump: 20,
+}
+
+/** 目を閉じたまま座るクリップ。まばたきと重みを取り合う */
+const SHUT_EYES = ['Rest', 'Slump', 'Sink'] as const
 
 /** 目の縦の潰し具合。look.eye の4つの形に対応する */
 const EYE_SQUASH: Record<Look['eye'], number> = {
@@ -237,7 +246,7 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM }: Props) {
     next: 'idle',
     turningLeft: true,
     timer: 1.4,
-    weight: { Walk: 0, TurnL: 0, TurnR: 0, Rest: 0, Jump: 0 },
+    weight: { Walk: 0, TurnL: 0, TurnR: 0, Rest: 0, Slump: 0, Sink: 0, Jump: 0 },
     x: 0,
     z: 0,
     heading: 0,
@@ -262,7 +271,7 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM }: Props) {
     // **重みの合計は1。** 余りは Idle（立ち止まりの呼吸）が受け持つ。
     // 0/1 を直に入れると切り替わりが瞬間的になるので、寄せていく。
     // 休憩だけは遅くして「座り込む・立ち上がる」の間合いを作る
-    const now = clipOf(m)
+    const now = clipOf(m, look.sit)
     let idle = 1
     for (const name of POSTURE) {
       m.weight[name] = THREE.MathUtils.damp(m.weight[name], name === now ? 1 : 0, RATE[name], delta)
@@ -270,10 +279,12 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM }: Props) {
       idle -= m.weight[name]
     }
     actions.Idle?.setEffectiveWeight(Math.max(0, idle))
-    // **目は姿勢とは別の取り合い。** 目を書くのは Blink と Rest の2本だけで、
-    // 休憩は目を閉じたまま固定なので、Rest が入ってきたぶんだけ Blink を下げる。
-    // 両方を重み1で流すと、開いた目と閉じた目が平均されて半目のまま止まる
-    actions.Blink?.setEffectiveWeight(1 - m.weight.Rest)
+    // **目は姿勢とは別の取り合い。** 目を書くのは Blink と、座り込む3本
+    // （Rest / Slump / Sink）。座り込む側は目を閉じたまま固定なので、
+    // 入ってきたぶんだけ Blink を下げる。両方を重み1で流すと、開いた目と
+    // 閉じた目が平均されて半目のまま止まる
+    const shut = SHUT_EYES.reduce((sum, name) => sum + m.weight[name], 0)
+    actions.Blink?.setEffectiveWeight(Math.max(0, 1 - shut))
 
     roam(m, delta, area)
     const g = walker.current
@@ -352,10 +363,13 @@ const turnLeft = (m: Walker) => ((m.heading - m.facing + Math.PI * 3) % (Math.PI
  * どれも重み0になって Idle が余りを全部受け持つ。
  *
  * 向き直りだけは**左右で別のクリップ**。傾ける向きが逆なので1本にできない。
+ *
+ * 座り込みは気分で3本に分かれる（`sit`）。休憩・うずくまり・伏せ。
+ * どれを使うかは look.ts が決めるので、ここは受け取って流すだけ。
  */
-function clipOf(m: Walker): Posture | null {
+function clipOf(m: Walker, sit: Look['sit']): Posture | null {
   if (m.mode === 'walk') return 'Walk'
-  if (m.mode === 'rest') return 'Rest'
+  if (m.mode === 'rest') return sit
   if (m.mode === 'jump') return 'Jump'
   if (m.mode === 'turn') return m.turningLeft ? 'TurnL' : 'TurnR'
   return null
