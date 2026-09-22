@@ -84,9 +84,25 @@ const REST_CHANCE = 0.3
  */
 const EYE_CLIPS = ['Blink', 'Rest', 'Slump', 'Sink']
 
+/**
+ * 叩かれたときに流すクリップ。**1タップにつき1本**を引く（→ `poke`）。
+ * どれも1回きりで、終わったら立ち姿へ戻る。
+ *
+ * | クリップ | 長さ | 中身 |
+ * | --- | --- | --- |
+ * | `Poke` | 0.7秒 | びくっと仰け反って、揺り戻す |
+ * | `Cheer` | 1.25秒 | 翼をぱたぱたさせながら小さく2回跳ねる |
+ * | `Wave` | 1.08秒 | 片翼を上げて2往復振る |
+ */
+const REACTIONS = ['Poke', 'Cheer', 'Wave'] as const
+type Reaction = (typeof REACTIONS)[number]
+
 /** 重みを取り合う姿勢クリップ。ここに無い Idle が、余ったぶんを受け持つ */
-const POSTURE = ['Walk', 'TurnL', 'TurnR', 'Rest', 'Slump', 'Sink', 'Jump'] as const
+const POSTURE = ['Walk', 'TurnL', 'TurnR', 'Rest', 'Slump', 'Sink', 'Jump', ...REACTIONS] as const
 type Posture = (typeof POSTURE)[number]
+
+/** 1回きりで流すクリップ。`reset().play()` で頭から鳴らし、**終わったら必ず止める** */
+const ONE_SHOT = ['Jump', ...REACTIONS] as const
 
 /**
  * 重みの寄せ方の速さ。休憩は遅くして「座り込む」間合いを作り、跳躍は即座に。
@@ -95,6 +111,9 @@ type Posture = (typeof POSTURE)[number]
  */
 const RATE: Record<Posture, number> = {
   Walk: 9, TurnL: 9, TurnR: 9, Rest: 3.5, Slump: 2.4, Sink: 1.6, Jump: 20,
+  // 叩かれた反応は**跳躍と同じで即座に。** 寄せるのに時間をかけると、
+  // 叩いてから動き出すまでが遅れて、自分の操作の結果に見えなくなる
+  Poke: 20, Cheer: 20, Wave: 20,
 }
 
 /** 目を閉じたまま座るクリップ。まばたきと重みを取り合う */
@@ -229,9 +248,11 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM, interactive = fa
     // Idle が既定で、他がゼロのぶんを受け持つ（→ useFrame）
     for (const name of POSTURE) actions[name]?.play().setEffectiveWeight(0)
     actions.Idle?.play().setEffectiveWeight(1)
-    if (actions.Jump) {
-      actions.Jump.setLoop(THREE.LoopOnce, 1)
-      actions.Jump.clampWhenFinished = true
+    for (const name of ONE_SHOT) {
+      const action = actions[name]
+      if (!action) continue
+      action.setLoop(THREE.LoopOnce, 1)
+      action.clampWhenFinished = true
     }
     return () => {
       mixer.stopAllAction()
@@ -247,11 +268,29 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM, interactive = fa
   const poke = useCallback((e: ThreeEvent<PointerEvent>) => {
     // 3D の当たり判定は奥のものまで一度に拾う。手前の1つで止める
     e.stopPropagation()
-    // 「視差効果を減らす」設定のときは弾けさせない。
-    // 飛び散る粒はまさにその設定が避けたい動きなので、姿勢と同じ扱いにする
+    // 「視差効果を減らす」設定のときは動かさない。飛び散る粒も跳ねる動きも、
+    // まさにその設定が避けたいものなので、姿勢と同じ扱いにする
     if (!animate) return
     setTapped((n) => n + 1)
-  }, [animate])
+
+    // **直前と違うものを引く。** 同じ動きが2回続くと、反応しているのではなく
+    // 決まった演出が再生されているように見える
+    const m = playing.current
+    const choices = REACTIONS.filter((name) => name !== m.reaction)
+    const next = choices[Math.floor(Math.random() * choices.length)]
+    const action = actions[next]
+    if (!action) return
+
+    // 連打されたときに前の1本を残さない。**止めないと最終フレームの姿勢を
+    // 重み1で押さえ続けて、次の動きと半々に混ざる**（Jump と同じ落とし穴）
+    if (m.reaction && m.reaction !== next) actions[m.reaction]?.stop()
+    actions.Jump?.stop()
+    action.reset().play()
+    m.reaction = next
+    m.mode = 'react'
+    // 念のための上限。終わりは再生側（isRunning）で見る
+    m.timer = action.getClip().duration * 3
+  }, [animate, actions])
 
   // 触れると分かるように、ひよこの上ではカーソルを指に変える。
   // **キャンバスは枠いっぱいなので、body に当てないと元に戻せない**
@@ -268,7 +307,8 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM, interactive = fa
     next: 'idle',
     turningLeft: true,
     timer: 1.4,
-    weight: { Walk: 0, TurnL: 0, TurnR: 0, Rest: 0, Slump: 0, Sink: 0, Jump: 0 },
+    weight: { Walk: 0, TurnL: 0, TurnR: 0, Rest: 0, Slump: 0, Sink: 0, Jump: 0, Poke: 0, Cheer: 0, Wave: 0 },
+    reaction: null,
     x: 0,
     z: 0,
     heading: 0,
@@ -288,7 +328,7 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM, interactive = fa
     }
 
     const m = playing.current
-    pick(m, look.liveliness, delta, actions.Jump)
+    pick(m, look.liveliness, delta, actions)
 
     // **重みの合計は1。** 余りは Idle（立ち止まりの呼吸）が受け持つ。
     // 0/1 を直に入れると切り替わりが瞬間的になるので、寄せていく。
@@ -378,7 +418,7 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM, interactive = fa
   )
 }
 
-type Mode = 'idle' | 'walk' | 'turn' | 'jump' | 'rest'
+type Mode = 'idle' | 'walk' | 'turn' | 'jump' | 'rest' | 'react'
 
 type Walker = {
   mode: Mode
@@ -390,6 +430,8 @@ type Walker = {
   timer: number
   /** 姿勢クリップそれぞれの重み 0〜1 */
   weight: Record<Posture, number>
+  /** 叩かれて流している最中のクリップ。**次に引くときの「直前」でもある** */
+  reaction: Reaction | null
   /** 定位置からのずれ */
   x: number
   z: number
@@ -412,6 +454,7 @@ const turnLeft = (m: Walker) => ((m.heading - m.facing + Math.PI * 3) % (Math.PI
  * どれを使うかは look.ts が決めるので、ここは受け取って流すだけ。
  */
 function clipOf(m: Walker, sit: Look['sit']): Posture | null {
+  if (m.mode === 'react') return m.reaction
   if (m.mode === 'walk') return 'Walk'
   if (m.mode === 'rest') return sit
   if (m.mode === 'jump') return 'Jump'
@@ -442,9 +485,23 @@ function startTurn(m: Walker, next: 'idle' | 'walk') {
  * 「2サイクル放置」でいきなり座り込んでしまい、ぐったり（0.0）と区別が
  * つかなくなる（README 2章）。
  */
-function pick(m: Walker, amp: number, delta: number, jump?: THREE.AnimationAction | null) {
+function pick(m: Walker, amp: number, delta: number, actions: Record<string, THREE.AnimationAction | null>) {
   const lively = amp > 0.15
+  const jump = actions.Jump
   m.timer -= delta
+
+  // 叩かれた反応。**気分や時間の都合より優先する。** ここを待たせると、
+  // 叩いたのに歩き続ける、という一番がっかりする見え方になる
+  if (m.mode === 'react') {
+    const action = m.reaction ? actions[m.reaction] : null
+    if (!action?.isRunning() || m.timer <= 0) {
+      action?.stop()
+      m.mode = 'idle'
+      // 反応の直後は間を置く。すぐ歩き出すと、叩かれたことを忘れたように見える
+      m.timer = 0.8 + Math.random() * 1.2
+    }
+    return
+  }
 
   if (m.mode === 'jump') {
     // 終わりは再生側（isRunning）で見る。timer は念のための上限。
