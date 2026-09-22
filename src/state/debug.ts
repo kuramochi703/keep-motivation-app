@@ -23,6 +23,42 @@ const messageOf = (cause: unknown, fallback: string) =>
     ? String((cause as { message: unknown }).message)
     : fallback
 
+/** 目標の一覧の1行。いまの目標かどうかは呼んだ側が `id` の最大で判定する */
+export type GoalRow = {
+  id: number
+  goal: string
+  startedAt: string
+  cycleDays: number
+  deadline: string
+  records: number
+}
+
+/**
+ * その人の目標を、過去のものも含めて全部そのまま出す。
+ *
+ * **アプリ本体はいちばん新しい1件しか読まない**（useGoalState の fetchGoal）。
+ * 何件たまっているかを見る手段がどこにも無いので、デバッグ画面にだけ置く。
+ */
+export async function listGoals(userId: string): Promise<GoalRow[] | string> {
+  const { data, error } = await supabase
+    .from('goals')
+    .select('id, goal, deadline, cycle_days, started_at, records(id)')
+    .eq('user_id', userId)
+    .order('id', { ascending: false })
+
+  if (error) return messageOf(error, '目標の一覧を取れませんでした。')
+
+  return (data ?? []).map((row) => ({
+    id: row.id as number,
+    goal: (row.goal as string) ?? '',
+    startedAt: (row.started_at as string) ?? '',
+    cycleDays: (row.cycle_days as number) ?? 1,
+    deadline: (row.deadline as string) ?? '',
+    // count ではなく id を引いて数える。行数だけなら join の結果を数えれば足りる
+    records: ((row.records as unknown[]) ?? []).length,
+  }))
+}
+
 /** 1日ぶんの記録を消す。**1レコード＝1日**なので、これが最小単位 */
 export async function deleteRecord(goalId: number, day: string): Promise<string | null> {
   const { error } = await supabase

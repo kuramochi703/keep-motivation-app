@@ -24,4 +24,11 @@
 .debug-records li > .btn { margin-left: auto; }
 /* 取り消せない操作。枠の色だけで区別する（ボタンの形は変えない） */
 .debug-danger { border: 1px solid var(--danger); }
+.debug-goals { list-style: none; margin: 12px 0; padding: 0; }
+.debug-goals li { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; padding: 8px 4px; border-top: 1px solid #e7efeb; }
+/* いまの目標（id が最大の1件）だけ左に線を引く */
+.debug-goals li.now { background: #f2f9f5; border-left: 3px solid var(--accent, #2f8f6b); padding-left: 10px; }
+.debug-goal-id { font-variant-numeric: tabular-nums; color: var(--muted); font-size: 13px; }
+.debug-goal-text { font-weight: 700; overflow-wrap: anywhere; }
+.debug-goals li > .btn { margin-left: auto; }
 @media (max-width: 760px) { .debug-columns, .debug-summary { grid-template-columns: 1fr; } }

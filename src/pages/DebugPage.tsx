@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Avatar from '../avatar/Avatar'
 import { evolutionOf, nextGoalOf, STAGES } from '../avatar/stage'
 import { supabase } from '../lib/supabase'
@@ -7,7 +7,9 @@ import {
   deleteAllGoals,
   deleteGoal,
   deleteRecord,
+  listGoals,
   rewindSeenStage,
+  type GoalRow,
 } from '../state/debug'
 import {
   currentCycle,
@@ -70,6 +72,27 @@ export default function DebugPage({
 
   const goalId = state.goalId
 
+  // アプリ本体はいちばん新しい1件しか読まない。たまっている目標はここでだけ見える
+  const [goals, setGoals] = useState<GoalRow[]>([])
+  const [goalsError, setGoalsError] = useState('')
+
+  const refreshGoals = useCallback(async () => {
+    const result = await listGoals(userId)
+    if (typeof result === 'string') {
+      setGoalsError(result)
+      return
+    }
+    setGoalsError('')
+    setGoals(result)
+  }, [userId])
+
+  // 画面を開いたとき・目標が入れ替わったとき・記録が増減したときに引き直す。
+  // **記録の数も依存に入れる。** 「今日を達成にする」は run() を通らない
+  // （本番と同じ markSessionDone を呼ぶ）ので、これが無いと件数が古いまま残る
+  useEffect(() => {
+    refreshGoals()
+  }, [refreshGoals, goalId, state.done.length])
+
   /**
    * DB を書き換える操作は必ずここを通す。**終わったら DB から読み直す。**
    * 画面の値を手で合わせると「消えたつもりで消えていない」を見逃す。
@@ -82,6 +105,7 @@ export default function DebugPage({
       if (message) setFailure(message)
     } finally {
       await onReload()
+      await refreshGoals()
       setWorking(false)
     }
   }
@@ -287,29 +311,56 @@ export default function DebugPage({
         </div>
       </section>
 
-      <section className="card debug-danger" aria-label="目標を消す" aria-busy={working}>
-        <h2>目標を消す</h2>
+      <section className="card debug-danger" aria-label="目標" aria-busy={working}>
+        <h2>目標（{goals.length}件）</h2>
         {/*
-          本番の「新しい目標をはじめる」は行を足すだけで、前の目標を消さない。
-          デバッグしていると goals が積み上がるので、ここだけが消せる。
+          **いまの目標は「id がいちばん大きい1件」。** 終わった印の列は持たない。
+          本番の「新しい目標をはじめる」は行を足すだけで前の目標を消さないので、
+          古い目標はここに残り続ける。アプリ本体からは見えないため、一覧はここだけ。
           子（records / avatars）から先に消す理由は state/debug.ts を参照。
         */}
         <p className="debug-note">
-          <b>取り消せません。</b>記録・アバターごとDBから消えます。本番の「新しい目標をはじめる」は
-          新しい行を足すだけなので、行が消えるのはここだけです。
+          いまの目標は <b><code>id</code> がいちばん大きい1件</b>です。本番の「新しい目標をはじめる」は
+          行を足すだけなので、古い目標もここに残り続けます（記録とアバターもそのまま）。
         </p>
+
+        {goalsError && <p className="debug-error" role="alert">{goalsError}</p>}
+
+        {goals.length === 0 ? (
+          <p className="debug-note">目標はまだありません。</p>
+        ) : (
+          <ul className="debug-goals">
+            {goals.map((g) => (
+              <li key={g.id} className={g.id === goalId ? 'now' : undefined}>
+                <span className="debug-goal-id">#{g.id}</span>
+                <span className="debug-goal-text" title={g.goal}>{g.goal || '（無題）'}</span>
+                <span className="debug-note">
+                  起点 {g.startedAt} · {cycleLabel(g.cycleDays)} · 期限 {g.deadline} · 記録 {g.records}件
+                  {g.id === goalId ? ' · いまの目標' : ''}
+                </span>
+                <button
+                  className="btn ghost"
+                  aria-label={`目標 #${g.id} を消す`}
+                  disabled={working}
+                  onClick={() => {
+                    if (window.confirm(`目標 #${g.id}「${g.goal}」を、記録${g.records}件とアバターごと消します。取り消せません。`)) {
+                      run(() => deleteGoal(g.id))
+                    }
+                  }}
+                >
+                  消す
+                </button>
+              </li>
+            ))}
+          </ul>
+        )}
+
+        <p className="debug-note">
+          <b>削除は取り消せません。</b>記録・アバターごとDBから消えます。本番の画面に削除は無いので、
+          行が消えるのはここだけです。
+        </p>
+        {/* 1件ずつ消すのは一覧の各行に置いた。ここは一括のものだけ */}
         <div className="tools">
-          <button
-            className="btn ghost"
-            disabled={working || goalId === null}
-            onClick={() => {
-              if (window.confirm(`いまの目標「${state.goal}」を、記録${records.length}件とアバターごと消します。取り消せません。`)) {
-                run(() => deleteGoal(goalId!))
-              }
-            }}
-          >
-            いまの目標を消す
-          </button>
           <button
             className="btn ghost"
             disabled={working}
