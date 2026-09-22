@@ -19,17 +19,20 @@
 - [x] `LoginPage`・ログインゲート・ログアウト
 - [x] ドキュメント更新（`ARCHITECTURE.md` / `README.md` / `TEAM.md`）
 
-ブランチは `feature/password-login`、4コミット。`npm run build` と `npm test`（37件）は通っています。
+ブランチは `feature/password-login`。`npm run build` と `npm test`（37件）は通っています。
 
-### Supabase 管理画面（5章 手順1）← **いまここ。誰もログインできない状態**
+### Supabase 管理画面（5章 手順1）
 
-`auth.users` は 0 件です。MCP からは触れないので手作業でお願いします。
-
-- [ ] Authentication → Providers → **Email を有効 / Confirm email を OFF**
-- [ ] Authentication → Providers → **Allow new users to sign up を OFF**
-- [ ] Authentication → Users → **Add user** で3人分
-      （本人の Gmail ／ **Auto Confirm User にチェック** ／ 仮パスワードを本人に渡す）
+- [x] Authentication → Users → **Add user** で3人分。`auth.users` に3件、いずれも確認済み
+      （`ouchi.job22@gmail.com` / `test1@gmail.com` / `test2@gmail.com`）
+- [x] Authentication → Providers → Email を有効（ログインが通るので有効）
+- [ ] Confirm email が OFF か ← **未確認**
+- [ ] Allow new users to sign up が OFF か ← **未確認**（下記）
 - [x] 手元の `.env`（URL / anon key は変更不要だった）
+
+> `test1` / `test2` は動作確認用です。第2段階で Google に移すとき、uuid ごとデータを
+> 引き継げるのは**本人の Gmail で作ったアカウントだけ**なので、本番で使う2人分は
+> 本人のアドレスで作り直してください（2章）。
 
 ### 確認（5章 手順3）
 
@@ -40,6 +43,10 @@
 - [ ] リロードしてもログインが続く
 - [ ] ログアウトでログイン画面に戻る
 - [ ] devtools から `supabase.auth.signUp(...)` を叩いても登録できない
+      ← `/auth/v1/signup` を叩くと `signup_disabled` ではなく
+      `over_email_send_rate_limit`（確認メールを送ろうとした）が返る。
+      **sign up が有効なまま／Confirm email が ON のままの可能性が高い**ので、
+      管理画面の2つのトグルを見てほしい
 - [ ] PR 本文に「**マージ時に共有プロジェクトのデータが消える**」と明記
 
 ### 着手前・切り替えの日（5章 手順0・4）
