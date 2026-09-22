@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 
 
-export type Screen = 'top' | 'setup' | 'main' | 'debug'
+export type Screen = 'top' | 'goals' | 'setup' | 'main' | 'debug'
 
 export const isDebugPath = () =>
   import.meta.env.DEV && /^\/debugPage\/?$/.test(window.location.pathname)
@@ -31,7 +31,7 @@ export function useScreen() {
     const onPopState = () => {
       const saved = window.history.state?.screen
       updateScreen(isDebugPath() ? 'debug'
-        : saved === 'main' || saved === 'setup' ? saved : 'top')
+        : saved === 'main' || saved === 'setup' || saved === 'goals' ? saved : 'top')
     }
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)

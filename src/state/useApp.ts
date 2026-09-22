@@ -42,6 +42,16 @@ export function useApp() {
     setScreen('top')
   }
 
+  /**
+   * 目標一覧で別の目標に切り替える。**走っているタイマーは捨てる。**
+   * 5分の途中で切り替えたぶんが、切り替え先の記録になってしまうため。
+   */
+  const selectGoal = (id: number) => {
+    timer.reset()
+    goal.selectGoal(id)
+    setScreen('main')
+  }
+
   const recordOnly = () => {
     timer.complete()
     goal.markSessionDone()
@@ -77,11 +87,14 @@ export function useApp() {
     signIn: auth.signIn,
     signOut,
     state: goal.state,
+    goals: goal.goals,
+    currentGoalId: goal.currentGoalId,
     loaded: goal.loaded,
     hasStarted: goal.hasStarted,
     screen,
     go,
     start,
+    selectGoal,
     reset,
     extendDeadline: goal.extendDeadline,
     markStageSeen: goal.markStageSeen,

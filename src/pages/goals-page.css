@@ -1,0 +1,157 @@
+/* 目標一覧（GoalsPage）
+ *
+ * カードは1枚まるごとがボタン。**どこを押しても切り替わる**ほうが、
+ * 「選ぶ」画面としては迷いが少ない。
+ * 色は目標ごとに違うので、`--h` / `--s` をカード自身に持たせている。 */
+
+.goals {
+  max-width: 760px;
+}
+
+.goals-head {
+  margin-bottom: 22px;
+}
+
+.goals-lead {
+  margin: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.goal-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.goal-card {
+  width: 100%;
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: 18px;
+  padding: 18px 20px;
+  cursor: pointer;
+  transition: .15s;
+}
+
+.goal-card:hover {
+  border-color: hsl(var(--h) calc(var(--s) * 1%) 42%);
+  transform: translateY(-1px);
+}
+
+.goal-card:focus-visible {
+  outline: 2px solid hsl(var(--h) calc(var(--s) * 1%) 42%);
+  outline-offset: 2px;
+}
+
+/* いま開いているもの。**色の帯ではなく枠で示す**（帯だと他のカードと差が出にくい） */
+.goal-card.current {
+  border-color: hsl(var(--h) calc(var(--s) * 1%) 42%);
+  box-shadow: 0 0 0 3px hsl(var(--h) calc(var(--s) * 1%) 95%);
+}
+
+/* アバターの色。たまごでも色は決まっているので、常に出す */
+.goal-card-dot {
+  flex: 0 0 auto;
+  width: 14px;
+  height: 14px;
+  margin-top: 5px;
+  border-radius: 50%;
+  background: hsl(var(--h) calc(var(--s) * 1%) 42%);
+}
+
+.goal-card-body {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.goal-card-top {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.goal-card-name {
+  font-size: 15px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+}
+
+.goal-card-stage,
+.goal-card-mood {
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 99px;
+  background: #F2F5F8;
+  color: var(--muted);
+}
+
+.goal-card-badge {
+  margin-left: auto;
+  font-size: 11.5px;
+  font-weight: 600;
+  padding: 2px 9px;
+  border-radius: 99px;
+  background: hsl(var(--h) calc(var(--s) * 1%) 95%);
+  color: hsl(var(--h) calc(var(--s) * 1%) 34%);
+}
+
+.goal-card-goal {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -.01em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.goal-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  font-size: 12.5px;
+  font-weight: 600;
+  color: var(--muted);
+  font-variant-numeric: tabular-nums;
+}
+
+.goal-card-meta .expired {
+  color: var(--danger);
+}
+
+.goals-actions {
+  margin-top: 20px;
+}
+
+.goals-empty {
+  text-align: center;
+}
+
+.goals-empty p {
+  margin: 0 0 16px;
+  color: var(--muted);
+}
+
+@media (max-width: 760px) {
+  .goal-card {
+    padding: 16px;
+  }
+
+  .goal-card-badge {
+    margin-left: 0;
+  }
+}

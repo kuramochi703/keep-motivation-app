@@ -36,8 +36,9 @@ type Props = {
   onToggleTimer: () => void
   onRecordOnly: () => void
   onNextDay: () => void
-  onEditGoal: () => void
   onNewGoal: () => void
+  /** 目標一覧へ。期限が切れたときの行き先 */
+  onGoalList: () => void
   onExtend: () => void
   /** 進化の演出を流し終わったら呼ぶ。`avatars.seen_stage` を進める */
   onStageSeen: (stage: number) => void
@@ -54,8 +55,8 @@ export default function MainPage({
   onToggleTimer,
   onRecordOnly,
   onNextDay,
-  onEditGoal,
   onNewGoal,
+  onGoalList,
   onExtend,
   onStageSeen,
   onReset,
@@ -96,17 +97,18 @@ export default function MainPage({
   const deadlineText = mo && dd ? `${mo}月${dd}日まで` : '設定されていません'
   const [open, setOpen] = useState<PanelId | null>(null)
 
-  /** **押すとアバターがたまごに戻る。** 取り返しがつかないので一度止める */
+  /**
+   * **押すと目標がもう1本増える。** 新しいアバターはたまごから育て直しになるので一度止める。
+   * いまの目標は終わらない（目標一覧に並んだまま）ので、そう読めるように書く。
+   */
   const askNewGoal = () =>
     window.confirm(
-      `いまの「${state.goal}」を終わりにして、新しい目標を始めますか？\n` +
-        `${state.name || 'アバター'}は たまご から育て直しになります（これまでの記録は残ります）。`
+      `新しい目標を始めますか？\n` +
+        `新しいアバターは たまご から育てることになります。\n` +
+        `いまの「${state.goal}」と${state.name || 'アバター'}はそのまま残るので、目標一覧からいつでも戻れます。`
     )
   const confirmNewGoal = () => {
     if (askNewGoal()) onNewGoal()
-  }
-  const confirmEditGoal = () => {
-    if (askNewGoal()) onEditGoal()
   }
 
   return (
@@ -137,9 +139,12 @@ export default function MainPage({
                 <span>最長記録</span>
               </div>
             </div>
+            {/* **ここから新しい目標は作らせない。** 期限が切れた直後は、
+                作るより「他に育てているものがあったか」を見にいくほうが先。
+                作りたければ目標一覧の「新しい目標を作る」から入れる */}
             <div className="acts done-acts">
-              <button className="btn" onClick={confirmNewGoal}>
-                新しい目標をはじめる
+              <button className="btn" onClick={onGoalList}>
+                目標一覧を見る
               </button>
               <button className="btn sec" onClick={onExtend}>
                 期限を1ヶ月伸ばす
@@ -287,7 +292,7 @@ export default function MainPage({
                   {deadlineDays !== null && deadlineDays <= 3 ? 'あと少し！今日の1つを積んでいこう。' : '自分のペースで続ければ、きっと大丈夫。'}
                 </p>
 
-                <button className="btn new-goal-cta" onClick={confirmEditGoal}>
+                <button className="btn new-goal-cta" onClick={confirmNewGoal}>
                   新しい目標をはじめる
                 </button>
 
