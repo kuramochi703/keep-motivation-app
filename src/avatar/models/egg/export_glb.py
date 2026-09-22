@@ -1,12 +1,12 @@
 """egg.blend -> egg.glb を書き出す。
 
     "/mnt/c/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b \
-        src/avatar/models/egg.blend -P src/avatar/models/export_egg_glb.py
+        src/avatar/models/egg/egg.blend -P src/avatar/models/egg/export_glb.py
 
-.blend は読むだけで保存しない。形・動きを直したら `egg_build.py` を流し直し、
+.blend は読むだけで保存しない。形・動きを直したら `build.py` を流し直し、
 **続けてこれも流す**（.blend を直しただけではアプリの見た目は変わらない）。
 
-ひよこ（`export_glb.py`）と違って、やることは間引きだけ。たまごは色を2つの
+ひよこ（`chick/export_glb.py`）と違って、やることは間引きだけ。たまごは色を2つの
 マテリアル（`Egg_Shell` / `Egg_Inner`）で塗り分けているので、頂点カラーに
 マスクを載せる必要がない。色はアプリ（Chick.tsx）がマテリアル名で引いて入れる。
 """

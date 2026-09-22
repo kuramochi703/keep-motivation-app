@@ -280,7 +280,7 @@ cam.rotation_euler = d.to_track_quat('Z','Y').to_euler()
 
 ### 成果物の残し方
 
-- **パーツが少ないモデルは、.blend ごと1本のスクリプトで作り直せる**（`egg_build.py`）。
+- **パーツが少ないモデルは、.blend ごと1本のスクリプトで作り直せる**（`egg/build.py`）。
   こうすると「.blend の中の手作業」が原理的に存在しなくなり、現物との突き合わせも要らない。
   スクリプトはリポジトリに置き、**同じものを `bpy.data.texts` にも入れておく**
 - パーツの再生成スクリプトは `bpy.data.texts` に `<part>_build` という名前で入れる（`body_build` / `eye_build` / `foot_build`）。

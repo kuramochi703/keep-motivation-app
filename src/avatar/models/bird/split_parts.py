@@ -1,7 +1,10 @@
-"""bird.blend の一体メッシュを部位ごとのオブジェクトに割る。
+"""BirdRender.fbx を読み、一体のメッシュを部位ごとのオブジェクトに割る。
 
     "/mnt/c/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b \
-        src/avatar/models/bird.blend -P src/avatar/models/split_bird_parts.py
+        -P src/avatar/models/bird/split_parts.py
+
+読み込みは `import_fbx.py` に任せていて、FBX から bird_parts.blend まで一息で通る。
+途中の .blend は残さない（数秒で作り直せるものを版管理しても仕方がない）。
 
 出すのは Beak / Body / Wing_L / Wing_R / Foot_L / Foot_R / Tail の7つ。
 
@@ -20,6 +23,8 @@
 各島がどこにあるかは `uvdump` 相当の棚卸しで確認した値。値の根拠は各定数の脇に。
 """
 import os
+import sys
+
 import bpy
 import bmesh
 from mathutils import Vector
@@ -27,6 +32,11 @@ from mathutils import Vector
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT_BLEND = os.path.join(HERE, 'bird_parts.blend')
 OUT_GLB = os.path.join(HERE, 'bird_parts.glb')
+
+# -P で流したスクリプトの置き場は sys.path に入らないので、自分で足す。
+if HERE not in sys.path:
+    sys.path.insert(0, HERE)
+import import_fbx  # noqa: E402
 
 SRC = 'Cube_001'
 
@@ -125,6 +135,8 @@ def name_uv_island(box):
         return 'Wing_L'
     return 'Body'
 
+
+import_fbx.load()
 
 ob = bpy.data.objects[SRC]
 me = ob.data

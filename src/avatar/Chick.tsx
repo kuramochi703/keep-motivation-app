@@ -3,8 +3,8 @@ import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import { ContactShadows, Sparkles, useAnimations, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
 import type { Look } from './look'
-import chickUrl from './models/chick.glb?url'
-import eggUrl from './models/egg.glb?url'
+import chickUrl from './models/chick/chick.glb?url'
+import eggUrl from './models/egg/egg.glb?url'
 
 type Props = {
   look: Look
@@ -22,9 +22,9 @@ type Props = {
 export type Roam = { x: number; z: number }
 
 /**
- * ひよこ本体。Blender で作ったモデル（models/chick.blend）を読んで動かす。
+ * ひよこ本体。Blender で作ったモデル（models/chick/chick.blend）を読んで動かす。
  *
- * .blend そのものは three.js では読めないので、`models/export_glb.py` で
+ * .blend そのものは three.js では読めないので、`models/chick/export_glb.py` で
  * chick.glb に書き出したものを使う。**形を直したら書き出し直すこと。**
  *
  * **姿勢の動きは全部モデルの中のクリップ**（Idle / Walk / TurnL / TurnR /
@@ -630,7 +630,7 @@ function Sweat() {
 
 /**
  * ステージ0のたまご。**ひよこと同じで、形も動きも Blender のモデルが持っている**
- * （models/egg.blend → egg.glb）。ここがやるのは色を入れることと、
+ * （models/egg/egg.blend → egg.glb）。ここがやるのは色を入れることと、
  * 「いつ割るか」を決めることだけ。
  *
  * クリップは2本。

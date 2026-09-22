@@ -1,7 +1,7 @@
 """egg.blend を一から作り直す。
 
     "/mnt/c/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b \
-        --factory-startup -P src/avatar/models/egg_build.py
+        --factory-startup -P src/avatar/models/egg/build.py
 
 **このスクリプトが原典。** 形も動きも全部ここに書いてあるので、たまごを直すときは
 egg.blend の中を手でいじらず、ここを直して流し直す（chick.blend の

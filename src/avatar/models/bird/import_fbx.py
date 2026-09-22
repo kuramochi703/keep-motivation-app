@@ -1,7 +1,9 @@
-"""BirdRender.fbx -> bird.blend を作る。
+"""BirdRender.fbx をシーンに読み込む。
+
+`split_parts.py` から呼ばれる。単体で流すと、読めているかの確認だけして何も保存しない。
 
     "/mnt/c/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b \
-        -P src/avatar/models/import_bird_fbx.py
+        -P src/avatar/models/bird/import_fbx.py
 
 このFBXは **FBX 6100 の ASCII形式**（Blender 2.66 が 2019 年に書き出したもの）で、
 いまの Blender の FBX インポータはバイナリの 7100 以降しか読まない。
@@ -28,8 +30,6 @@ from mathutils import Matrix, Euler
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 FBX = os.path.join(HERE, 'BirdRender.fbx')
-BLEND = os.path.join(HERE, 'bird.blend')
-GLB = os.path.join(HERE, 'bird.glb')
 
 # Y-up -> Z-up。
 CONV = Matrix.Rotation(math.radians(90.0), 4, 'X')
@@ -142,21 +142,23 @@ def build(name, body):
     return ob
 
 
-bpy.ops.wm.read_factory_settings(use_empty=True)
+def load():
+    """空のシーンに FBX の中身を起こす。作ったオブジェクトを返す。"""
+    bpy.ops.wm.read_factory_settings(use_empty=True)
 
-blocks = read_blocks(FBX)
-print(f'--- {len(blocks)} mesh blocks ---')
-objects = [build(name, body) for name, body in blocks]
+    blocks = read_blocks(FBX)
+    print(f'FBX のメッシュ {len(blocks)} 個')
+    objects = [build(name, body) for name, body in blocks]
 
-# マテリアルは拡散色だけ。テクスチャは解決しないので貼らない。
-mat = bpy.data.materials.new('SparrowAO')
-mat.use_nodes = True
-mat.node_tree.nodes['Principled BSDF'].inputs['Base Color'].default_value = (0.8, 0.8, 0.8, 1.0)
-for ob in objects:
-    ob.data.materials.append(mat)
+    # マテリアルは拡散色だけ。テクスチャは解決しないので貼らない。
+    mat = bpy.data.materials.new('SparrowAO')
+    mat.use_nodes = True
+    mat.node_tree.nodes['Principled BSDF'].inputs['Base Color'].default_value = (0.8, 0.8, 0.8, 1.0)
+    for ob in objects:
+        ob.data.materials.append(mat)
 
-bpy.ops.wm.save_as_mainfile(filepath=BLEND)
-print('wrote', BLEND)
+    return objects
 
-bpy.ops.export_scene.gltf(filepath=GLB, export_format='GLB', export_apply=True)
-print('wrote', GLB)
+
+if __name__ == '__main__':
+    load()

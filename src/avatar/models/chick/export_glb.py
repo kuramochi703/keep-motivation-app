@@ -1,7 +1,7 @@
 """chick.blend -> chick.glb を書き出す。
 
     "/mnt/c/Program Files/Blender Foundation/Blender 5.2/blender.exe" -b \
-        src/avatar/models/chick.blend -P src/avatar/models/export_glb.py
+        src/avatar/models/chick/chick.blend -P src/avatar/models/chick/export_glb.py
 
 .blend は読むだけで保存しない（この中で壊しているのはメモリ上のコピー）。
 形・塗り分けを直したら必ずこれを流し直して .glb を更新すること。

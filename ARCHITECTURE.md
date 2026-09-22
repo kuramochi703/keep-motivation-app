@@ -105,7 +105,8 @@ src/
 ├── avatar/                     アバターの3D描画 → src/avatar/README.md に詳細
 │   ├── Avatar.tsx / AvatarCanvas.tsx / Chick.tsx
 │   ├── look.ts / stage.ts / avatar.css
-│   ├── models/                   chick.blend / chick.glb / export_glb.py
+│   ├── models/                   モデル1体につき1フォルダ（chick / egg / bird）。
+│   │                             中身は .blend と .glb と、それを作るスクリプト
 │   └── docs/                     Blender の作業メモ
 │
 └── ui/                         見た目の共通部品
