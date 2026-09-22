@@ -52,6 +52,12 @@ export function useApp() {
     goal.nextDay()
   }
 
+  /** デバッグ画面の日付操作。日をまたぐのでタイマーは捨てる */
+  const setDayOffset = (days: number) => {
+    timer.reset()
+    goal.setDayOffset(days)
+  }
+
   const newGoal = () => {
     timer.reset()
     goal.newGoal()
@@ -85,5 +91,7 @@ export function useApp() {
     toggleTimer: timer.toggle,
     recordOnly,
     nextDay,
+    setDayOffset,
+    reload: goal.reload,
   }
 }
