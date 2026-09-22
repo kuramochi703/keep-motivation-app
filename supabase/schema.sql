@@ -64,15 +64,15 @@ ALTER TABLE records ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY goals_own ON goals
   FOR ALL TO authenticated
-  USING (auth.uid() = user_id)
-  WITH CHECK (auth.uid() = user_id);
+  USING ((SELECT auth.uid()) = user_id)
+  WITH CHECK ((SELECT auth.uid()) = user_id);
 
 CREATE POLICY avatars_own ON avatars
   FOR ALL TO authenticated
-  USING (EXISTS (SELECT 1 FROM goals g WHERE g.id = avatars.goal_id AND g.user_id = auth.uid()))
-  WITH CHECK (EXISTS (SELECT 1 FROM goals g WHERE g.id = avatars.goal_id AND g.user_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM goals g WHERE g.id = avatars.goal_id AND g.user_id = (SELECT auth.uid())))
+  WITH CHECK (EXISTS (SELECT 1 FROM goals g WHERE g.id = avatars.goal_id AND g.user_id = (SELECT auth.uid())));
 
 CREATE POLICY records_own ON records
   FOR ALL TO authenticated
-  USING (EXISTS (SELECT 1 FROM goals g WHERE g.id = records.goal_id AND g.user_id = auth.uid()))
-  WITH CHECK (EXISTS (SELECT 1 FROM goals g WHERE g.id = records.goal_id AND g.user_id = auth.uid()));
+  USING (EXISTS (SELECT 1 FROM goals g WHERE g.id = records.goal_id AND g.user_id = (SELECT auth.uid())))
+  WITH CHECK (EXISTS (SELECT 1 FROM goals g WHERE g.id = records.goal_id AND g.user_id = (SELECT auth.uid())));
