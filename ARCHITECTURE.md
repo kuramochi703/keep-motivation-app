@@ -253,7 +253,7 @@ sequenceDiagram
     participant M as MainPage.tsx
 
     B->>G: ログインを済ませて uuid が渡ってくる
-    G->>S: goals（archived_at が NULL の最新1件）＋ avatars を取得
+    G->>S: goals（id が最大の1件）＋ avatars を取得
     G->>S: その goal_id の records を取得
     S-->>G: 目標・アバター・達成日の一覧
     G-->>M: State（保存値はこれだけ）
@@ -303,7 +303,17 @@ flowchart LR
 | `deadline` | `date` | 期限 |
 | `cycle_days` | `int` | サイクル長。「n日に1回」の n |
 | `started_at` | `date` | サイクルの起点（目標を作った日） |
-| `archived_at` | `timestamptz` | **NULL の最新1件がいまの目標** |
+
+**いまの目標は「`id` がいちばん大きい1件」です。** 終わった印を付ける列は持ちません。
+目標は作った順に `id` が増えるので、最新が現役だと決めれば状態を持たずに済みます。
+過去の目標は行として残り、記録もアバターも消えません。
+
+> 以前は `archived_at` に時刻を入れて論理削除（アーカイブ）していました。やめた理由は2つです。
+> **①「NULL は1件だけ」を DB が保証できない**（部分ユニークインデックスが別途要る）。
+> **② 印を付ける UPDATE と新しい目標の INSERT がトランザクションではない**ので、
+> 途中で失敗すると現役が0件にも2件にもなりえました。最新1件と決めれば、どちらも起こりません。
+> 既存 DB には `ALTER TABLE goals DROP COLUMN archived_at;` が要ります
+> （アプリはもう読み書きしないので、残っていても動きます）。
 
 ### `avatars` — 育てる1体（目標と 1:1）
 
@@ -326,16 +336,16 @@ flowchart LR
 
 | 操作 | DBへの処理 |
 | --- | --- |
-| 起動 | `goals`（`archived_at IS NULL` の最新1件）に `avatars` を join して取得 ＋ その `records` |
+| 起動 | `goals`（`id` が最大の1件）に `avatars` を join して取得 ＋ その `records` |
 | 目標作成 | `goals` に INSERT（`started_at = 今日`）→ 返った `id` で `avatars` に INSERT |
 | 1日達成 | `records` に **INSERT 1行**（同日は UNIQUE が弾く） |
 | 進化の演出を流し終わった | `avatars.seen_stage` を UPDATE |
 | 期限延長 | `goals.deadline` を UPDATE |
-| 目標の作り直し | 旧 `goals.archived_at` を入れて、新しい `goals` ＋ `avatars` を INSERT。**記録もアバターも消さない** |
+| 目標の作り直し | 新しい `goals` ＋ `avatars` を INSERT するだけ。**前の目標には触らない**（記録もアバターも残る） |
 | 画面を描くとき | **なし**（`records` と `cycle_days` / `started_at` から毎回その場で計算） |
 
-**本番の画面から行が減ることはありません。** 記録は INSERT だけ、前の目標は
-`archived_at` を入れてしまうだけです。DELETE はデバッグ画面にしかありません。
+**本番の画面から行が減ることはありません。** 記録も目標も増えるだけです。
+DELETE はデバッグ画面にしかありません。
 
 ### デバッグ画面（開発時だけ）
 
@@ -351,6 +361,9 @@ flowchart LR
 | 日付 | `dayOffset`（±1日 / ±1サイクル / 日付を直接指定 / 今日に戻す） | 触らない |
 | 記録 | `records` の1行＝1日を、つける / 消す | 書く |
 
+**目標の一覧もここにしかありません。** アプリ本体は `id` が最大の1件しか読まないので、
+たまっている過去の目標は他のどこからも見えません。
+
 `dayOffset` は**負の値も入ります**。行き過ぎた日送りを戻せないと、やり直しがききません。
 日付を戻しても計算は壊れません（`lastDoneCycle()` が今より先のサイクルを数えないため）。
 
@@ -362,7 +375,7 @@ DELETE 系は `state/debug.ts` に隔離してあります。`useGoalState` に�
 | 1日ぶんの記録を消す | `records` から `(goal_id, done_on)` で DELETE |
 | 記録を全部消す | `records` から `goal_id` で DELETE（目標とアバターは残る＝たまごに戻る） |
 | 目標を消す | `records` → `avatars` → `goals` の順に DELETE |
-| 全部の目標を消す | archive 済みも含めて、上を全件ぶん繰り返す |
+| 全部の目標を消す | 過去のぶんも含めて、上を全件ぶん繰り返す |
 | 演出の見せ済みを戻す | `avatars.seen_stage` を UPDATE（**下げる**） |
 
 - **子から先に消します。** `records.goal_id` と `avatars.goal_id` に `ON DELETE CASCADE` が
@@ -412,7 +425,10 @@ JWT は `supabase.from(...)` に自動で付くので、アプリ側に `Authori
   「変えたいなら新しい目標＝たまごから」。**1日に1回にした人の逃げ道が作り直しだけ**なのが
   未解決の宿題です
 - 目標作成は `goals` → `avatars` の2回の INSERT で、**トランザクションではありません。**
-  片方だけ成功する余地が残っています（失敗時は Console にエラー）
+  片方だけ成功する余地が残っています（失敗時は Console にエラー）。
+  `goals` だけ入ると、アバターの無い目標がそのまま現役になります
+- **目標は増える一方で、古いものを片付ける導線がありません。** 作り直すたびに `goals` が
+  1行ずつ積まれ、本番の画面からは見えないまま残ります（見えるのはデバッグ画面だけ）
 
 **コードまわり**
 
