@@ -143,28 +143,28 @@ export default function DebugPage({
         <h1>デバッグ</h1>
       </header>
 
+      {/*
+        まとめのカードは置かない。値はそれぞれ関係するカードの中に置く方が、
+        探さずに済むし、同じ数字が2か所に出ることもない。
+        サイクル長と目標IDは目標の一覧に、日送りは日付カードに出ている。
+      */}
       <section className="card debug-avatar" aria-label="現在のアバター">
         <div>
           <h2>{state.name || 'アバター'}</h2>
-          <p className="debug-note">
-            {stage.name}（{stage.id}） · {mood?.name ?? '気分なし'} · 連続 {runOf(state)}サイクル · 放置 {idleOf(state) ?? '—'}
+          <p className="debug-meta">
+            <span>{stage.name} <b>{stage.id}</b></span>
+            <span>気分 <b>{mood?.name ?? 'なし'}</b></span>
+            <span>連続 <b>{runOf(state)}</b></span>
+            <span>放置 <b>{idleOf(state) ?? '—'}</b></span>
+            <span>
+              つぎ <b>{next ? `${next.kind === 'run' ? '連続' : `直近${next.window}で`} ${next.have}/${next.need}` : '最終'}</b>
+            </span>
           </p>
-          <p>{mood?.say ?? 'まだ殻の中。'}</p>
+          <p className="debug-say">{mood?.say ?? 'まだ殻の中。'}</p>
         </div>
         <div className="debug-avatar-preview">
           <Avatar stage={stage.id} hue={state.hue} mood={mood} />
         </div>
-      </section>
-
-      {/* 気分とステージはすぐ上のアバター行に出ているので、ここでは繰り返さない */}
-      <section className="card" aria-label="現在の状態">
-        <dl className="debug-summary">
-          <div><dt>つぎの条件</dt><dd>{next ? `${next.kind === 'run' ? '連続' : `直近${next.window}サイクルで`} ${next.have} / ${next.need}` : '最終ステージ'}</dd></div>
-          <div><dt>サイクル</dt><dd>{cycleLabel(state.cycleDays)} <small>· 今 {currentCycle(state)}番目 · 起点 {startOf(state)}</small></dd></div>
-          <div><dt>アプリ内の日付</dt><dd>{todayKey} <small>· 日送り {state.dayOffset >= 0 ? `+${state.dayOffset}` : state.dayOffset}日</small></dd></div>
-          <div><dt>目標ID</dt><dd>{goalId ?? '未設定'}</dd></div>
-          <div><dt>自動保存の条件</dt><dd>{loaded && hasStarted ? '有効' : '停止中'}</dd></div>
-        </dl>
       </section>
 
       <div className="debug-columns">
@@ -176,6 +176,13 @@ export default function DebugPage({
         */}
         <section className="card" aria-label="日付">
           <h2>日付</h2>
+          <p className="debug-meta">
+            <span>いま <b>{todayKey}</b></span>
+            <span className={state.dayOffset !== 0 ? 'on' : undefined}>
+              日送り <b>{state.dayOffset >= 0 ? `+${state.dayOffset}` : state.dayOffset}日</b>
+            </span>
+            <span>{cycleLabel(state.cycleDays)} <b>{currentCycle(state)}</b>番目</span>
+          </p>
           <div className="tools">
             <button className="btn sec" onClick={() => onSetDayOffset(state.dayOffset - 7)}>−7日</button>
             <button className="btn sec" onClick={() => onSetDayOffset(state.dayOffset - 1)}>−1日</button>
@@ -205,12 +212,11 @@ export default function DebugPage({
         */}
         <section className="card" aria-label="進化の演出" aria-busy={working}>
           <h2>進化の演出</h2>
-          <dl className="debug-summary">
-            <div>
-              <dt>ステージ {stage.id} ／ 見せ済み {state.seenStage}</dt>
-              <dd>{pending ? 'ダッシュボードで流れる' : '流れない'}</dd>
-            </div>
-          </dl>
+          <p className="debug-meta">
+            <span>ステージ <b>{stage.id}</b></span>
+            <span>見せ済み <b>{state.seenStage}</b></span>
+            <span className={pending ? 'on' : undefined}>{pending ? '流れる' : '流れない'}</span>
+          </p>
           <div className="tools">
             {STAGES.slice(0, -1).map((s) => (
               <button
@@ -358,7 +364,7 @@ export default function DebugPage({
         <section className="card" aria-busy={busy}>
           <h2>DBの保存値</h2>
           <div className="tools">
-            <button className="btn" disabled={busy} onClick={readDatabase}>{busy ? '取得中...' : 'DBの最新値を取得'}</button>
+            <button className="btn sec" disabled={busy} onClick={readDatabase}>{busy ? '取得中...' : 'DBの最新値を取得'}</button>
           </div>
           {error && <p className="debug-error" role="alert">{error}</p>}
           <p className="debug-note" role="status">{snapshot ? `最終取得 ${snapshot.at}` : '未取得'}</p>
