@@ -17,7 +17,7 @@ const NAV: NavItem[] = [
 ]
 
 export default function App() {
-  const { user, ready, signIn, signOut, state, loaded, hasStarted, screen, go, start, reset, extendDeadline, markStageSeen, newGoal, elapsed, running, toggleTimer, recordOnly, nextDay } = useApp()
+  const { user, ready, signIn, signOut, state, loaded, hasStarted, screen, go, start, reset, extendDeadline, markStageSeen, newGoal, elapsed, running, toggleTimer, recordOnly, nextDay, setDayOffset, reload } = useApp()
 
   const select = (id: string) => {
     if (id === 'top' || id === 'setup' || id === 'main') go(id)
@@ -48,9 +48,9 @@ export default function App() {
       <main className="content">
         {screen === 'debug' && DebugPage ? (
           <Suspense fallback={<p role="status">読み込み中...</p>}>
-            <DebugPage state={state} loaded={loaded} hasStarted={hasStarted}
+            <DebugPage state={state} userId={user.id} loaded={loaded} hasStarted={hasStarted}
               elapsed={elapsed} running={running} onRecord={recordOnly}
-              onNextDay={nextDay} onNewGoal={newGoal} />
+              onSetDayOffset={setDayOffset} onReload={reload} onNewGoal={newGoal} />
           </Suspense>
         ) : screen === 'top' ? (
           <TopPage onStart={() => go('setup')} />

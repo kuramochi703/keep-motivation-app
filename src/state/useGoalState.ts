@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import {
   addMonths,
@@ -23,6 +23,9 @@ import {
  * 持ち主が誰かは知らない。`userId`（`auth.users.id` の uuid）を1つ受け取るだけで、
  * ログインの面倒は useAuth が見る（AUTH_PLAN 4章）。
  * RLS が同じ条件で絞るので、`.eq('user_id', ...)` はもう防御ではなく「最新1件」の絞り込み。
+ *
+ * **消す操作はここに置かない。** 本番の画面からは記録も目標も消えない（行は増える
+ * だけ）。消せるのはデバッグ画面だけで、実体は `state/debug.ts` にある。
  */
 
 /** 1セッションの長さ。`records.minutes` に入れる */
@@ -31,6 +34,63 @@ const SESSION_MINUTES = 5
 /** join の結果。1目標に1体だが、返りが配列になることがある */
 const oneOf = <T,>(v: T | T[] | null | undefined): T | null =>
   Array.isArray(v) ? v[0] ?? null : v ?? null
+
+/**
+ * 読み込みの結果。**「読めて、目標が無かった」と「読めなかった」を混ぜない。**
+ * 前者は初期状態へ戻す（デバッグ画面で目標を消した直後がこれ）が、
+ * 後者で戻すと、通信が切れただけで画面から目標が消えてしまう。
+ */
+type Loaded = { ok: true; state: State | null } | { ok: false }
+
+/**
+ * いまの目標と、その記録を読む。
+ *
+ * **「いまの目標」＝ その人の `goals` のうち `id` がいちばん大きい1件。**
+ * 以前は `archived_at` に時刻を入れて「終わった印」を付けていたが、
+ * 目標は作った順に並ぶので、最新が現役だと決めれば印は要らない。
+ * 過去の目標は行として残るので、記録もアバターも消えない。
+ */
+async function fetchGoal(userId: string): Promise<Loaded> {
+  const { data, error } = await supabase
+    .from('goals')
+    .select('id, goal, deadline, cycle_days, started_at, avatars(name, hue, seen_stage)')
+    .eq('user_id', userId)
+    .order('id', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    console.error('Supabase読み込みエラー:', error)
+    return { ok: false }
+  }
+
+  if (!data) return { ok: true, state: null }
+
+  const avatar = oneOf(data.avatars as { name: string; hue: number; seen_stage: number }[])
+  const { data: records, error: recordsError } = await supabase
+    .from('records')
+    .select('done_on')
+    .eq('goal_id', data.id)
+    .order('done_on')
+
+  if (recordsError) console.error('記録の読み込みエラー:', recordsError)
+
+  return {
+    ok: true,
+    state: {
+      ...initialState(),
+      goalId: data.id,
+      goal: data.goal ?? '',
+      deadline: data.deadline ?? null,
+      cycleDays: data.cycle_days ?? 1,
+      startedAt: data.started_at ?? null,
+      hue: avatar?.hue ?? 150,
+      name: avatar?.name ?? '',
+      seenStage: avatar?.seen_stage ?? 0,
+      done: (records ?? []).map((r) => r.done_on as string),
+    },
+  }
+}
 
 export function useGoalState(userId: string | null) {
   const [state, setState] = useState<State>(() => initialState())
@@ -41,7 +101,6 @@ export function useGoalState(userId: string | null) {
   const latest = useRef(state)
   latest.current = state
 
-  // いまの目標（archived_at が NULL の最新1件）と、その記録を読む
   useEffect(() => {
     // 未ログインの間は何も読まない。ログアウトすると初期状態に戻る
     if (!userId) {
@@ -53,78 +112,52 @@ export function useGoalState(userId: string | null) {
 
     let alive = true
 
-    async function loadGoal() {
-      const { data, error } = await supabase
-        .from('goals')
-        .select('id, goal, deadline, cycle_days, started_at, avatars(name, hue, seen_stage)')
-        .eq('user_id', userId)
-        .is('archived_at', null)
-        .order('id', { ascending: false })
-        .limit(1)
-        .maybeSingle()
-
+    fetchGoal(userId).then((result) => {
       if (!alive) return
-
-      if (error) {
-        console.error('Supabase読み込みエラー:', error)
-        setLoaded(true)
-        return
-      }
-
-      if (data) {
-        const avatar = oneOf(data.avatars as { name: string; hue: number; seen_stage: number }[])
-        const { data: records, error: recordsError } = await supabase
-          .from('records')
-          .select('done_on')
-          .eq('goal_id', data.id)
-          .order('done_on')
-
-        if (recordsError) console.error('記録の読み込みエラー:', recordsError)
-        if (!alive) return
-
-        setState({
-          ...initialState(),
-          goalId: data.id,
-          goal: data.goal ?? '',
-          deadline: data.deadline ?? null,
-          cycleDays: data.cycle_days ?? 1,
-          startedAt: data.started_at ?? null,
-          hue: avatar?.hue ?? 150,
-          name: avatar?.name ?? '',
-          seenStage: avatar?.seen_stage ?? 0,
-          done: (records ?? []).map((r) => r.done_on as string),
-        })
+      if (result.ok && result.state) {
+        setState(result.state)
         setHasStarted(true)
       }
-
       setLoaded(true)
-    }
-
-    loadGoal()
+    })
 
     return () => {
       alive = false
     }
   }, [userId])
 
+  /**
+   * DB から読み直す。デバッグ画面が「消したあと、本当に消えたか」を
+   * 画面で確かめるために使う。**日送り（`dayOffset`）は DB に無い画面の都合
+   * なので引き継ぐ。** 読み直すたびに今日へ戻ると、日付を動かしながらの
+   * 確認ができない。
+   */
+  const reload = useCallback(async () => {
+    if (!userId) return
+    const result = await fetchGoal(userId)
+    if (!result.ok) return
+
+    const { dayOffset } = latest.current
+    if (result.state) {
+      setState({ ...result.state, dayOffset })
+      setHasStarted(true)
+    } else {
+      setState({ ...initialState(), dayOffset })
+      setHasStarted(false)
+    }
+  }, [userId])
+
   const markStarted = () => setHasStarted(true)
 
-  /** 目標を作る。`goals` → `avatars` の2回。片方だけ成功する余地は残っている */
+  /**
+   * 目標を作る。`goals` → `avatars` の2回。片方だけ成功する余地は残っている。
+   *
+   * **前の目標には何もしません。** 行を足すだけで、新しい方が `id` の大きい
+   * 1件になるので自動的に現役が入れ替わります。記録もアバターもそのまま残ります。
+   */
   const start = async (input: SetupInput) => {
     if (!userId) return false
     const startedAt = key(new Date())
-
-    // 前の目標はしまっておく。記録もアバターも消さない
-    const { error: archiveError } = await supabase
-      .from('goals')
-      .update({ archived_at: new Date().toISOString() })
-      .eq('user_id', userId)
-      .is('archived_at', null)
-
-    if (archiveError) {
-      console.error('前の目標のアーカイブに失敗:', archiveError)
-      return false
-    }
 
     const { data, error } = await supabase
       .from('goals')
@@ -209,7 +242,13 @@ export function useGoalState(userId: string | null) {
     if (error) console.error('演出の記録に失敗:', error)
   }
 
-  /** お試し用。アプリの中の日付だけを進める（DB には触らない） */
+  /**
+   * お試し用。アプリの中の日付だけをずらす（DB には触らない）。
+   * **負の値も入る。** 過去へ戻せないと、行き過ぎた日送りをやり直せない。
+   */
+  const setDayOffset = (days: number) => setState((s) => ({ ...s, dayOffset: days }))
+
+  /** お試し用。1日進める */
   const nextDay = () => setState((s) => ({ ...s, dayOffset: s.dayOffset + 1 }))
 
   const extendDeadline = async () => {
@@ -244,8 +283,10 @@ export function useGoalState(userId: string | null) {
     markStarted,
     start,
     reset,
+    reload,
     markSessionDone,
     markStageSeen,
+    setDayOffset,
     nextDay,
     extendDeadline,
     newGoal,

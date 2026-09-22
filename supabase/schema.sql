@@ -12,6 +12,13 @@
 -- パスワードのハッシュは auth.users.encrypted_password にあり、照合は Supabase 内で完結する。
 -- アカウントは管理画面の Authentication → Users で手作業で配る（登録画面は無い）。
 
+-- **いまの目標は「id がいちばん大きい1件」。** 印を付ける列は置かない。
+-- 目標は作った順に id が増えるので、最新が現役だと決めれば状態を持たずに済む。
+-- 以前は archived_at に時刻を入れて「終わった印」にしていたが、
+--   * 「NULL は1件だけ」を DB が保証できず（部分ユニークが要る）
+--   * 印を付ける UPDATE と INSERT がトランザクションでないので、途中で失敗すると
+--     現役が0件にも2件にもなりえた
+-- 最新1件と決めれば、どちらの問題も起こりようがない。
 CREATE TABLE goals (
   id          bigserial PRIMARY KEY,
   user_id     uuid   NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -21,7 +28,6 @@ CREATE TABLE goals (
   deadline    date   NOT NULL,
   cycle_days  int    NOT NULL DEFAULT 1,  -- サイクル長（README 2章）
   started_at  date   NOT NULL DEFAULT current_date,
-  archived_at timestamptz,                -- NULL の最新1件がいまの目標
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 
@@ -43,8 +49,12 @@ CREATE TABLE records (
   UNIQUE (goal_id, done_on)
 );
 
-CREATE INDEX goals_current_idx ON goals (user_id, archived_at, id DESC);
+CREATE INDEX goals_current_idx ON goals (user_id, id DESC);
 CREATE INDEX records_goal_idx  ON records (goal_id, done_on);
+
+-- 既に archived_at のある DB を使っている場合は、これを1回流せば揃う。
+-- アプリはもうこの列を読み書きしないので、残っていても動作には影響しない。
+--   ALTER TABLE goals DROP COLUMN archived_at;
 
 -- RLS（ARCHITECTURE 4章）
 --
