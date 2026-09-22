@@ -72,9 +72,10 @@ src/
 │
 ├── app/                        画面の骨組み
 │   ├── App.tsx                   どの画面を出すか決める。状態は持たない
-│   └── Sidebar.tsx               メニュー（トップ/目標設定/ダッシュボード）
+│   └── Sidebar.tsx               メニュー（トップ/目標設定/ダッシュボード）＋ 表示名・ログアウト
 │
 ├── pages/                      画面（1画面 = 1ファイル）
+│   ├── LoginPage.tsx             ログイン（メールアドレス＋パスワード）
 │   ├── TopPage.tsx               トップ
 │   ├── SetupPage.tsx             目標設定
 │   ├── MainPage.tsx              ダッシュボード
@@ -88,7 +89,8 @@ src/
 │       └── calendar.css
 │
 ├── state/                      状態とルール
-│   ├── useApp.ts                 合成層。下の3つを1つのAPIにまとめる
+│   ├── useApp.ts                 合成層。下の4つを1つのAPIにまとめる
+│   ├── useAuth.ts                ログイン状態だけ。DB を知らない
 │   ├── useScreen.ts              画面遷移だけ
 │   ├── useTimer.ts               5分タイマーだけ
 │   ├── useGoalState.ts           目標の状態管理と Supabase の読み書き
@@ -116,12 +118,13 @@ flowchart TB
 
         subgraph shell["app/（骨組み）"]
             direction LR
-            app["App.tsx<br/>どの画面を出すか決める"]
-            sidebar["Sidebar.tsx<br/>メニュー"]
+            app["App.tsx<br/>ログインゲート＋<br/>どの画面を出すか決める"]
+            sidebar["Sidebar.tsx<br/>メニュー・ログアウト"]
         end
 
         subgraph pages["pages/（画面）"]
             direction LR
+            login["LoginPage.tsx"]
             top["TopPage.tsx"]
             setup["SetupPage.tsx"]
             main["MainPage.tsx"]
@@ -137,6 +140,7 @@ flowchart TB
         subgraph core["state/（状態とルール）"]
             direction LR
             useapp["useApp.ts<br/>合成層"]
+            useauth["useAuth.ts<br/>ログイン状態"]
             usescreen["useScreen.ts<br/>画面遷移"]
             usetimer["useTimer.ts<br/>5分タイマー"]
             usegoal["useGoalState.ts<br/>目標の状態と永続化"]
@@ -146,28 +150,33 @@ flowchart TB
         client["lib/supabase.ts<br/>接続クライアント"]
     end
 
-    db[("Supabase<br/>goals / avatars / records")]
+    db[("Supabase<br/>auth.users ＋<br/>goals / avatars / records")]
 
     app --> sidebar
+    app -->|"未ログインなら"| login
     app --> top
     app --> setup
     app --> main
 
     setup -->|"start() で目標を確定"| useapp
     main -->|"タイマー操作・達成記録"| useapp
+    useapp --> useauth
     useapp --> usescreen
     useapp --> usetimer
-    useapp --> usegoal
+    useapp -->|"user.id（uuid）を渡す"| usegoal
+    login -->|"signIn(email, password)"| useapp
+    useauth -->|"signInWithPassword /<br/>onAuthStateChange"| client
     usetimer -->|"SESSION 秒たったら onComplete()"| usegoal
     usetimer -->|"SESSION を参照"| logic
     usegoal -->|"markSessionDone() / resetGoal()"| logic
     usegoal --> client
-    client -->|"select / insert / update"| db
+    client -->|"select / insert / update（JWT 付き）"| db
 
     main -->|"ステージ・色相・気分を渡す"| avatar
     top -->|"たまごの姿を描画"| avatar
     main -->|"達成日リストを渡す"| calendar
 
+    login --> ui
     top --> ui
     setup --> ui
     main --> ui
@@ -177,19 +186,23 @@ flowchart TB
     classDef dbx fill:#438dd5,stroke:#2e6295,color:#ffffff
     classDef boundary fill:none,stroke:#444444,stroke-dasharray:5 5,color:#444444
 
-    class app,sidebar,top,setup,main,useapp,usescreen,usetimer,usegoal,logic,avatar,calendar,ui,client component
+    class app,sidebar,login,top,setup,main,useapp,useauth,usescreen,usetimer,usegoal,logic,avatar,calendar,ui,client component
     class db dbx
     class spa,shell,pages,parts,core boundary
 ```
 
 読み方のポイント:
 
-- **`App.tsx` は画面遷移だけ**を担当し、状態そのものは持ちません
-- **`useApp.ts` は唯一の「状態のリモコン」**ですが、中身は3つの hook の合成層です。
+- **`App.tsx` は画面遷移とログインゲートだけ**を担当し、状態そのものは持ちません。
+  ゲートは3段で、`!ready`（セッション確認中）→ `!user`（ログイン画面）→ `!loaded`（目標の読み込み中）の順
+- **`useApp.ts` は唯一の「状態のリモコン」**ですが、中身は4つの hook の合成層です。
   分けている理由は**変化する理由が別々**だから（画面が増える／タイマー仕様が変わる／保存先が変わる）。
   `useApp()` が返す API は分割前と同じなので、呼び出し側はこの分割を意識しなくて済みます
 - **`logic.ts` は UI を持たない純粋なルール**（サイクルの数え方、気分の表、日付計算）。
-  3つの hook はここの定数・関数を呼ぶだけで、ロジックそのものは持ちません
+  4つの hook はここの定数・関数を呼ぶだけで、ロジックそのものは持ちません
+- **`useAuth.ts` は DB を知らず、`useGoalState.ts` は誰がログインしているかを知りません。**
+  間をつなぐのは `useApp.ts` が渡す uuid 1つだけです。第2段階で Google ログインに変えるとき、
+  差し替わるのは `useAuth.ts` の `signIn` と `LoginPage.tsx` の入力欄だけで済みます
 - **`avatar/` の見た目は3Dの一種類だけ**です。WebGL が使えない／初期化に失敗した場合は、
   レイアウトを保つための空枠だけが残ります（`Avatar.tsx` の `WebGLBoundary`）
 - **`features/calendar/`** は機能ひとまとまりの置き場。機能が増えたら `features/` にフォルダを足します
@@ -236,7 +249,7 @@ sequenceDiagram
     participant L as logic.ts / stage.ts
     participant M as MainPage.tsx
 
-    B->>G: アプリを開く
+    B->>G: ログインを済ませて uuid が渡ってくる
     G->>S: goals（archived_at が NULL の最新1件）＋ avatars を取得
     G->>S: その goal_id の records を取得
     S-->>G: 目標・アバター・達成日の一覧
@@ -259,7 +272,7 @@ sequenceDiagram
 
 ```mermaid
 flowchart LR
-    U["users"] -->|立てる| G["goals"]
+    U["auth.users<br/><i>Supabase Auth</i>"] -->|立てる| G["goals"]
     G -->|育てる1体| A["avatars"]
     G -->|積んだ日| R["records"]
 ```
@@ -267,19 +280,22 @@ flowchart LR
 **DDL の原典は [`supabase/schema.sql`](./supabase/schema.sql)** です（新しいプロジェクトに
 1本流すだけで、この形になります）。以下はその要約。
 
-### `users` — 認証を入れるまでの置き場
+### `auth.users` — 持ち主（Supabase Auth）
 
-| カラム | 型 | 内容 |
-| --- | --- | --- |
-| `id` | `bigserial` PK | **いまは1行だけ。** 認証を入れたら auth の ID に置き換える |
-| `name` | `text` | ユーザーの表示名（入力欄は認証と一緒に作る） |
+**`public` に自前の `users` テーブルは置いていません。** 持ち主は Supabase Auth が管理する
+`auth.users` で、パスワードのハッシュ（`encrypted_password`）も照合も Supabase の中で完結します。
+自前で持つと anon key で全員分のハッシュが読めてしまい、`auth.uid()` が無いので RLS も書けません。
+
+表示名は JWT（`user_metadata.name`、無ければ `email`）から取ります。
+**登録画面はありません。** アカウントは Supabase の管理画面 Authentication → Users で手作業で配ります
+（新規登録も管理画面で無効にしてあります）。
 
 ### `goals` — 目標
 
 | カラム | 型 | 内容 |
 | --- | --- | --- |
 | `id` | `bigserial` PK | 目標ID |
-| `user_id` | `bigint` FK | どのユーザーのものか |
+| `user_id` | `uuid` FK | どのユーザーのものか（`auth.users(id)`、`ON DELETE CASCADE`） |
 | `goal` | `text` | 目標の文章 |
 | `deadline` | `date` | 期限 |
 | `cycle_days` | `int` | サイクル長。「n日に1回」の n |
@@ -315,6 +331,23 @@ flowchart LR
 | 目標の作り直し | 旧 `goals.archived_at` を入れて、新しい `goals` ＋ `avatars` を INSERT。**記録もアバターも消さない** |
 | 画面を描くとき | **なし**（`records` と `cycle_days` / `started_at` から毎回その場で計算） |
 
+### RLS（行レベルセキュリティ）
+
+anon key はブラウザに配られるので、**誰が何を読めるかを決めているのは RLS だけ**です。
+3テーブルとも有効にしてあり、ポリシーの形は2つしかありません。
+
+| テーブル | ポリシー | 条件 |
+| --- | --- | --- |
+| `goals` | `goals_own` | `auth.uid() = user_id` |
+| `avatars` | `avatars_own` | 親の `goals` が自分のものか（`EXISTS`） |
+| `records` | `records_own` | 同上 |
+
+`FOR ALL` なので SELECT / INSERT / UPDATE / DELETE の全部に効きます。`USING` が既にある行、
+`WITH CHECK` が書こうとしている行の条件で、他人の `goal_id` を書き込まれないよう両方に同じ条件を置いています。
+
+JWT は `supabase.from(...)` に自動で付くので、アプリ側に `Authorization` を書く場所はありません。
+`useGoalState.ts` に残っている `.eq('user_id', ...)` はもう防御ではなく「最新1件」の絞り込みです。
+
 ### DBに保存していないもの
 
 **連続サイクル数・気分・ステージ・最長記録は保存しません。** 記録から計算できるからです。
@@ -331,8 +364,8 @@ flowchart LR
 
 **データまわり**
 
-- **ユーザーの区別がありません。** すべての操作が `users.id = 1` を対象にします。
-  認証と RLS（行レベルセキュリティ）を入れるまで、**誰が開いても同じデータ**です
+- **アカウントは管理画面で手作業で配ります。** 登録画面もパスワード再発行の導線もありません
+  （3人で使う前提。詳細は [`AUTH_PLAN.md`](./AUTH_PLAN.md)）
 - **ペース（`cycle_days`）はあとから変えられません。** 変えると過去の記録の所属サイクルが
   変わるため、「過去を切り直さずに変える」には変更履歴のテーブルが要ります。いまは
   「変えたいなら新しい目標＝たまごから」。**1日に1回にした人の逃げ道が作り直しだけ**なのが
