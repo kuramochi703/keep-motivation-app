@@ -42,6 +42,15 @@ type Props = {
   onNewGoal: () => void
 }
 
+/**
+ * デバッグ画面。
+ *
+ * **並びは「見る」→「動かす」→「生データ」の3段。** 動かすものは2列で並べ、
+ * 左が日付と記録（ふだん使う）、右が演出と目標（たまにしか触らない）。
+ *
+ * 説明文は置かない。何をするカードかは見出しとボタンの文言で分かるようにし、
+ * 仕組みの理由はコード中のコメントと ARCHITECTURE 4章に書く。
+ */
 export default function DebugPage({
   state,
   userId,
@@ -60,10 +69,6 @@ export default function DebugPage({
   const mood = stage.id === 0 ? null : moodOf(state)
   const next = nextGoalOf(state.done, state.cycleDays, startOf(state), todayKey)
   const [snapshot, setSnapshot] = useState<{ data: unknown; at: string } | null>(null)
-  // たまごの孵化。**モデルのクリップは1回きり**で、割れた姿のまま止まる。
-  // もう一度見るには「閉じる」でアバターごと作り直す（key を変える）
-  const [hatching, setHatching] = useState(false)
-  const [eggKey, setEggKey] = useState(0)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
   // 消す操作は読み取りと別に持つ。同じ枠に出すと、どちらが失敗したか分からない
@@ -129,13 +134,13 @@ export default function DebugPage({
 
   // 記録は日付順に並べて出す。1行が records の1行に対応する
   const records = [...state.done].sort()
+  const pending = stage.id > state.seenStage
 
   return (
     <div className="wrap debug-page">
       <header>
         <span className="badge">開発用</span>
         <h1>デバッグ</h1>
-        <p>アプリの現在値と、Supabaseに保存された値を確認できます。</p>
       </header>
 
       <section className="card debug-avatar" aria-label="現在のアバター">
@@ -151,249 +156,214 @@ export default function DebugPage({
         </div>
       </section>
 
+      {/* 気分とステージはすぐ上のアバター行に出ているので、ここでは繰り返さない */}
       <section className="card" aria-label="現在の状態">
         <dl className="debug-summary">
-          <div><dt>気分</dt><dd>{mood?.name ?? '気分なし'} <small>· 彩度 {mood?.s ?? '—'}</small></dd></div>
-          <div><dt>ステージ</dt><dd>{stage.name} <small>· 見せ済み {state.seenStage}</small></dd></div>
           <div><dt>つぎの条件</dt><dd>{next ? `${next.kind === 'run' ? '連続' : `直近${next.window}サイクルで`} ${next.have} / ${next.need}` : '最終ステージ'}</dd></div>
           <div><dt>サイクル</dt><dd>{cycleLabel(state.cycleDays)} <small>· 今 {currentCycle(state)}番目 · 起点 {startOf(state)}</small></dd></div>
-          <div><dt>目標ID</dt><dd>{goalId ?? '未設定'}</dd></div>
           <div><dt>アプリ内の日付</dt><dd>{todayKey} <small>· 日送り {state.dayOffset >= 0 ? `+${state.dayOffset}` : state.dayOffset}日</small></dd></div>
+          <div><dt>目標ID</dt><dd>{goalId ?? '未設定'}</dd></div>
           <div><dt>自動保存の条件</dt><dd>{loaded && hasStarted ? '有効' : '停止中'}</dd></div>
         </dl>
-        <p className="debug-note">保存条件の表示は、保存成功を示すものではありません。DB取得ボタンで保存値を確認してください。</p>
       </section>
 
-      <section className="card" aria-label="日付">
-        <h2>日付</h2>
+      <div className="debug-columns">
         {/*
           気分もステージも、生の日付ではなく cycleIndex() で番号に直してからしか
           見ていない（logic.ts / stage.ts）。**だから日付さえ動かせれば、
           気分7段もステージ4段も全部ここから再現できる。**
           ずらすのは `dayOffset` だけで、DB には触らない。
         */}
-        <p className="debug-note">
-          アプリの中の日付だけをずらします（DBには触りません）。記録をつけると、
-          ここに出ている日付で <code>records.done_on</code> に入ります。
-        </p>
-        <div className="tools">
-          <button className="btn sec" onClick={() => onSetDayOffset(state.dayOffset - 7)}>−7日</button>
-          <button className="btn sec" onClick={() => onSetDayOffset(state.dayOffset - 1)}>−1日</button>
-          <button className="btn sec" onClick={() => onSetDayOffset(state.dayOffset + 1)}>+1日</button>
-          <button className="btn sec" onClick={() => onSetDayOffset(state.dayOffset + 7)}>+7日</button>
-          <button className="btn sec" onClick={() => onSetDayOffset(state.dayOffset - state.cycleDays)}>−1サイクル</button>
-          <button className="btn sec" onClick={() => onSetDayOffset(state.dayOffset + state.cycleDays)}>+1サイクル</button>
-        </div>
-        <div className="debug-row">
-          <label htmlFor="debug-date">日付を指定</label>
-          <input
-            id="debug-date"
-            type="date"
-            value={todayKey}
-            onChange={(e) => e.target.value && onSetDayOffset(diffDays(key(new Date()), e.target.value))}
-          />
-          <button className="btn ghost" disabled={state.dayOffset === 0} onClick={() => onSetDayOffset(0)}>
-            今日に戻す
-          </button>
-        </div>
-      </section>
-
-      <section className="card" aria-label="記録" aria-busy={working}>
-        <h2>記録</h2>
-        {/*
-          **1レコード＝1日。** 同じ日に何度タイマーを回しても増えない
-          （schema.sql の UNIQUE (goal_id, done_on) と markSessionDone の早期 return）。
-          だからこの一覧の1行が、そのまま records の1行になる。
-        */}
-        <p className="debug-note">
-          1行が <code>records</code> の1行です。同じ日は何度つけても1行のまま
-          （<code>UNIQUE (goal_id, done_on)</code>）。消すとDBからも消えます。
-        </p>
-
-        <div className="tools">
-          {isDone(state, today(state)) ? (
-            <button
-              className="btn sec"
-              disabled={working || goalId === null}
-              onClick={() => run(() => deleteRecord(goalId!, todayKey))}
-            >
-              今日（{todayKey}）の記録を外す
+        <section className="card" aria-label="日付">
+          <h2>日付</h2>
+          <div className="tools">
+            <button className="btn sec" onClick={() => onSetDayOffset(state.dayOffset - 7)}>−7日</button>
+            <button className="btn sec" onClick={() => onSetDayOffset(state.dayOffset - 1)}>−1日</button>
+            <button className="btn sec" onClick={() => onSetDayOffset(state.dayOffset + 1)}>+1日</button>
+            <button className="btn sec" onClick={() => onSetDayOffset(state.dayOffset + 7)}>+7日</button>
+            <button className="btn sec" onClick={() => onSetDayOffset(state.dayOffset - state.cycleDays)}>−1サイクル</button>
+            <button className="btn sec" onClick={() => onSetDayOffset(state.dayOffset + state.cycleDays)}>+1サイクル</button>
+          </div>
+          <div className="debug-row">
+            <label htmlFor="debug-date">日付を指定</label>
+            <input
+              id="debug-date"
+              type="date"
+              value={todayKey}
+              onChange={(e) => e.target.value && onSetDayOffset(diffDays(key(new Date()), e.target.value))}
+            />
+            <button className="btn ghost" disabled={state.dayOffset === 0} onClick={() => onSetDayOffset(0)}>
+              今日に戻す
             </button>
-          ) : (
-            <button className="btn sec" disabled={!hasStarted} onClick={onRecord}>
-              今日（{todayKey}）を達成にする
-            </button>
-          )}
-          <button
-            className="btn ghost"
-            disabled={working || goalId === null || records.length === 0}
-            onClick={() => {
-              if (window.confirm(`記録を ${records.length}件すべて消します。目標とアバターは残るので、たまごに戻ります。`)) {
-                run(() => clearRecords(goalId!))
-              }
-            }}
-          >
-            記録を全部消す（{records.length}件）
-          </button>
-        </div>
+          </div>
+        </section>
 
-        {failure && <p className="debug-error" role="alert">{failure}</p>}
-        {goalId === null && <p className="debug-note">目標がまだありません。記録はDBに入らず、画面の中だけで動きます。</p>}
-
-        {records.length === 0 ? (
-          <p className="debug-note">記録はまだありません。</p>
-        ) : (
-          <ul className="debug-records">
-            {records.map((day) => {
-              const cycle = cycleIndex(day, startOf(state), state.cycleDays)
-              return (
-                <li key={day} className={day === todayKey ? 'now' : undefined}>
-                  <span className="debug-record-day">{day}</span>
-                  <span className="debug-note">
-                    {cycle < 0 ? '起点より前（数えない）' : `${cycle}番目のサイクル`}
-                    {cycle > currentCycle(state) && ' · 未来'}
-                  </span>
-                  <button
-                    className="btn ghost"
-                    aria-label={`${day} の記録を消す`}
-                    disabled={working || goalId === null}
-                    onClick={() => run(() => deleteRecord(goalId!, day))}
-                  >
-                    消す
-                  </button>
-                </li>
-              )
-            })}
-          </ul>
-        )}
-      </section>
-
-      <section className="card" aria-label="進化の演出" aria-busy={working}>
-        <h2>進化の演出</h2>
         {/*
           演出の発動条件は `stage.id > seenStage` の1行だけ（MainPage.tsx）。
           流し終わると seenStage が上がって二度と出ないので、**もう一度見るには
           ここを戻すしかない。** 0 に戻せば孵化から、2 に戻せば究極体への進化だけ。
         */}
-        <p className="debug-note">
-          演出は <code>ステージ({stage.id}) &gt; 見せ済み({state.seenStage})</code> の間だけ、
-          ダッシュボードで1回流れます。いまは
-          <b>{stage.id > state.seenStage ? ' 流れる状態です' : ' 流れません'}</b>。
-          戻してからダッシュボードを開くと、もう一度見られます。
-        </p>
-        <div className="tools">
-          {STAGES.slice(0, -1).map((s) => (
-            <button
-              key={s.id}
-              className="btn sec"
-              disabled={working || goalId === null || state.seenStage === s.id}
-              onClick={() => run(() => rewindSeenStage(goalId!, s.id))}
-            >
-              見せ済みを {s.id} に（{STAGES[s.id + 1].name}への演出から）
-            </button>
-          ))}
-        </div>
-      </section>
-
-      <section className="card debug-avatar" aria-label="たまご（ステージ0）">
-        <div>
-          <h2>たまご</h2>
-          <p className="debug-note">
-            ステージ0の姿と、孵化（割れる）アニメーションの確認用。進化の演出につなぐ前の手動トリガです。
-          </p>
+        <section className="card" aria-label="進化の演出" aria-busy={working}>
+          <h2>進化の演出</h2>
+          <dl className="debug-summary">
+            <div>
+              <dt>ステージ {stage.id} ／ 見せ済み {state.seenStage}</dt>
+              <dd>{pending ? 'ダッシュボードで流れる' : '流れない'}</dd>
+            </div>
+          </dl>
           <div className="tools">
-            <button className="btn sec" disabled={hatching} onClick={() => setHatching(true)}>割る</button>
-            <button className="btn sec" onClick={() => { setHatching(false); setEggKey((n) => n + 1) }}>戻す</button>
+            {STAGES.slice(0, -1).map((s) => (
+              <button
+                key={s.id}
+                className="btn sec"
+                disabled={working || goalId === null || state.seenStage === s.id}
+                onClick={() => run(() => rewindSeenStage(goalId!, s.id))}
+              >
+                見せ済みを {s.id} に（{STAGES[s.id + 1].name}）
+              </button>
+            ))}
           </div>
-        </div>
-        <div className="debug-avatar-preview">
-          <Avatar key={eggKey} egg hue={state.hue} hatching={hatching} />
-        </div>
-      </section>
+        </section>
+      </div>
 
-      <section className="card debug-danger" aria-label="目標" aria-busy={working}>
-        <h2>目標（{goals.length}件）</h2>
+      <div className="debug-columns">
+        {/*
+          **1レコード＝1日。** 同じ日に何度タイマーを回しても増えない
+          （schema.sql の UNIQUE (goal_id, done_on) と markSessionDone の早期 return）。
+          だからこの一覧の1行が、そのまま records の1行になる。
+        */}
+        <section className="card" aria-label="記録" aria-busy={working}>
+          <h2>記録（{records.length}件）</h2>
+          <div className="tools">
+            {isDone(state, today(state)) ? (
+              <button
+                className="btn sec"
+                disabled={working || goalId === null}
+                onClick={() => run(() => deleteRecord(goalId!, todayKey))}
+              >
+                今日（{todayKey}）の記録を外す
+              </button>
+            ) : (
+              <button className="btn sec" disabled={!hasStarted} onClick={onRecord}>
+                今日（{todayKey}）を達成にする
+              </button>
+            )}
+            <button
+              className="btn ghost"
+              disabled={working || goalId === null || records.length === 0}
+              onClick={() => {
+                if (window.confirm(`記録を ${records.length}件すべて消します。目標とアバターは残るので、たまごに戻ります。`)) {
+                  run(() => clearRecords(goalId!))
+                }
+              }}
+            >
+              全部消す
+            </button>
+          </div>
+
+          {failure && <p className="debug-error" role="alert">{failure}</p>}
+          {goalId === null && <p className="debug-note">目標がないため、記録はDBに入りません。</p>}
+
+          {records.length > 0 && (
+            <ul className="debug-records">
+              {records.map((day) => {
+                const cycle = cycleIndex(day, startOf(state), state.cycleDays)
+                return (
+                  <li key={day} className={day === todayKey ? 'now' : undefined}>
+                    <span className="debug-record-day">{day}</span>
+                    <span className="debug-note">
+                      {cycle < 0 ? '起点より前（数えない）' : `${cycle}番目のサイクル`}
+                      {cycle > currentCycle(state) && ' · 未来'}
+                    </span>
+                    <button
+                      className="btn ghost"
+                      aria-label={`${day} の記録を消す`}
+                      disabled={working || goalId === null}
+                      onClick={() => run(() => deleteRecord(goalId!, day))}
+                    >
+                      消す
+                    </button>
+                  </li>
+                )
+              })}
+            </ul>
+          )}
+        </section>
+
         {/*
           **いまの目標は「id がいちばん大きい1件」。** 終わった印の列は持たない。
           本番の「新しい目標をはじめる」は行を足すだけで前の目標を消さないので、
           古い目標はここに残り続ける。アプリ本体からは見えないため、一覧はここだけ。
           子（records / avatars）から先に消す理由は state/debug.ts を参照。
         */}
-        <p className="debug-note">
-          いまの目標は <b><code>id</code> がいちばん大きい1件</b>です。本番の「新しい目標をはじめる」は
-          行を足すだけなので、古い目標もここに残り続けます（記録とアバターもそのまま）。
-        </p>
+        <section className="card debug-danger" aria-label="目標" aria-busy={working}>
+          <h2>目標（{goals.length}件）</h2>
 
-        {goalsError && <p className="debug-error" role="alert">{goalsError}</p>}
+          {goalsError && <p className="debug-error" role="alert">{goalsError}</p>}
 
-        {goals.length === 0 ? (
-          <p className="debug-note">目標はまだありません。</p>
-        ) : (
-          <ul className="debug-goals">
-            {goals.map((g) => (
-              <li key={g.id} className={g.id === goalId ? 'now' : undefined}>
-                <span className="debug-goal-id">#{g.id}</span>
-                <span className="debug-goal-text" title={g.goal}>{g.goal || '（無題）'}</span>
-                <span className="debug-note">
-                  起点 {g.startedAt} · {cycleLabel(g.cycleDays)} · 期限 {g.deadline} · 記録 {g.records}件
-                  {g.id === goalId ? ' · いまの目標' : ''}
-                </span>
-                <button
-                  className="btn ghost"
-                  aria-label={`目標 #${g.id} を消す`}
-                  disabled={working}
-                  onClick={() => {
-                    if (window.confirm(`目標 #${g.id}「${g.goal}」を、記録${g.records}件とアバターごと消します。取り消せません。`)) {
-                      run(() => deleteGoal(g.id))
-                    }
-                  }}
-                >
-                  消す
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+          {goals.length > 0 && (
+            <ul className="debug-goals">
+              {goals.map((g) => (
+                <li key={g.id} className={g.id === goalId ? 'now' : undefined}>
+                  <span className="debug-goal-id">#{g.id}</span>
+                  <span className="debug-goal-text" title={g.goal}>{g.goal || '（無題）'}</span>
+                  <span className="debug-note">
+                    起点 {g.startedAt} · {cycleLabel(g.cycleDays)} · 記録 {g.records}件
+                    {g.id === goalId ? ' · いまの目標' : ''}
+                  </span>
+                  <button
+                    className="btn ghost"
+                    aria-label={`目標 #${g.id} を消す`}
+                    disabled={working}
+                    onClick={() => {
+                      if (window.confirm(`目標 #${g.id}「${g.goal}」を、記録${g.records}件とアバターごと消します。取り消せません。`)) {
+                        run(() => deleteGoal(g.id))
+                      }
+                    }}
+                  >
+                    消す
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
 
-        <p className="debug-note">
-          <b>削除は取り消せません。</b>記録・アバターごとDBから消えます。本番の画面に削除は無いので、
-          行が消えるのはここだけです。
-        </p>
-        {/* 1件ずつ消すのは一覧の各行に置いた。ここは一括のものだけ */}
-        <div className="tools">
-          <button
-            className="btn ghost"
-            disabled={working}
-            onClick={() => {
-              if (window.confirm('この人の目標を、過去のものも含めて全部消します。取り消せません。')) {
-                run(() => deleteAllGoals(userId))
-              }
-            }}
-          >
-            過去のぶんも含めて全部消す
-          </button>
-          <button className="btn sec" disabled={working} onClick={onNewGoal}>
-            目標を作り直す（たまごから）
-          </button>
-        </div>
-      </section>
+          {/* 1件ずつ消すのは一覧の各行に置いた。ここは一括のものだけ */}
+          <div className="tools">
+            <button
+              className="btn ghost"
+              disabled={working}
+              onClick={() => {
+                if (window.confirm('この人の目標を、過去のものも含めて全部消します。取り消せません。')) {
+                  run(() => deleteAllGoals(userId))
+                }
+              }}
+            >
+              全部消す
+            </button>
+            <button className="btn sec" disabled={working} onClick={onNewGoal}>
+              目標を作り直す
+            </button>
+          </div>
+        </section>
+      </div>
 
       <div className="debug-columns">
         <section className="card">
           <h2>アプリのState</h2>
-          <p className="debug-note">画面の操作に合わせて更新されます。</p>
           <pre>{JSON.stringify(state, null, 2)}</pre>
           <h3>実行状態</h3>
           <pre>{JSON.stringify({ loaded, hasStarted, elapsed, running }, null, 2)}</pre>
         </section>
         <section className="card" aria-busy={busy}>
           <h2>DBの保存値</h2>
-          <p className="debug-note">いまの目標（<code>id</code> がいちばん大きい1件）と、そのアバター・記録を取得します。アプリのStateは変更しません。</p>
-          <button className="btn" disabled={busy} onClick={readDatabase}>{busy ? '取得中...' : 'DBの最新値を取得'}</button>
+          <div className="tools">
+            <button className="btn" disabled={busy} onClick={readDatabase}>{busy ? '取得中...' : 'DBの最新値を取得'}</button>
+          </div>
           {error && <p className="debug-error" role="alert">{error}</p>}
-          <p className="debug-note" role="status">{snapshot ? `最終取得: ${snapshot.at}（取得時点の値）` : 'まだ取得していません。'}</p>
+          <p className="debug-note" role="status">{snapshot ? `最終取得 ${snapshot.at}` : '未取得'}</p>
           {snapshot && (snapshot.data === null
-            ? <p>該当する行がないか、読み取り権限により表示されていません。</p>
+            ? <p>該当する行がありません。</p>
             : <pre>{JSON.stringify(snapshot.data, null, 2)}</pre>)}
         </section>
       </div>

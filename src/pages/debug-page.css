@@ -5,12 +5,15 @@
 .debug-page h3 { font-size: 15px; }
 .debug-avatar { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
 .debug-avatar-preview { width: min(100%, 320px); margin: auto; }
-.debug-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin: 0; }
+.debug-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin: 0 0 16px; }
+/* 1項目だけのときは横幅いっぱいに。2列のままだと右半分が空く */
+.debug-summary:has(> div:only-child) { grid-template-columns: 1fr; }
 .debug-summary dt, .debug-note { color: var(--muted); font-size: 13px; }
 .debug-summary dd { margin: 4px 0 0; font-size: 22px; font-weight: 700; overflow-wrap: anywhere; }
 .debug-summary small { font-size: 12px; font-weight: 400; }
-.debug-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
-.debug-columns > .card { min-width: 0; }
+/* 操作カードは2列に並べる。左がふだん使うもの（日付・記録）、右がたまに触るもの */
+.debug-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin-bottom: 20px; align-items: start; }
+.debug-columns > .card { min-width: 0; margin: 0; }
 .debug-page pre { padding: 16px; border-radius: 12px; background: #14231f; color: #e1f3e9; font-size: 12px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 540px; overflow: auto; }
 .debug-error { color: var(--danger); overflow-wrap: anywhere; }
 .debug-row { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 12px; }
