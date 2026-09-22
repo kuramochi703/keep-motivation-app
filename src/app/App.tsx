@@ -1,3 +1,4 @@
+import LoginPage from '../pages/LoginPage'
 import MainPage from '../pages/MainPage'
 import SetupPage from '../pages/SetupPage'
 import Sidebar, { type NavItem } from './Sidebar'
@@ -16,10 +17,19 @@ const NAV: NavItem[] = [
 ]
 
 export default function App() {
-  const { state, loaded, hasStarted, screen, go, start, reset, extendDeadline, markStageSeen, newGoal, elapsed, running, toggleTimer, recordOnly, nextDay } = useApp()
+  const { user, ready, signIn, signOut, state, loaded, hasStarted, screen, go, start, reset, extendDeadline, markStageSeen, newGoal, elapsed, running, toggleTimer, recordOnly, nextDay } = useApp()
 
   const select = (id: string) => {
     if (id === 'top' || id === 'setup' || id === 'main') go(id)
+  }
+
+  // ゲートは3段。セッションの確認 → ログイン → 目標の読み込み（AUTH_PLAN 4章）
+  if (!ready) {
+    return <div role="status">読み込み中...</div>
+  }
+
+  if (!user) {
+    return <LoginPage onSignIn={signIn} />
   }
 
   if (!loaded) {
@@ -28,7 +38,13 @@ export default function App() {
 
   return (
     <div className={`shell${screen === 'main' ? ' dashboard-shell' : ''}`}>
-      <Sidebar items={NAV} current={screen} onSelect={select} />
+      <Sidebar
+        items={NAV}
+        current={screen}
+        onSelect={select}
+        userLabel={user.user_metadata.name ?? user.email ?? ''}
+        onSignOut={signOut}
+      />
       <main className="content">
         {screen === 'debug' && DebugPage ? (
           <Suspense fallback={<p role="status">読み込み中...</p>}>

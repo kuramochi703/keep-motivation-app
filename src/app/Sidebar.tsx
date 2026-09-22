@@ -6,9 +6,12 @@ type Props = {
   items: NavItem[]
   current: string
   onSelect: (id: string) => void
+  /** 表示名。JWT から来る（public に users テーブルは無い） */
+  userLabel: string
+  onSignOut: () => void
 }
 
-export default function Sidebar({ items, current, onSelect }: Props) {
+export default function Sidebar({ items, current, onSelect, userLabel, onSignOut }: Props) {
   return (
     <aside className="sidebar">
       <div className="brand">
@@ -28,6 +31,14 @@ export default function Sidebar({ items, current, onSelect }: Props) {
           </button>
         ))}
       </nav>
+      <div className="sidebar-user">
+        <span className="sidebar-user-name" title={userLabel}>
+          {userLabel}
+        </span>
+        <button type="button" className="btn ghost sidebar-signout" onClick={onSignOut}>
+          ログアウト
+        </button>
+      </div>
     </aside>
   )
 }

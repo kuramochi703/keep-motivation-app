@@ -140,6 +140,14 @@
   .nav-item:hover{background:#202830;color:#fff}
   .nav-item:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
   .nav-item.active{background:var(--accent);color:#fff}
+
+  /* サイドバー下部：表示名とログアウト */
+  .sidebar-user{margin-top:auto;display:flex;flex-direction:column;gap:8px;padding:14px 14px 0;
+    border-top:1px solid #232B34}
+  .sidebar-user-name{font-size:13px;font-weight:600;color:#9AA4AF;
+    overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .btn.ghost.sidebar-signout{color:#9AA4AF;border-color:#2C353F;background:none;text-align:center}
+  .btn.ghost.sidebar-signout:hover{background:#202830;color:#fff;filter:none}
   .content{flex:1;min-width:0;display:flex}
   .content .wrap{max-width:960px;margin:0 auto;padding:44px 28px 72px}
 
@@ -151,6 +159,9 @@
     .nav{flex:1;flex-direction:row}
     .nav-item{flex:1;text-align:center;white-space:nowrap;padding:10px 8px}
     .nav-item.active{color:#fff}
+    .sidebar-user{margin-top:0;flex-direction:row;align-items:center;gap:8px;
+      padding:0 0 0 10px;border-top:none;border-left:1px solid #232B34}
+    .sidebar-user-name{max-width:8em}
     .content .wrap{padding:32px 16px 64px}
   }
 
@@ -213,3 +224,12 @@
   .hue-dot:hover{transform:scale(1.06)}
   .hue-dot.active{box-shadow:0 0 0 3px var(--accent)}
   @media(max-width:520px){.avatar-picker{flex-direction:column;align-items:flex-start}}
+
+  /* ログイン画面（AUTH_PLAN 4章）。登録リンクは無い */
+  .login{max-width:420px}
+  .login-head{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;margin-bottom:24px}
+  .login-head h1{margin:6px 0 0}
+  .login-head p{margin:0;color:var(--muted);font-size:14px}
+  .login-card{display:flex;flex-direction:column}
+  .login-card .setup-block:last-of-type{margin-bottom:16px}
+  .login-error{margin:0 0 16px;font-size:13px;font-weight:600;color:var(--danger)}

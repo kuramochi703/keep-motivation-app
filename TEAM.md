@@ -99,14 +99,14 @@ logic.ts ──[ State型 / moodOf() / runOf() など ]──▶ pages/ ──�
 - [x] A: テストを導入する（`npm i -D vitest`）— `npm test` / `npm run test:watch`
 - [ ] A/B: lint / format を入れる（`@typescript-eslint` + `eslint-plugin-react-hooks` で十分）
 - [ ] C: スマホ幅（375px）で崩れていないか確認して直す
-- [ ] 認証と RLS を入れる ← **いまは誰が開いても同じデータ。公開するなら必須**
+- [x] 認証と RLS を入れる（メールアドレス＋パスワード / [AUTH_PLAN.md](./AUTH_PLAN.md)）
 
 ### その後の候補
 
 アバターをステージ6まで自分で育ててみて、面白いと思えてから選び直してください。
 
 - デプロイ（[ARCHITECTURE 6章](./ARCHITECTURE.md#6-どこに置くかデプロイ)）
-- ログイン
+- Google ログインに差し替える（[AUTH_PLAN.md](./AUTH_PLAN.md)）
 - 3人分のアバターを見せ合う機能
 - 通知・リマインダー
 
