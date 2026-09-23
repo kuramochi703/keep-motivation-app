@@ -77,12 +77,12 @@ src/
 ├── pages/                      画面（1画面 = 1ファイル）
 │   ├── LoginPage.tsx             ログイン（メールアドレス＋パスワード）
 │   ├── TopPage.tsx               トップ
-│   ├── GoalsPage.tsx             目標一覧（どの目標を開くか選ぶ）
+│   ├── GoalsList.tsx             目標一覧（どの目標を開くか選ぶ）
 │   ├── SetupPage.tsx             目標設定（新しい目標を作る。メニューには出さない）
 │   ├── MainPage.tsx              ダッシュボード
 │   ├── DebugPage.tsx             デバッグ（開発時だけ。`/debugPage`）
 │   ├── main-page.css
-│   ├── goals-page.css
+│   ├── goals-list.css
 │   ├── debug-page.css
 │   └── onboarding-page.css
 │
@@ -132,7 +132,7 @@ flowchart TB
             direction LR
             login["LoginPage.tsx"]
             top["TopPage.tsx"]
-            goalsp["GoalsPage.tsx"]
+            goalsp["GoalsList.tsx"]
             setup["SetupPage.tsx"]
             main["MainPage.tsx"]
         end
@@ -162,7 +162,7 @@ flowchart TB
     app --> accountbar
     app -->|"未ログインなら"| login
     app --> top
-    app --> goalsp
+    main --> goalsp
     app --> setup
     app --> main
 
@@ -320,7 +320,7 @@ flowchart LR
 **目標は同時に何本あってもかまいません。** 現役を示す列は持ちません。
 目標ごとにアバターと記録がぶら下がるので、行が並んでいればそれだけで並行になります。
 **どれを開いているかは DB の関心事ではない**ので、画面側（`useGoalState` の `currentId`）が持ち、
-目標一覧（`pages/GoalsPage.tsx`）で選び替えます。切り替えても記録もアバターも消えません。
+目標一覧（`pages/GoalsList.tsx`）で選び替えます。切り替えても記録もアバターも消えません。
 
 > **「現役の目標」を列で持たないのは意図的です。** 印を1本だけ立てる形にすると、
 > 「立っている印は1件だけ」を DB が保証できず（部分ユニークインデックスが別途要る）、
@@ -375,7 +375,7 @@ DELETE はデバッグ画面にしかありません。
 | 日付 | `dayOffset`（±1日 / ±1サイクル / 日付を直接指定 / 今日に戻す） | 触らない |
 | 記録 | `records` の1行＝1日を、つける / 消す | 書く |
 
-**通常の目標一覧は `GoalsPage.tsx` にあります。** デバッグ画面では、
+**通常の目標一覧は `GoalsList.tsx` にあります。** デバッグ画面では、
 一覧から目標や記録を削除して、再読み込み後の状態を確認できます。
 
 `dayOffset` は**負の値も入ります**。行き過ぎた日送りを戻せないと、やり直しがききません。

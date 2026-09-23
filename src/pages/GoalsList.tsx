@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import './goals-page.css'
+import './goals-list.css'
 import {
   cycleLabel,
   daysUntil,
@@ -29,11 +29,11 @@ type Props = {
  * `done` と `cycleDays` から計算している（README 2章）。ダッシュボードと同じ関数を
  * 呼んでいるので、一覧とダッシュボードで値が食い違うことはない。
  */
-export default function GoalsPage({ goals, currentGoalId, onSelect, onNewGoal }: Props) {
+export default function GoalsList({ goals, currentGoalId, onSelect, onNewGoal }: Props) {
   return (
-    <div className="wrap goals">
+    <section className="goals" aria-labelledby="goals-list-title">
       <header className="goals-head">
-        <h1>目標一覧</h1>
+        <h3 id="goals-list-title">目標一覧</h3>
         <p className="goals-lead">
           育てているアバターは目標ごとに別々です。切り替えても記録は消えません。
         </p>
@@ -65,7 +65,7 @@ export default function GoalsPage({ goals, currentGoalId, onSelect, onNewGoal }:
           </div>
         </>
       )}
-    </div>
+    </section>
   )
 }
 
