@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
-import { ContactShadows, Sparkles, useAnimations, useGLTF } from '@react-three/drei'
+import { ContactShadows, useAnimations, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
+import { Glow, Gloom, Motes } from './Effects'
 import type { Look } from './look'
 import chickUrl from './models/chick/chick.glb?url'
 import eggUrl from './models/egg/egg.glb?url'
@@ -127,6 +128,13 @@ const EYE_SQUASH: Record<Look['eye'], number> = {
   closed: 0.12,
 }
 
+/**
+ * 輝きのときにからだへ足す光の色。**金色ではなく、白に近い暖色にする。**
+ * 金色を足すと「黄色く塗った」ように見える。白寄りの光を足すと、色はそのままで
+ * からだが明るく飛んで、内側から光っているように見える（Effects.tsx の GOLD の説明）
+ */
+const GLOW_TINT = new THREE.Color('hsl(48, 100%, 82%)')
+
 /** 揺れから割れへ重みを寄せる速さ。割れは待たせるものではないので速い */
 const CRACK_RATE = 14
 
@@ -203,6 +211,19 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM, interactive = fa
     }
   }, [model])
 
+  // 輝き（look.effects.glow）のとき、からだそのものも金色にほんのり光らせる。
+  // 後光だけだと「後ろが明るい」だけで、ひよこが光っているようには見えない。
+  // 目は光らせない（白目が飛んで表情が消える）
+  const glowing = useMemo(() => {
+    const mats: THREE.MeshStandardMaterial[] = []
+    model.traverse((o) => {
+      const mat = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined
+      if (mat && mat.name !== 'Eye_Black' && !mats.includes(mat)) mats.push(mat)
+    })
+    return mats
+  }, [model])
+  const glowTime = useRef(0)
+
   // 色は毎フレームではなく、look が変わったときだけ流し込む
   useEffect(() => {
     tone.uTop.value.set(look.bodyColor)
@@ -260,6 +281,8 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM, interactive = fa
   }, [actions, mixer])
 
   const s = look.bodyRadius * SIZE
+  /** 足の裏から頭のてっぺんまで（ワールド単位）。エフェクトの大きさの基準 */
+  const height = (HEAD_TOP - FOOT_Y) * s
 
   // 叩かれたときに、反応のクリップを1本流す。
   // **再描画は起こさない。** 流すクリップは毎フレーム見る側（useFrame）の
@@ -300,6 +323,8 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM, interactive = fa
   // いま流しているクリップと、どこに立っているか。
   // 毎フレーム変わるので、再描画を起こさない ref に持つ
   const walker = useRef<THREE.Group>(null)
+  /** エフェクトの入れ物。walker と同じ場所に置くが、**向きは追わない** */
+  const follower = useRef<THREE.Group>(null)
   const playing = useRef<Walker>({
     mode: 'idle',
     next: 'idle',
@@ -318,6 +343,15 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM, interactive = fa
     // クリップが持っている。ここが決めるのは「どれを流すか」「どれくらいの
     // 重みで混ぜるか」、そして「歩いた結果どこへ行くか」の3つだけ。
     mixer.timeScale = animate ? 1 : 0
+
+    // 輝きの明滅。ゆっくり息をするように。止めているときは中くらいで固める
+    if (animate) glowTime.current += delta
+    const glow = look.effects.glow ? (animate ? 0.34 + 0.1 * Math.sin(glowTime.current * 1.6) : 0.34) : 0
+    for (const mat of glowing) {
+      if (mat.emissiveIntensity === glow && glow === 0) continue
+      mat.emissive.copy(GLOW_TINT)
+      mat.emissiveIntensity = glow
+    }
     // 止めているときは状態機械ごと凍らせる（prefers-reduced-motion）。
     // 重みを寄せ続けると、クリップが止まっていても姿勢が動いてしまう
     if (!animate) {
@@ -352,6 +386,7 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM, interactive = fa
       g.position.set(m.x, 0, m.z)
       g.rotation.y = m.facing
     }
+    follower.current?.position.set(m.x, 0, m.z)
   })
 
   return (
@@ -382,21 +417,16 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM, interactive = fa
             )}
             {look.scarf && <Scarf />}
             {look.crown && <Crown />}
-            {look.sweat && <Sweat />}
-            {/* かがやき（7サイクル連続）だけの豪華なエフェクト。
-                まわりを舞う光の粒。**色はアバターの色相に合わせる** */}
-            {look.sparkle && (
-              <Sparkles
-                count={26}
-                scale={[2.2, 2.4, 2.2]}
-                size={5}
-                speed={0.35}
-                opacity={0.9}
-                color={look.bellyColor}
-              />
-            )}
           </group>
         </group>
+      </group>
+      {/* まわりのエフェクト。**歩く入れ物（walker）の外に置き、位置だけを追わせる。**
+          中に入れると向き直るたびにもやや粒まで一緒に回り、前かがみ（droop）では
+          後光ごと傾いて、ひよこに貼り付いた板に見える */}
+      <group ref={follower}>
+        {look.effects.glow && <Glow height={height} animate={animate} />}
+        {look.effects.motes && <Motes height={height} animate={animate} />}
+        {look.effects.gloom && <Gloom height={height} animate={animate} />}
       </group>
       {/* 影の板は歩き回る範囲ぜんぶを覆う。狭いと端で影が切れる */}
       <ContactShadows
@@ -615,16 +645,6 @@ function Crown() {
         )
       })}
     </group>
-  )
-}
-
-/** しょんぼりのときの汗。顔の横に浮かべる */
-function Sweat() {
-  return (
-    <mesh position={[0.5, 0.55, 0.28]} scale={[0.8, 1.3, 0.8]}>
-      <sphereGeometry args={[0.085, 16, 12]} />
-      <meshStandardMaterial color="#5FA8D3" roughness={0.2} transparent opacity={0.85} />
-    </mesh>
   )
 }
 
