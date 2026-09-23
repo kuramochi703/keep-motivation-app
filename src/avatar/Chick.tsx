@@ -417,7 +417,6 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM, interactive = fa
             )}
             {look.scarf && <Scarf />}
             {look.crown && <Crown />}
-            {look.sweat && <Sweat />}
           </group>
         </group>
       </group>
@@ -646,16 +645,6 @@ function Crown() {
         )
       })}
     </group>
-  )
-}
-
-/** しょんぼりのときの汗。顔の横に浮かべる */
-function Sweat() {
-  return (
-    <mesh position={[0.5, 0.55, 0.28]} scale={[0.8, 1.3, 0.8]}>
-      <sphereGeometry args={[0.085, 16, 12]} />
-      <meshStandardMaterial color="#5FA8D3" roughness={0.2} transparent opacity={0.85} />
-    </mesh>
   )
 }
 

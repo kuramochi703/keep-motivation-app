@@ -76,8 +76,6 @@ export type Look = {
   crestScale: number
   scarf: boolean
   crown: boolean
-  /** あぶら汗。しんどいときだけ */
-  sweat: boolean
   /** まわりのエフェクト（Effects.tsx）。気分の表から引く。たまごには出さない */
   effects: Effects
 }
@@ -144,7 +142,7 @@ export function lookOf(stage: number, hue: number, mood: Mood | null): Look {
   const s = unit(stage / 3)
 
   // **落ち込みは彩度で表し、明度は下げない**（下限 58）。暗く沈めると汚く
-  // 見えるうえ、前かがみ（droop）と汗で十分しんどそうに見える
+  // 見えるうえ、前かがみ（droop）とどんよりのエフェクトで十分しんどそうに見える
   // **たまごは気分を持たない。** 気分が渡ってきても色は固定値で塗る
   const sat = isEgg ? EGG_S : mood?.s ?? EGG_S
   const lum = isEgg ? EGG_L : mood?.l ?? EGG_L
@@ -181,7 +179,6 @@ export function lookOf(stage: number, hue: number, mood: Mood | null): Look {
     crestScale: stage >= 2 ? 1 : 0.62,
     scarf: stage >= 3,
     crown: stage >= 3,
-    sweat: !isEgg && (mood?.sweat ?? false),
     effects: isEgg || !mood ? NO_EFFECTS : { glow: mood.glow, motes: mood.motes, gloom: mood.gloom },
   }
 }

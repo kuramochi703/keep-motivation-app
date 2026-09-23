@@ -229,7 +229,7 @@ export const bestRun = (s: State): number => {
  *
  * 気分はステージ1以上のもの。卵に気分は無い（記録が無ければ null）。
  * **落ち込みは彩度で表し、明度は下げない**（下限 58）。暗く沈めると汚く
- * 見えるし、前かがみ（droop）と汗で十分沈んで見える。
+ * 見えるし、前かがみ（droop）とどんよりのエフェクトで十分沈んで見える。
  *
  * **落ち込みは2段ある**（3サイクル放置と4サイクル放置）。2段の差は彩度では
  * ほとんど読めないので、**姿勢のクリップで見せる**（avatar/look.ts の `SIT_OF`）。
@@ -247,8 +247,6 @@ export type Mood = {
   l: number
   /** 0〜1。低いと歩き出さず、立ち止まったままになる */
   liveliness: number
-  /** あぶら汗。しんどいときだけ */
-  sweat: boolean
   /** アバターが輝く（後光とからだの発光）。7サイクル連続から */
   glow: boolean
   /** 光の粒が立ちのぼる。3サイクル連続から */
@@ -271,7 +269,6 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
     s: 4,
     l: 58,
     liveliness: 0,
-    sweat: true,
     glow: false,
     motes: false,
     gloom: true,
@@ -284,7 +281,6 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
     s: 8,
     l: 58,
     liveliness: 0,
-    sweat: true,
     glow: false,
     motes: false,
     gloom: true,
@@ -297,7 +293,6 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
     s: 18,
     l: 58,
     liveliness: 0.2,
-    sweat: false,
     glow: false,
     motes: false,
     gloom: false,
@@ -310,7 +305,6 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
     s: 34,
     l: 66,
     liveliness: 0.4,
-    sweat: false,
     glow: false,
     motes: false,
     gloom: false,
@@ -323,7 +317,6 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
     s: 44,
     l: 72,
     liveliness: 0.6,
-    sweat: false,
     glow: false,
     motes: false,
     gloom: false,
@@ -336,7 +329,6 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
     s: 56,
     l: 80,
     liveliness: 0.9,
-    sweat: false,
     glow: false,
     motes: true,
     gloom: false,
@@ -349,7 +341,6 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
     s: 56,
     l: 80,
     liveliness: 1,
-    sweat: false,
     glow: true,
     motes: true,
     gloom: false,
