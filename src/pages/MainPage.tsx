@@ -112,7 +112,9 @@ export default function MainPage({
   }
 
   return (
-    <div className="wrap dashboard">
+    // 部屋の背景は画面いっぱいに敷く（dash-full）。期限切れの振り返りは部屋を出さないので、
+    // 今までどおり余白のある枠に収める
+    <div className={`wrap dashboard${expired ? '' : ' dash-full'}`}>
 
       {expired ? (
         <div className="dash-area">
@@ -149,10 +151,6 @@ export default function MainPage({
       ) : (
         <div className="dash-area">
           <div className={`bg-stage${open ? ' dim' : ''}`}>
-            <div className="deco-window" aria-hidden="true" />
-            <div className="deco-books" aria-hidden="true"><i /><i /><i /></div>
-            <div className="deco-plant" aria-hidden="true">🪴</div>
-
             <div className="bg-top">
               <p className="owner">{state.name}</p>
               <div className="bg-say">

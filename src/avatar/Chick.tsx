@@ -283,6 +283,14 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM, interactive = fa
   const s = look.bodyRadius * SIZE
   /** 足の裏から頭のてっぺんまで（ワールド単位）。エフェクトの大きさの基準 */
   const height = (HEAD_TOP - FOOT_Y) * s
+  // **影の大きさは useMemo で同じ配列を使い回す。** ContactShadows は scale の配列が
+  // 変わるたびに影を描く面（レンダーターゲット）を作り直し、古いものを捨てない。
+  // 毎回新しい配列を渡すと、再描画のたびに GPU のメモリが増え続け（ダッシュボードは
+  // タイマーで毎秒再描画される）、影も描き上がる前に作り直されて消える
+  const shadowScale = useMemo<[number, number]>(
+    () => [Math.max(5, area.x * 2 + 2.4), Math.max(5, area.z * 2 + 2.4)],
+    [area.x, area.z]
+  )
 
   // 叩かれたときに、反応のクリップを1本流す。
   // **再描画は起こさない。** 流すクリップは毎フレーム見る側（useFrame）の
@@ -432,7 +440,7 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM, interactive = fa
       <ContactShadows
         position={[0, 0, 0]}
         opacity={0.32}
-        scale={[Math.max(5, area.x * 2 + 2.4), Math.max(5, area.z * 2 + 2.4)]}
+        scale={shadowScale}
         blur={2.6}
         far={2}
         resolution={512}

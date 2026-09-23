@@ -2,35 +2,36 @@
 .dashboard-shell .content .dashboard{width:100%;max-width:1536px;padding:14px 3.3% 14px;--accent:#518d94;--accent-soft:#edf5f2;--muted:#6b7b93;--ink:#101b2d;color:var(--ink)}
 .dash-area{position:relative}
 
+/* 部屋の背景を画面いっぱいに敷く。上のアカウントバーの下を、端から端まで部屋にする。
+   枠に収めて角を丸めると、部屋の縁とページの地色の境目がくっきり出るため。
+   高さは .shell（min-height:100vh）→ .content → ここ、と flex で伝える */
+.dashboard-shell .content .dashboard.dash-full{max-width:none;padding:0;display:flex;flex-direction:column}
+/* overflow は、閉じている右のパネル（.dash-panel）を画面の外へ逃がしているぶんの切り落とし。
+   枠に余白があった頃はその中に収まっていたが、端から端まで広げると横スクロールが出る */
+.dash-full .dash-area{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.dash-full .bg-stage{flex:1;border-radius:0}
+
 /* 背景ステージ（アバター＋常時表示の情報） */
 .bg-stage{position:relative;display:flex;flex-direction:column;align-items:center;
   justify-content:flex-end;min-height:clamp(420px,60vh,720px);
   border-radius:30px;padding:24px 28px 30px;overflow:hidden;
-  background:radial-gradient(ellipse at 50% 32%,#fcf4e5,transparent 66%);
+  /* 部屋（壁・床・窓・本・植木鉢）は 3D のモデルが描く（avatar/Stage.tsx）。
+     ここの色はモデルが読み込まれるまでの下地。壁の色に合わせてある */
+  background:#fcf4e5;
   transition:filter .25s ease}
 .bg-stage.dim{filter:brightness(.95)}
-.bg-stage::after{content:'';position:absolute;left:-15%;bottom:-30px;width:130%;height:70px;border-radius:50%;background:#f4f3ec}
-
-/* ステージ演出（アバター側のファイルには触れない） */
-.deco-window{position:absolute;left:50%;top:10%;width:132px;height:210px;transform:translateX(-50%);
-  background:linear-gradient(140deg,#deeffb,#f0f9ff);border:12px solid #fbf9f5;border-bottom:0;
-  border-radius:74px 74px 0 0;opacity:.9;z-index:0}
-.deco-window::after{content:'';position:absolute;width:52px;height:18px;top:50px;right:0;background:#ffffffa8;border-radius:50px 40px 0 0}
-.deco-plant{position:absolute;right:5%;bottom:13%;font-size:76px;line-height:1.15}
-.deco-books{position:absolute;left:5%;bottom:15%;width:92px;transform:rotate(-3deg)}
-.deco-books i{display:block;height:19px;border:5px solid #e3c6a9;border-left-width:15px;background:#fffaf1;border-radius:5px;margin-top:1px}
-.deco-books i:nth-child(2){border-color:#92aac2;transform:translateX(-5px)}
-.deco-books i:first-child{border-color:#afc7a6;transform:translateX(8px)}
 
 .bg-top{position:absolute;top:22px;left:28px;display:flex;flex-direction:column;align-items:flex-start;gap:8px;z-index:1}
 .bg-say{display:flex;align-items:center;gap:14px}
 .dashboard .badge{font-size:14px;padding:7px 15px;white-space:nowrap}
 .dashboard .speech{margin:0;text-align:left;font-size:15px;min-height:0}
 
-/* アバターの置き場はステージ全体。足元を本や植木鉢と同じ床に立たせるため。
-   文字の下に積むと、床の飾りより上に浮いて見える。
-   名前・連続日数は左上（.bg-top）に寄せて、床のあたりを空けている */
-.stage-avatar{position:absolute;inset:0;z-index:0;filter:drop-shadow(0 14px 18px #bca78c26)}
+/* アバターの置き場はステージ全体。部屋のモデルもこのキャンバスに一緒に描くので、
+   ひよこは本や植木鉢と同じ床に立つ。
+   名前・連続日数は左上（.bg-top）に寄せて、床のあたりを空けている。
+   影や光を CSS の filter で付けない。ひよこだけでなく部屋の輪郭にまで付いてしまう。
+   ひよこの影は落ち影（ContactShadows）が持つ */
+.stage-avatar{position:absolute;inset:0;z-index:0}
 
 .dashboard .owner{font-size:24px;margin:0;letter-spacing:-.02em}
 .bg-streak{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;
@@ -136,11 +137,11 @@
   .dash-menu{top:262px}
   .stage-timer .ring{width:150px;height:150px}
   .stage-timer .ring .num{font-size:37px}
-  .deco-window{width:112px;height:186px}
 }
 @media(max-width:760px){
   .dashboard-shell .content .dashboard{padding:12px 14px 16px}
   .bg-stage{min-height:440px;padding:20px 16px 104px;border-radius:24px}
+  .dash-full .bg-stage{border-radius:0}
   .bg-top{top:16px;left:16px}
   .bg-say{flex-direction:column;align-items:flex-start;gap:8px}
   .dash-menu{top:auto;bottom:16px;right:50%;transform:translateX(50%);flex-direction:row;gap:8px}
@@ -153,8 +154,6 @@
   .stage-timer .ring{width:120px;height:120px}
   .stage-timer .ring .num{font-size:30px}
   .stage-timer .ring .num .stage-toggler{width:38px;height:38px;font-size:16px}
-  .deco-plant{font-size:60px}.deco-books{left:4%;bottom:12%}
-  .deco-window{width:96px;height:160px}
 }
 @media(max-width:420px){
   .stage-timer .ring{width:108px;height:108px}
@@ -167,10 +166,12 @@
   animation:evolve-pop .5s cubic-bezier(.2,1.4,.4,1)}
 .dashboard .evolve-banner b{font-size:17px;color:var(--ink)}
 .dashboard .evolve-banner span{font-size:12px;color:var(--muted)}
-.dashboard .stage-avatar.evolving{animation:evolve-glow 1.2s ease-in-out infinite}
+/* 進化中の光は、キャンバスの上に重ねた枠の内側の光で出す（filter だと部屋の輪郭まで光る → .stage-avatar） */
+.dashboard .stage-avatar.evolving::after{content:'';position:absolute;inset:0;pointer-events:none;
+  animation:evolve-glow 1.2s ease-in-out infinite}
 @keyframes evolve-pop{from{opacity:0;transform:translate(-50%,10px) scale(.9)}to{opacity:1;transform:translate(-50%,0) scale(1)}}
-@keyframes evolve-glow{0%,100%{filter:none}50%{filter:drop-shadow(0 0 18px hsl(var(--h) 80% 70% / .75))}}
+@keyframes evolve-glow{0%,100%{box-shadow:inset 0 0 0 transparent}50%{box-shadow:inset 0 0 60px hsl(var(--h) 80% 70% / .75)}}
 @media(prefers-reduced-motion:reduce){
   .dashboard .evolve-banner{animation:none}
-  .dashboard .stage-avatar.evolving{animation:none}
+  .dashboard .stage-avatar.evolving::after{animation:none}
 }
