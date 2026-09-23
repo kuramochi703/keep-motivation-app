@@ -29,6 +29,8 @@ const PX_PER_UNIT = 118
 const MIN_UNITS_TALL = 2.64
 /** 足元から枠の下端までの余白（ワールド単位）。影と地面のぶん */
 const FLOOR_PAD = 0.9
+/** カメラを床の中心より少し上に置く高さ。わずかに見下ろして床を見せる */
+const CAMERA_Y = 0.45
 /** 歩き回れる範囲の、枠の端からの余白。はみ出さないための取りしろ */
 const EDGE_PAD = 0.9
 
@@ -63,7 +65,7 @@ export default function AvatarCanvas({ look, animate, fill = false, hatching, in
       // 明るい色ほど灰色へ寄せる。look.ts のパステルがくすんで見えるので、
       // 指定した色をそのまま出す
       flat
-      camera={{ position: [0, 0.45, 4.6], fov: 32 }}
+      camera={{ position: [0, CAMERA_Y, 4.6], fov: 32 }}
       // 見えていない間は回さない
       frameloop="always"
     >
@@ -113,17 +115,22 @@ function StageFit({ children }: { children: (roam: Roam) => ReactNode }) {
   // 縦の画角（fov）は固定なので、見たい高さぶんだけ後ろへ下がる
   const cameraZ = unitsTall / 2 / Math.tan((camera.fov * Math.PI) / 360)
 
+  // 床は枠の下端近く（枠の中心から見た高さ）
+  const floorY = -unitsTall / 2 + FLOOR_PAD
+
   useLayoutEffect(() => {
-    camera.position.z = cameraZ
+    // **床ではなくカメラを動かす。** 床はいつもワールドの高さ 0 に置き、枠の下端近くに
+    // 来るぶんカメラを持ち上げる。ひよこの落ち影（ContactShadows）は、ぼかしの板を
+    // ワールドの原点に置いて影のカメラ（床から高さ far=2 まで）で撮る作りなので、
+    // 床を原点から 2 以上下げると影が毎フレーム消える（枠が高いと起きる）
+    camera.position.set(0, CAMERA_Y - floorY, cameraZ)
     // 部屋は別のレイヤーに載せてある（→ Stage.tsx）。画面のカメラはそれも見る
     camera.layers.enable(STAGE_LAYER)
-    camera.lookAt(0, 0, 0)
+    camera.lookAt(0, -floorY, 0)
     camera.updateProjectionMatrix()
-  }, [camera, cameraZ])
+  }, [camera, cameraZ, floorY])
 
-  // 床は枠の下端近く。手前（+z）に来ると画面では下がるので、奥行きは
-  // 足元の余白より狭くしておく
-  const floorY = -unitsTall / 2 + FLOOR_PAD
+  // 手前（+z）に来ると画面では下がるので、奥行きは足元の余白より狭くしておく
   const roam = useMemo<Roam>(
     () => ({
       x: Math.max(DEFAULT_ROAM.x, unitsWide / 2 - EDGE_PAD),
@@ -133,7 +140,7 @@ function StageFit({ children }: { children: (roam: Roam) => ReactNode }) {
   )
 
   return (
-    <group position={[0, floorY, 0]}>
+    <>
       {/* **部屋の読み込み待ちは、ここの Suspense で受ける。** 外（Avatar.tsx）の
           Suspense まで届くと、もう出ているひよこごとキャンバスが隠され
           （display:none）、枠が一色になる。隠れた間にキャンバスの大きさが 0 になり、
@@ -143,6 +150,6 @@ function StageFit({ children }: { children: (roam: Roam) => ReactNode }) {
         <Stage unitsWide={unitsWide} cameraZ={cameraZ} />
       </Suspense>
       {children(roam)}
-    </group>
+    </>
   )
 }
