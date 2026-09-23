@@ -319,6 +319,8 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM, interactive = fa
   // いま流しているクリップと、どこに立っているか。
   // 毎フレーム変わるので、再描画を起こさない ref に持つ
   const walker = useRef<THREE.Group>(null)
+  /** エフェクトの入れ物。walker と同じ場所に置くが、**向きは追わない** */
+  const follower = useRef<THREE.Group>(null)
   const playing = useRef<Walker>({
     mode: 'idle',
     next: 'idle',
@@ -380,6 +382,7 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM, interactive = fa
       g.position.set(m.x, 0, m.z)
       g.rotation.y = m.facing
     }
+    follower.current?.position.set(m.x, 0, m.z)
   })
 
   return (
@@ -413,8 +416,11 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM, interactive = fa
             {look.sweat && <Sweat />}
           </group>
         </group>
-        {/* まわりのエフェクト。**前かがみ（droop）の外に置く。** 傾けると
-            後光や雨雲まで一緒に傾いて、ひよこに貼り付いた板に見える */}
+      </group>
+      {/* まわりのエフェクト。**歩く入れ物（walker）の外に置き、位置だけを追わせる。**
+          中に入れると向き直るたびに雨雲や星まで一緒に回り、前かがみ（droop）では
+          後光ごと傾いて、ひよこに貼り付いた板に見える */}
+      <group ref={follower}>
         {look.effects.glow && <Glow height={height} animate={animate} />}
         {look.effects.motes && <Motes height={height} animate={animate} />}
         {look.effects.gloom && <Gloom height={height} animate={animate} />}
