@@ -11,18 +11,6 @@ const DebugPage = import.meta.env.DEV
   ? lazy(() => import('../pages/DebugPage'))
   : null
 
-/**
- * **目標設定はメニューに出さない。** あの画面は「編集」ではなく「新しい目標を作る」なので、
- * いつでも押せる場所に置くと、育てている目標がもう1本増えるだけの操作になる。
- * 入口は目標一覧の「新しい目標を作る」とダッシュボードのボタンに絞って、
- * どちらも作るのだと分かる文脈から入るようにしている。
- */
-const NAV: NavItem[] = [
-  { id: 'top', label: 'トップ' },
-  { id: 'goals', label: '目標一覧' },
-  { id: 'main', label: 'アバター部屋' },
-]
-
 export default function App() {
   const { user, ready, signIn, signOut, state, goals, currentGoalId, selectGoal, setDayOffset, reload, loaded, loadError, retryLoad, hasStarted, completeTutorial, screen, go, start, reset, extendDeadline, markStageSeen, newGoal, elapsed, running, toggleTimer, recordOnly, nextDay } = useApp()
 
