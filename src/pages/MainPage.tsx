@@ -160,11 +160,15 @@ export default function MainPage({
             <div className="deco-plant" aria-hidden="true">🪴</div>
 
             <div className="bg-top">
-              <span className="badge">
-                <i />
-                <span>{stage.name}{mood ? ` / ${mood.name}` : ''}</span>
-              </span>
-              <p className="speech">{mood?.say ?? 'まだ殻の中。最初の1回をつけてみよう。'}</p>
+              <div className="bg-say">
+                <span className="badge">
+                  <i />
+                  <span>{stage.name}{mood ? ` / ${mood.name}` : ''}</span>
+                </span>
+                <p className="speech">{mood?.say ?? 'まだ殻の中。最初の1回をつけてみよう。'}</p>
+              </div>
+              <p className="owner">{state.name}</p>
+              <p className="bg-streak">🔥 {run}サイクル連続（{cycleLabel(state.cycleDays)}）</p>
             </div>
 
             {celebrating && (
@@ -187,8 +191,6 @@ export default function MainPage({
               />
             </div>
 
-            <p className="owner">{state.name}</p>
-            <p className="bg-streak">🔥 {run}サイクル連続（{cycleLabel(state.cycleDays)}）</p>
             {/* 活力ゲージだった場所を、そのまま進化ゲージに作り替えている。
                 **「あと○回」ではなく `x / y`**。ステージ2は窓の条件なので、
                 「あと○回」はサボるほど増えるうえ、その回数では届かない */}

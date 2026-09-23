@@ -26,19 +26,19 @@
 .deco-books i:nth-child(2){border-color:#92aac2;transform:translateX(-5px)}
 .deco-books i:first-child{border-color:#afc7a6;transform:translateX(8px)}
 
-.bg-top{position:absolute;top:22px;left:28px;display:flex;align-items:center;gap:14px;z-index:1}
+.bg-top{position:absolute;top:22px;left:28px;display:flex;flex-direction:column;align-items:flex-start;gap:8px;z-index:1}
+.bg-say{display:flex;align-items:center;gap:14px}
 .dashboard .badge{font-size:14px;padding:7px 15px;white-space:nowrap}
 .dashboard .speech{margin:0;text-align:left;font-size:15px;min-height:0}
 
-/* アバターの置き場はステージの余りぜんぶ。下に積む文字（名前・連続日数・
-   活力）を押しのけない範囲で、背景と同じ広さを歩けるようにするため。
-   狭い枠に閉じ込めると、その中でしか歩けない */
-.stage-avatar{position:relative;z-index:1;flex:1 1 auto;align-self:stretch;width:100%;min-height:260px;
-  margin:0 0 6px;filter:drop-shadow(0 14px 18px #bca78c26)}
+/* アバターの置き場はステージ全体。足元を本や植木鉢と同じ床に立たせるため。
+   文字の下に積むと、床の飾りより上に浮いて見える。
+   名前・連続日数は左上（.bg-top）に寄せて、床のあたりを空けている */
+.stage-avatar{position:absolute;inset:0;z-index:0;filter:drop-shadow(0 14px 18px #bca78c26)}
 
-.dashboard .owner{font-size:16px;margin:2px 0 0;position:relative;z-index:1}
+.dashboard .owner{font-size:16px;margin:0}
 .bg-streak{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;
-  font-size:14px;font-weight:700;color:#3f7d5f;margin:4px 0 12px;
+  font-size:14px;font-weight:700;color:#3f7d5f;margin:0;
   padding:6px 14px;border-radius:99px;background:#fff;border:1px solid #e7eef0}
 
 .dashboard .meter{position:relative;z-index:1;width:min(340px,72%)}
@@ -146,7 +146,8 @@
   .dashboard header{margin-bottom:20px}.dashboard header>p{font-size:12px}
   .dashboard-shell .content .dashboard{padding:18px 14px 30px}
   .bg-stage{min-height:500px;padding:20px 16px 104px;border-radius:24px}
-  .bg-top{top:16px;left:16px;flex-direction:column;align-items:flex-start;gap:8px}
+  .bg-top{top:16px;left:16px}
+  .bg-say{flex-direction:column;align-items:flex-start;gap:8px}
   .dash-menu{top:auto;bottom:16px;right:50%;transform:translateX(50%);flex-direction:row;gap:8px}
   .menu-btn{flex-direction:row;gap:6px;min-width:0;padding:10px 12px;border-radius:16px}
   .menu-btn span{font-size:16px}
@@ -161,7 +162,6 @@
   .deco-window{width:96px;height:160px}
 }
 @media(max-width:420px){
-  .stage-avatar{min-height:220px}
   .stage-timer .ring{width:108px;height:108px}
   .stage-timer .ring .num{font-size:27px}
 }

@@ -27,7 +27,7 @@ const PX_PER_UNIT = 118
     これより枠が低いときは、大きさを保つのをあきらめて全身が入るのを優先する */
 const MIN_UNITS_TALL = 2.64
 /** 足元から枠の下端までの余白（ワールド単位）。影と地面のぶん */
-const FLOOR_PAD = 0.7
+const FLOOR_PAD = 0.9
 /** 歩き回れる範囲の、枠の端からの余白。はみ出さないための取りしろ */
 const EDGE_PAD = 0.9
 
