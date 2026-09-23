@@ -1,10 +1,10 @@
 .dashboard-shell{background:radial-gradient(ellipse at 70% 15%,#f6fafc,transparent 65%),#edf3f7;}
-.dashboard-shell .content .dashboard{width:100%;max-width:1536px;padding:56px 3.3% 28px;--accent:#518d94;--accent-soft:#edf5f2;--muted:#6b7b93;--ink:#101b2d;color:var(--ink)}
+.dashboard-shell .content .dashboard{width:100%;max-width:1536px;padding:14px 3.3% 14px;--accent:#518d94;--accent-soft:#edf5f2;--muted:#6b7b93;--ink:#101b2d;color:var(--ink)}
 .dash-area{position:relative}
 
 /* 背景ステージ（アバター＋常時表示の情報） */
 .bg-stage{position:relative;display:flex;flex-direction:column;align-items:center;
-  justify-content:flex-end;min-height:clamp(520px,74vh,840px);
+  justify-content:flex-end;min-height:clamp(420px,60vh,720px);
   border-radius:30px;padding:24px 28px 30px;overflow:hidden;
   background:radial-gradient(ellipse at 50% 32%,#fcf4e5,transparent 66%);
   transition:filter .25s ease}
@@ -49,7 +49,7 @@
   font:inherit;font-size:13px;font-weight:700;color:#45566c;box-shadow:0 8px 20px -14px #27405835;transition:.18s}
 .menu-btn span{font-size:20px;line-height:1}
 .menu-btn:hover{color:#274a62;background:#fff;transform:translateY(-1px)}
-.menu-btn.active{background:linear-gradient(135deg,#4e8a92,#3b6f86);border-color:transparent;color:#fff}
+.menu-btn.active{background:linear-gradient(125deg,#46818b,#538e93);border-color:transparent;color:#fff}
 .menu-btn:focus-visible{outline:2px solid #518d94;outline-offset:2px}
 
 /* オーバーレイパネル */
@@ -83,7 +83,7 @@
 .stage-timer .ring .num{display:grid;place-content:center;font-size:40px}
 .stage-timer .ring .num .stage-toggler{position:absolute;left:50%;bottom:-8px;transform:translateX(-50%);width:42px;height:42px;font-size:17px}
 .stage-toggler{width:56px;height:56px;display:grid;place-items:center;border:none;border-radius:50%;
-  cursor:pointer;font-size:22px;color:#fff;background:linear-gradient(135deg,#46818b,#538e93);
+  cursor:pointer;font-size:22px;color:#fff;background:linear-gradient(125deg,#46818b,#538e93);
   box-shadow:0 8px 18px -10px rgba(70,129,139,.6);transition:.15s ease,transform .1s ease}
 .stage-toggler:hover{filter:brightness(1.08)}
 .stage-toggler:active{transform:scale(.92)}
@@ -130,7 +130,7 @@
 .dashboard .cal{margin-top:10px}
 .dashboard .cal h3{font-size:17px;color:var(--ink)}
 
-@media(min-width:1600px){.bg-stage{min-height:clamp(560px,78vh,900px)}}
+@media(min-width:1600px){.bg-stage{min-height:clamp(500px,66vh,800px)}}
 @media(max-width:1320px){
   .dash-panel{right:108px;width:min(396px,calc(100% - 122px));padding:22px}
   .dash-menu{top:262px}
@@ -139,8 +139,8 @@
   .deco-window{width:112px;height:186px}
 }
 @media(max-width:760px){
-  .dashboard-shell .content .dashboard{padding:26px 14px 30px}
-  .bg-stage{min-height:500px;padding:20px 16px 104px;border-radius:24px}
+  .dashboard-shell .content .dashboard{padding:12px 14px 16px}
+  .bg-stage{min-height:440px;padding:20px 16px 104px;border-radius:24px}
   .bg-top{top:16px;left:16px}
   .bg-say{flex-direction:column;align-items:flex-start;gap:8px}
   .dash-menu{top:auto;bottom:16px;right:50%;transform:translateX(50%);flex-direction:row;gap:8px}
