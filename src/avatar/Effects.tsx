@@ -40,11 +40,11 @@ const STILL = 1.7
  * 塗ると、明るくしても「色の付いた絵の具」に見える。だからシェーダーでは
  * **明るさに応じて金色 → 白へ寄せる**（`glowColor`）。
  *
- * 金色はにじみにしか出ないので、濃いめの山吹色にしておく。淡いと地の白に
- * 溶けて、光の輪郭が消える
+ * **にじみの色は淡いクリーム色に抑える。** 濃い山吹色にすると、芯を白く
+ * 飛ばしても外側がオレンジの輪として残り、光ではなく色に見える
  */
-const GOLD = new THREE.Color('hsl(40, 100%, 56%)')
-const CORE = new THREE.Color('hsl(50, 100%, 97%)')
+const GOLD = new THREE.Color('hsl(46, 85%, 74%)')
+const CORE = new THREE.Color('hsl(50, 100%, 98%)')
 
 /** 明るさ（0〜1）から色を決める。明るいほど白く飛ぶ */
 const GLOW_COLOR = /* glsl */ `
@@ -172,14 +172,14 @@ const MOTES_VERTEX = /* glsl */ `
 `
 
 /** 足元から立ちのぼって消える光の粒 */
-export function Motes({ height, animate, count = 22 }: Common & { count?: number }) {
+export function Motes({ height, animate, count = 10 }: Common & { count?: number }) {
   const geo = useSeeds(count)
   const uniforms = useMemo(
     () => ({
       uTime: { value: 0 },
       uHeight: { value: height * 1.35 },
       uRadius: { value: height * 0.62 },
-      uSize: { value: 0.24 },
+      uSize: { value: 0.16 },
       uScale: { value: 1 },
       uGold: { value: GOLD },
       uCore: { value: CORE },
@@ -231,7 +231,7 @@ const HALO_FRAGMENT = /* glsl */ `
                + 0.7 * pow(0.5 + 0.5 * sin(a * 14.0 - uTime * 0.18), 8.0);
     // ゆっくり息をするように明るさを揺らす
     float pulse = 0.85 + 0.15 * sin(uTime * 1.6);
-    float alpha = (glow * 0.7 + rays * fade * 0.3) * pulse;
+    float alpha = (glow * 0.7 + rays * fade * 0.2) * pulse;
     if (alpha < 0.004) discard;
     // ひよこのすぐ後ろは白く飛ばし、外へ行くほど金色のにじみに。逆光で
     // 輪郭が光っているように見える
@@ -279,12 +279,12 @@ export function Glow({ height, animate }: Common) {
   useClock(halo, animate)
   const haloMaterial = useShader(halo, HALO_VERTEX, HALO_FRAGMENT)
 
-  const geo = useSeeds(6)
+  const geo = useSeeds(3)
   const twinkle = useMemo(
     () => ({
       uTime: { value: 0 },
       uHeight: { value: height },
-      uSize: { value: 0.42 },
+      uSize: { value: 0.24 },
       uScale: { value: 1 },
       uGold: { value: GOLD },
       uCore: { value: CORE },
