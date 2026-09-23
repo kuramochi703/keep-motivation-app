@@ -372,6 +372,10 @@ export default function MainPage({
                     新しい目標を作る
                   </button>
                 </div>
+<<<<<<< HEAD
+=======
+
+>>>>>>> 6b86816 (目標一覧をポップアップで表示できるようにした)
               </div>
             )}
 
