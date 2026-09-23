@@ -27,6 +27,7 @@ flowchart LR
 | `models/*.glb`, `egg.blend` | 書き出したもの。**手で触らない** | — |
 | `models/export_*.py` | glb の書き出し | 書き出す内容 |
 | `docs/BLENDER_*_NOTES.md` | モデリング／アニメの失敗と解決策 | Blender 側で詰まった時 |
+| `docs/EFFECTS_NOTES.md` | エフェクト（シェーダー）の失敗と解決策 | 光・もやの見え方を直す時 |
 
 ---
 
