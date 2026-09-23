@@ -277,27 +277,45 @@ export function Glow({ height, animate }: Common) {
  * ------------------------------------------------------------------ */
 
 /** 値のノイズと、それを重ねた fbm。煙のゆらぎに使う */
+/**
+ * 煙のゆらぎに使うノイズ。
+ *
+ * **値ノイズ（格子点に乱数を置いて補間）は使わない。** 格子の形が残って、
+ * 低い解像度の画像を引き伸ばしたようなぼやけたまだらになる。ここは格子点に
+ * 「向き」を置く勾配ノイズで、6段重ねて細かい筋まで出す
+ */
 const NOISE = /* glsl */ `
   float hash2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
   float noise(vec2 p) {
     vec2 i = floor(p);
     vec2 f = fract(p);
-    vec2 u = f * f * (3.0 - 2.0 * f);
-    return mix(mix(hash2(i), hash2(i + vec2(1.0, 0.0)), u.x),
-               mix(hash2(i + vec2(0.0, 1.0)), hash2(i + vec2(1.0, 1.0)), u.x), u.y);
+    // 5次のなめらかな補間。3次だと格子の境目で折れて見える
+    vec2 u = f * f * f * (f * (f * 6.0 - 15.0) + 10.0);
+    float ga = hash2(i) * 6.2832;
+    float gb = hash2(i + vec2(1.0, 0.0)) * 6.2832;
+    float gc = hash2(i + vec2(0.0, 1.0)) * 6.2832;
+    float gd = hash2(i + vec2(1.0, 1.0)) * 6.2832;
+    float a = dot(vec2(cos(ga), sin(ga)), f);
+    float b = dot(vec2(cos(gb), sin(gb)), f - vec2(1.0, 0.0));
+    float c = dot(vec2(cos(gc), sin(gc)), f - vec2(0.0, 1.0));
+    float d = dot(vec2(cos(gd), sin(gd)), f - vec2(1.0, 1.0));
+    return 0.5 + 0.7 * mix(mix(a, b, u.x), mix(c, d, u.x), u.y);
   }
   float fbm(vec2 p) {
     float v = 0.0;
     float a = 0.5;
     // 重ねるたびに少し回す。回さないとノイズの格子が揃って、四角いむらが透ける
     mat2 turn = mat2(0.8, 0.6, -0.6, 0.8);
-    for (int i = 0; i < 4; i++) {
+    for (int i = 0; i < 6; i++) {
       v += a * noise(p);
       p = turn * p * 2.03 + vec2(1.7, 9.2);
       a *= 0.5;
     }
     return v;
   }
+  // 薄い暗色を白に重ねると、濃さが 1/255 刻みの段になって見える。
+  // 画素ごとに 1段ぶんだけ揺らして、段の境目を散らす
+  float dither() { return (hash2(gl_FragCoord.xy) - 0.5) / 255.0; }
 `
 
 /**
@@ -318,11 +336,12 @@ const HAZE_FRAGMENT = /* glsl */ `
     // 上のほうが濃い。頭の上に垂れ込める
     shape *= 0.55 + 0.45 * smoothstep(-0.6, 0.5, p.y);
     // uv を上へずらすと、模様は下へ流れて見える
-    vec2 q = vUv * vec2(1.7, 2.0) + vec2(0.0, uTime * 0.07);
+    vec2 q = vUv * vec2(2.2, 2.6) + vec2(0.0, uTime * 0.07);
     vec2 warp = vec2(fbm(q + vec2(0.0, uTime * 0.03)), fbm(q + vec2(5.2, 1.3)));
-    float n = fbm(q + warp * 1.6);
-    float smoke = smoothstep(0.28, 0.78, n);
-    float alpha = shape * smoke * 0.58;
+    float n = fbm(q + warp * 1.4);
+    // 幅を狭めて煙のふちを締める。広いとふちがどこまでもぼやける
+    float smoke = smoothstep(0.42, 0.72, n);
+    float alpha = shape * smoke * 0.55 + dither();
     if (alpha < 0.004) discard;
     gl_FragColor = vec4(mix(uColor, uDeep, smoothstep(0.5, 0.9, n)), alpha);
     #include <colorspace_fragment>
@@ -342,7 +361,9 @@ const SINK_VERTEX = /* glsl */ `
   uniform float uScale;
   attribute vec4 aSeed;
   varying float vAlpha;
+  varying float vSeed;
   void main() {
+    vSeed = aSeed.x;
     // 光の粒より**ずっと遅い。** 速いと雨や雪に見える
     float life = fract(aSeed.z + uTime * 0.07 * (0.8 + 0.4 * aSeed.w));
     float angle = aSeed.x * 6.2832;
@@ -360,11 +381,18 @@ const SINK_VERTEX = /* glsl */ `
 
 /** 沈むもやの見た目。**芯を白くしない、光芒も付けない。** ふちまでぼかした煙 */
 const SINK_FRAGMENT = /* glsl */ `
+  uniform float uTime;
   uniform vec3 uColor;
   varying float vAlpha;
+  varying float vSeed;
+  ${NOISE}
   void main() {
     vec2 p = gl_PointCoord * 2.0 - 1.0;
-    float a = exp(-dot(p, p) * 2.2) * vAlpha * 0.28;
+    // 丸いぼかしだけだと、引き伸ばした画像のように見える。
+    // もやと同じノイズで中に筋を入れ、ふちもちぎれさせる
+    float n = fbm(gl_PointCoord * 2.4 + vSeed * 17.0 + vec2(0.0, uTime * 0.05));
+    float puff = exp(-dot(p, p) * 2.2) * smoothstep(0.38, 0.7, n);
+    float a = puff * vAlpha * 0.4 + dither();
     if (a < 0.01) discard;
     gl_FragColor = vec4(uColor, a);
     #include <colorspace_fragment>
