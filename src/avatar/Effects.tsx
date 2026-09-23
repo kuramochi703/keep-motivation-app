@@ -11,7 +11,7 @@ import * as THREE from 'three'
  *
  * | 部品 | 中身 | いつ（logic.ts の `MOODS`） |
  * | --- | --- | --- |
- * | `Glow` | 背中の後光（放射状の光の筋）と、ぱっと光って消える星 ✦ | かがやき |
+ * | `Glow` | 背中の後光（放射状の光の筋）。粒は出さない | かがやき |
  * | `Motes` | 足元から立ちのぼって消える光の粒 | いきいき・かがやき |
  * | `Gloom` | 頭の上の雨雲と雨粒、背中に垂れる縦線（ずーん） | ぐったり・しずみこみ |
  *
@@ -110,7 +110,7 @@ function useSeeds(count: number) {
 }
 
 /**
- * 光の粒の見た目（Motes と Glow の星で共通）。
+ * 光の粒の見た目（Motes）。
  * 芯が白く、ふちが金色のにじみ。`vStar` が立っている粒だけ十字の光芒を足す
  */
 const SPARK_FRAGMENT = /* glsl */ `
@@ -240,37 +240,11 @@ const HALO_FRAGMENT = /* glsl */ `
   }
 `
 
-const TWINKLE_VERTEX = /* glsl */ `
-  uniform float uTime;
-  uniform float uHeight;
-  uniform float uSize;
-  uniform float uScale;
-  attribute vec4 aSeed;
-  varying float vAlpha;
-  varying float vStar;
-  float hash(float n) { return fract(sin(n) * 43758.5453); }
-  void main() {
-    // 1つの星は「ぱっと光って消える」を繰り返し、**光るたびに場所を変える**
-    float t = uTime * 0.55 + aSeed.z;
-    float cycle = floor(t);
-    float life = fract(t);
-    float angle = hash(cycle * 12.9 + aSeed.x * 78.2) * 6.2832;
-    float y = mix(0.25, 1.05, hash(cycle * 4.1 + aSeed.y * 31.7)) * uHeight;
-    // ひよこの輪郭のすぐ外側。頭の上へ行くほど内へ寄せる
-    float radius = uHeight * mix(0.55, 0.38, y / uHeight);
-    vec3 pos = vec3(cos(angle) * radius, y, sin(angle) * radius * 0.4 + uHeight * 0.3);
-
-    vec4 mv = modelViewMatrix * vec4(pos, 1.0);
-    gl_Position = projectionMatrix * mv;
-    // 大きさで光らせる。ふくらんでしぼむ
-    float pop = pow(sin(life * 3.1416), 2.0);
-    gl_PointSize = uSize * (0.7 + 0.6 * aSeed.w) * pop * uScale / -mv.z;
-    vAlpha = pop;
-    vStar = 1.0;
-  }
-`
-
-/** 輝き。後光と、まわりでぱっと光る星 ✦ */
+/**
+ * 輝き。後光だけ（からだの発光は Chick.tsx）。
+ * **粒や星はここに入れない。** 粒は「光の粒」（Motes）の受け持ちで、
+ * 輝きにも出すと2つのエフェクトの区別がつかなくなる
+ */
 export function Glow({ height, animate }: Common) {
   const halo = useMemo(
     () => ({ uTime: { value: 0 }, uGold: { value: GOLD }, uCore: { value: CORE } }),
@@ -278,23 +252,6 @@ export function Glow({ height, animate }: Common) {
   )
   useClock(halo, animate)
   const haloMaterial = useShader(halo, HALO_VERTEX, HALO_FRAGMENT)
-
-  const geo = useSeeds(3)
-  const twinkle = useMemo(
-    () => ({
-      uTime: { value: 0 },
-      uHeight: { value: height },
-      uSize: { value: 0.24 },
-      uScale: { value: 1 },
-      uGold: { value: GOLD },
-      uCore: { value: CORE },
-    }),
-    []
-  )
-  twinkle.uHeight.value = height
-  useClock(twinkle, animate)
-  usePointScale(twinkle)
-  const twinkleMaterial = useShader(twinkle, TWINKLE_VERTEX, SPARK_FRAGMENT)
 
   const size = height * 2.2
   return (
@@ -307,9 +264,6 @@ export function Glow({ height, animate }: Common) {
           <primitive object={haloMaterial} attach="material" />
         </mesh>
       </Billboard>
-      <points geometry={geo} frustumCulled={false}>
-        <primitive object={twinkleMaterial} attach="material" />
-      </points>
     </>
   )
 }

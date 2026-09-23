@@ -87,7 +87,7 @@ export type Look = {
  * どの気分で何が出るかは logic.ts の `MOODS` が持つ
  */
 export type Effects = {
-  /** アバターが輝く。後光と、ぱっと光る星 */
+  /** アバターが輝く。後光と、からだの発光。粒は出さない（それは motes） */
   glow: boolean
   /** 足元から光の粒が立ちのぼる */
   motes: boolean

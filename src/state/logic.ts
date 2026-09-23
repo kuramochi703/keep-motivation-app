@@ -249,7 +249,7 @@ export type Mood = {
   liveliness: number
   /** あぶら汗。しんどいときだけ */
   sweat: boolean
-  /** アバターが輝く（後光と星）。7サイクル連続から */
+  /** アバターが輝く（後光とからだの発光）。7サイクル連続から */
   glow: boolean
   /** 光の粒が立ちのぼる。3サイクル連続から */
   motes: boolean

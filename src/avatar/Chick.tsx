@@ -422,7 +422,7 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM, interactive = fa
         </group>
       </group>
       {/* まわりのエフェクト。**歩く入れ物（walker）の外に置き、位置だけを追わせる。**
-          中に入れると向き直るたびに雨雲や星まで一緒に回り、前かがみ（droop）では
+          中に入れると向き直るたびに雨雲や粒まで一緒に回り、前かがみ（droop）では
           後光ごと傾いて、ひよこに貼り付いた板に見える */}
       <group ref={follower}>
         {look.effects.glow && <Glow height={height} animate={animate} />}
