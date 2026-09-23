@@ -82,17 +82,15 @@ type Loaded = { ok: true; goals: State[] } | { ok: false }
  *
  * 記録は目標ごとに引かず `in` で1回にまとめる。目標が増えても往復は2回のまま。
  */
-async function fetchGoals(userId: string): Promise<Loaded> {
+async function fetchGoals(userId: string, isCurrent: () => boolean): Promise<Loaded> {
   const { data, error } = await supabase
     .from('goals')
     .select('id, goal, deadline, cycle_days, started_at, avatars(name, hue, seen_stage)')
     .eq('user_id', userId)
     .order('id', { ascending: false })
 
-  if (error) {
-    console.error('Supabase読み込みエラー:', error)
-    return { ok: false }
-  }
+  if (!isCurrent()) return { ok: false }
+  if (error) throw error
 
   const rows = data ?? []
   if (rows.length === 0) return { ok: true, goals: [] }
@@ -103,7 +101,7 @@ async function fetchGoals(userId: string): Promise<Loaded> {
     .in('goal_id', rows.map((g) => g.id))
     .order('done_on')
 
-  if (recordsError) console.error('記録の読み込みエラー:', recordsError)
+  if (recordsError) throw recordsError
 
   const doneOf = new Map<number, string[]>()
   for (const r of records ?? []) {
@@ -146,14 +144,26 @@ export function useGoalState(userId: string | null) {
   /** お試し用の日送り。DB に無い画面の都合なので、目標を切り替えても持ち越す */
   const [dayOffset, setOffset] = useState(0)
   const [hasStarted, setHasStarted] = useState(false)
-  const [loaded, setLoaded] = useState(false)
+  const [hasGoalHistory, setHasGoalHistory] = useState(false)
+  const [stateUserId, setStateUserId] = useState(userId)
+  const [loadedUserId, setLoadedUserId] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [loadAttempt, setLoadAttempt] = useState(0)
+  const currentUserId = useRef(userId)
+  currentUserId.current = userId
+
+  // アカウント変更の描画から、前のアカウントのデータを公開しない。
+  const belongsToUser = stateUserId === userId
+  const loaded = userId !== null && belongsToUser && loadedUserId === userId
 
   const current = goals.find((g) => g.goalId === currentId) ?? null
   const state: State = { ...(current ?? draft ?? initialState()), dayOffset }
+  const currentState = belongsToUser ? state : initialState()
+  const requestVersion = useRef(0)
 
   // タイマーからの達成は、最後に描いた state ではなく「今の state」で書きたい
-  const latest = useRef(state)
-  latest.current = state
+  const latest = useRef(currentState)
+  latest.current = currentState
 
   /** 目標1本だけを差し替える。記録も演出の進みも期限もここを通す */
   const patch = useCallback((id: number, fn: (g: State) => State) => {
@@ -172,32 +182,16 @@ export function useGoalState(userId: string | null) {
   }, [])
 
   useEffect(() => {
-    // 未ログインの間は何も読まない。ログアウトすると初期状態に戻る
-    if (!userId) {
-      setGoals([])
-      setCurrentId(null)
-      setDraft(null)
-      setHasStarted(false)
-      setLoaded(false)
-      return
-    }
-
-    let alive = true
-
-    fetchGoals(userId).then((result) => {
-      if (!alive) return
-      if (result.ok && result.goals.length > 0) {
-        setGoals(result.goals)
-        setCurrentId(pick(result.goals, userId))
-        setHasStarted(true)
-      }
-      setLoaded(true)
-    })
-
-    return () => {
-      alive = false
-    }
-  }, [userId, pick])
+    setStateUserId(userId)
+    setGoals([])
+    setCurrentId(null)
+    setDraft(null)
+    setOffset(0)
+    setHasStarted(false)
+    setHasGoalHistory(false)
+    setLoadedUserId(null)
+    setLoadError(null)
+  }, [userId])
 
   /**
    * DB から読み直す。デバッグ画面が「消したあと、本当に消えたか」を
@@ -207,24 +201,40 @@ export function useGoalState(userId: string | null) {
    */
   const reload = useCallback(async () => {
     if (!userId) return
-    const result = await fetchGoals(userId)
-    if (!result.ok) return
-
-    setGoals(result.goals)
-    setDraft(null)
-    if (result.goals.length > 0) {
-      // 開いていた目標が消えていたら、いちばん新しいものに移る
+    const version = ++requestVersion.current
+    setLoadError(null)
+    try {
+      const result = await fetchGoals(userId, () =>
+        currentUserId.current === userId && version === requestVersion.current
+      )
+      if (currentUserId.current !== userId || version !== requestVersion.current) return
+      if (!result.ok) throw new Error('目標を読み込めませんでした')
+      setGoals(result.goals)
+      setDraft(null)
       setCurrentId((id) =>
         result.goals.some((g) => g.goalId === id) ? id : pick(result.goals, userId)
       )
-      setHasStarted(true)
-    } else {
-      setCurrentId(null)
-      setHasStarted(false)
+      setHasStarted(result.goals.length > 0)
+      if (result.goals.length > 0) setHasGoalHistory(true)
+      setLoadedUserId(userId)
+    } catch (error) {
+      if (currentUserId.current !== userId || version !== requestVersion.current) return
+      console.error('目標・記録の読み込みエラー:', error)
+      setLoadedUserId(null)
+      setLoadError('目標の読み込みに失敗しました。時間をおいて再試行してください。')
     }
   }, [userId, pick])
 
-  const markStarted = () => setHasStarted(true)
+  useEffect(() => {
+    void reload()
+    return () => { requestVersion.current += 1 }
+  }, [reload, loadAttempt])
+
+  const retryLoad = useCallback(() => {
+    setLoadedUserId(null)
+    setLoadError(null)
+    setLoadAttempt((attempt) => attempt + 1)
+  }, [])
 
   /** 目標を切り替える。**DB には触らない**（どれを開いているかは画面の都合） */
   const selectGoal = useCallback(
@@ -261,6 +271,7 @@ export function useGoalState(userId: string | null) {
       .select('id')
       .single()
 
+    if (currentUserId.current !== userId) return false
     if (error) {
       console.error('目標作成エラー:', error)
       return false
@@ -270,6 +281,7 @@ export function useGoalState(userId: string | null) {
       .from('avatars')
       .insert({ goal_id: data.id, name: input.name, hue: input.hue })
 
+    if (currentUserId.current !== userId) return false
     if (avatarError) {
       console.error('アバター作成エラー:', avatarError)
       return false
@@ -292,6 +304,7 @@ export function useGoalState(userId: string | null) {
     setCurrentId(data.id)
     setDraft(null)
     setHasStarted(true)
+    setHasGoalHistory(true)
     writeCurrentId(userId, data.id)
     return true
   }
@@ -375,13 +388,15 @@ export function useGoalState(userId: string | null) {
   }
 
   return {
-    state,
+    state: currentState,
     /** 目標一覧用。新しい順、`dayOffset` を混ぜた形で返す */
-    goals: goals.map((g) => ({ ...g, dayOffset })),
-    currentGoalId: currentId,
+    goals: belongsToUser ? goals.map((g) => ({ ...g, dayOffset })) : [],
+    currentGoalId: belongsToUser ? currentId : null,
     loaded,
-    hasStarted,
-    markStarted,
+    loadError: belongsToUser ? loadError : null,
+    retryLoad,
+    hasStarted: belongsToUser && hasStarted,
+    hasGoalHistory: belongsToUser && hasGoalHistory,
     start,
     selectGoal,
     reset,
