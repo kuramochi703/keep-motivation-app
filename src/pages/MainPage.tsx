@@ -113,12 +113,6 @@ export default function MainPage({
 
   return (
     <div className="wrap dashboard">
-      <header>
-        <h1>がんばり畑</h1>
-        <p>
-          1日5分でいい。継続した日だけ、アバターの畑は少しずつ育っていく。
-        </p>
-      </header>
 
       {expired ? (
         <div className="dash-area">
@@ -160,6 +154,7 @@ export default function MainPage({
             <div className="deco-plant" aria-hidden="true">🪴</div>
 
             <div className="bg-top">
+              <p className="owner">{state.name}</p>
               <div className="bg-say">
                 <span className="badge">
                   <i />
@@ -167,7 +162,6 @@ export default function MainPage({
                 </span>
                 <p className="speech">{mood?.say ?? 'まだ殻の中。最初の1回をつけてみよう。'}</p>
               </div>
-              <p className="owner">{state.name}</p>
               <p className="bg-streak">🔥 {run}サイクル連続（{cycleLabel(state.cycleDays)}）</p>
             </div>
 

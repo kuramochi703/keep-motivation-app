@@ -20,7 +20,7 @@ const DebugPage = import.meta.env.DEV
 const NAV: NavItem[] = [
   { id: 'top', label: 'トップ' },
   { id: 'goals', label: '目標一覧' },
-  { id: 'main', label: 'ダッシュボード' },
+  { id: 'main', label: 'アバター部屋' },
 ]
 
 export default function App() {
