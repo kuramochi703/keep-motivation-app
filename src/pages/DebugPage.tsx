@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react'
 import Avatar from '../avatar/Avatar'
+import { NO_EFFECTS, type Effects } from '../avatar/look'
 import { evolutionOf, nextGoalOf, STAGES } from '../avatar/stage'
 import { supabase } from '../lib/supabase'
 import {
@@ -19,7 +20,9 @@ import {
   idleOf,
   isDone,
   key,
+  MOODS,
   moodOf,
+  type MoodId,
   runOf,
   startOf,
   today,
@@ -76,6 +79,15 @@ export default function DebugPage({
   const [failure, setFailure] = useState('')
 
   const goalId = state.goalId
+
+  // エフェクトの見比べ。**DB にも本番の気分にも触らない**、この画面だけの値。
+  // 気分は姿勢と色のため（どんよりは座り込んだ姿で見たい）。最初はいまの気分
+  const [previewMood, setPreviewMood] = useState<MoodId>(mood?.id ?? 'good')
+  const [effects, setEffects] = useState<Effects>(() => effectsOf(mood?.id ?? 'good'))
+  const pickPreviewMood = (id: MoodId) => {
+    setPreviewMood(id)
+    setEffects(effectsOf(id))
+  }
 
   // アプリ本体はいちばん新しい1件しか読まない。たまっている目標はここでだけ見える
   const [goals, setGoals] = useState<GoalRow[]>([])
@@ -164,6 +176,53 @@ export default function DebugPage({
         </div>
         <div className="debug-avatar-preview">
           <Avatar stage={stage.id} hue={state.hue} mood={mood} />
+        </div>
+      </section>
+
+      {/*
+        エフェクト（avatar/Effects.tsx）の見比べ。本番では気分の表（MOODS の
+        glow / motes / gloom）で決まるが、ここでは**気分と別に**出し入れできる。
+        気分を選ぶと、その気分の本番どおりの組み合わせに戻る。
+        ステージはいまのものを使う（たまごには出ないので、たまごなら幼体で見せる）
+      */}
+      <section className="card debug-avatar debug-effects" aria-label="エフェクト">
+        <div>
+          <h2>エフェクト</h2>
+          <div className="tools">
+            {EFFECTS.map(({ id, name }) => (
+              <button
+                key={id}
+                className={effects[id] ? 'btn' : 'btn sec'}
+                aria-pressed={effects[id]}
+                onClick={() => setEffects((e) => ({ ...e, [id]: !e[id] }))}
+              >
+                {name}
+              </button>
+            ))}
+            <button className="btn ghost" onClick={() => setEffects(NO_EFFECTS)}>全部オフ</button>
+          </div>
+          <div className="debug-row">
+            <label htmlFor="debug-effect-mood">気分</label>
+            <select
+              id="debug-effect-mood"
+              value={previewMood}
+              onChange={(e) => pickPreviewMood(e.target.value as MoodId)}
+            >
+              {MOODS.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}（{EFFECTS.filter(({ id }) => m[id]).map(({ name }) => name).join('＋') || 'なし'}）
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+        <div className="debug-effects-preview">
+          <Avatar
+            stage={Math.max(1, stage.id)}
+            hue={state.hue}
+            mood={MOODS.find((m) => m.id === previewMood) ?? null}
+            effects={effects}
+          />
         </div>
       </section>
 
@@ -375,4 +434,17 @@ export default function DebugPage({
       </div>
     </div>
   )
+}
+
+/** デバッグ画面で出し入れするエフェクト。並びはボタンの並び */
+const EFFECTS: { id: keyof Effects; name: string }[] = [
+  { id: 'glow', name: '輝き' },
+  { id: 'motes', name: '光の粒' },
+  { id: 'gloom', name: 'どんより' },
+]
+
+/** その気分の本番どおりのエフェクト */
+function effectsOf(id: MoodId): Effects {
+  const m = MOODS.find((x) => x.id === id)
+  return m ? { glow: m.glow, motes: m.motes, gloom: m.gloom } : NO_EFFECTS
 }

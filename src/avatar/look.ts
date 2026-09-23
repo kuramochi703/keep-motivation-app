@@ -78,9 +78,24 @@ export type Look = {
   crown: boolean
   /** あぶら汗。しんどいときだけ */
   sweat: boolean
-  /** 豪華なエフェクト。7サイクル連続（かがやき）から */
-  sparkle: boolean
+  /** まわりのエフェクト（Effects.tsx）。気分の表から引く。たまごには出さない */
+  effects: Effects
 }
+
+/**
+ * まわりのエフェクト。**3つは同時に出せる**（かがやきは輝き＋光の粒）。
+ * どの気分で何が出るかは logic.ts の `MOODS` が持つ
+ */
+export type Effects = {
+  /** アバターが輝く。後光と、ぱっと光る星 */
+  glow: boolean
+  /** 足元から光の粒が立ちのぼる */
+  motes: boolean
+  /** どんより。頭の上の雨雲と、背中の縦線 */
+  gloom: boolean
+}
+
+export const NO_EFFECTS: Effects = { glow: false, motes: false, gloom: false }
 
 /** 0〜1 に丸める */
 const unit = (v: number) => Math.max(0, Math.min(1, v))
@@ -167,6 +182,6 @@ export function lookOf(stage: number, hue: number, mood: Mood | null): Look {
     scarf: stage >= 3,
     crown: stage >= 3,
     sweat: !isEgg && (mood?.sweat ?? false),
-    sparkle: !isEgg && (mood?.sparkle ?? false),
+    effects: isEgg || !mood ? NO_EFFECTS : { glow: mood.glow, motes: mood.motes, gloom: mood.gloom },
   }
 }

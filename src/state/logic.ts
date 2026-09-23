@@ -249,8 +249,12 @@ export type Mood = {
   liveliness: number
   /** あぶら汗。しんどいときだけ */
   sweat: boolean
-  /** 豪華なエフェクト。7サイクル連続から */
-  sparkle: boolean
+  /** アバターが輝く（後光と星）。7サイクル連続から */
+  glow: boolean
+  /** 光の粒が立ちのぼる。3サイクル連続から */
+  motes: boolean
+  /** どんより（雨雲と縦線）。3サイクル放置から */
+  gloom: boolean
 }
 
 /**
@@ -268,7 +272,9 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
     l: 58,
     liveliness: 0,
     sweat: true,
-    sparkle: false,
+    glow: false,
+    motes: false,
+    gloom: true,
     hit: (_run, idle) => idle >= 4,
   },
   {
@@ -279,7 +285,9 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
     l: 58,
     liveliness: 0,
     sweat: true,
-    sparkle: false,
+    glow: false,
+    motes: false,
+    gloom: true,
     hit: (_run, idle) => idle >= 3,
   },
   {
@@ -290,7 +298,9 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
     l: 58,
     liveliness: 0.2,
     sweat: false,
-    sparkle: false,
+    glow: false,
+    motes: false,
+    gloom: false,
     hit: (_run, idle) => idle >= 2,
   },
   {
@@ -301,7 +311,9 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
     l: 66,
     liveliness: 0.4,
     sweat: false,
-    sparkle: false,
+    glow: false,
+    motes: false,
+    gloom: false,
     hit: (run) => run <= 1,
   },
   {
@@ -312,7 +324,9 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
     l: 72,
     liveliness: 0.6,
     sweat: false,
-    sparkle: false,
+    glow: false,
+    motes: false,
+    gloom: false,
     hit: (run) => run === 2,
   },
   {
@@ -323,7 +337,9 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
     l: 80,
     liveliness: 0.9,
     sweat: false,
-    sparkle: false,
+    glow: false,
+    motes: true,
+    gloom: false,
     hit: (run) => run <= 6,
   },
   {
@@ -334,7 +350,9 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
     l: 80,
     liveliness: 1,
     sweat: false,
-    sparkle: true,
+    glow: true,
+    motes: true,
+    gloom: false,
     hit: (run) => run >= 7,
   },
 ]
