@@ -1,6 +1,5 @@
 import { useLayoutEffect, useMemo } from 'react'
 import { useGLTF } from '@react-three/drei'
-import type * as THREE from 'three'
 import stageUrl from './models/stage/stage.glb?url'
 
 /** 床に置いた飾り。名前の頭で拾う（Blender のオブジェクト名そのまま）。
@@ -48,7 +47,7 @@ export default function Stage({ unitsWide, cameraZ }: Props) {
     () =>
       room.children
         .filter((o) => PROPS.some((p) => o.name.startsWith(p)))
-        .map((o) => ({ node: o as THREE.Object3D, x: o.position.x })),
+        .map((o) => ({ node: o, x: o.position.x })),
     [room]
   )
 
