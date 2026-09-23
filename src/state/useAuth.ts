@@ -1,12 +1,13 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import type { User } from '@supabase/supabase-js'
 import { supabase } from '../lib/supabase'
 
 /**
- * ログイン状態だけを持つ。DB のことは知らない（AUTH_PLAN 4章）。
+ * ログイン状態と初回案内の完了を持つ。目標のDBは扱わない（AUTH_PLAN 4章）。
  *
  * パスワードは `auth.users.encrypted_password` にあり、照合は Supabase の中で終わる。
- * こちら側が触るのは JWT だけで、`supabase.from(...)` には自動で付く。
+ * JWT は `supabase.from(...)` に自動で付く。
+ * 初回案内の完了は Auth の user_metadata に保存し、別端末でのログインにも引き継ぐ。
  *
  * 登録画面は無い。アカウントは管理画面で配る。
  */
@@ -18,6 +19,10 @@ export function useAuth() {
   const [user, setUser] = useState<User | null>(null)
   /** セッションの確認が終わったか。これが false の間はログイン画面も出さない */
   const [ready, setReady] = useState(false)
+  const tutorialSave = useRef<{ userId: string; promise: Promise<boolean> } | null>(null)
+  const currentUserId = useRef<string | null>(null)
+  currentUserId.current = user?.id ?? null
+  const tutorialCompleted = user?.user_metadata.tutorial_completed === true
 
   useEffect(() => {
     let alive = true
@@ -58,5 +63,37 @@ export function useAuth() {
     await supabase.auth.signOut()
   }, [])
 
-  return { user, ready, signIn, signOut }
+  /** 初回案内の完了だけをアカウントに保存する。権限判定には使わない。 */
+  const completeTutorial = useCallback((): Promise<boolean> => {
+    if (!user) return Promise.resolve(false)
+    if (tutorialCompleted) return Promise.resolve(true)
+    if (tutorialSave.current?.userId === user.id) return tutorialSave.current.promise
+
+    const request = { userId: user.id, promise: Promise.resolve(false) }
+    const save = async () => {
+      try {
+        const { data, error } = await supabase.auth.updateUser({
+          data: { tutorial_completed: true },
+        })
+        if (error) throw error
+        if (!data.user || data.user.id !== user.id) return false
+        if (currentUserId.current !== user.id) return false
+        setUser((current) => current?.id === user.id ? data.user : current)
+        return true
+      } catch (error) {
+        console.error('チュートリアル完了の保存に失敗:', error)
+        if (currentUserId.current === user.id) {
+          window.alert('チュートリアルの完了を保存できませんでした。通信状況を確認して、もう一度お試しください。')
+        }
+        return false
+      }
+    }
+    request.promise = save().finally(() => {
+      if (tutorialSave.current === request) tutorialSave.current = null
+    })
+    tutorialSave.current = request
+    return request.promise
+  }, [user, tutorialCompleted])
+
+  return { user, ready, signIn, signOut, tutorialCompleted, completeTutorial }
 }

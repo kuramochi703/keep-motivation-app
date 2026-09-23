@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 import {
   addMonths,
@@ -35,69 +35,88 @@ const oneOf = <T,>(v: T | T[] | null | undefined): T | null =>
 export function useGoalState(userId: string | null) {
   const [state, setState] = useState<State>(() => initialState())
   const [hasStarted, setHasStarted] = useState(false)
-  const [loaded, setLoaded] = useState(false)
+  const [hasGoalHistory, setHasGoalHistory] = useState(false)
+  const [stateUserId, setStateUserId] = useState(userId)
+  const [loadedUserId, setLoadedUserId] = useState<string | null>(null)
+  const [loadError, setLoadError] = useState<string | null>(null)
+  const [loadAttempt, setLoadAttempt] = useState(0)
+  const currentUserId = useRef(userId)
+  currentUserId.current = userId
+
+  // アカウント変更の描画から、前のアカウントのデータを公開しない。
+  const belongsToUser = stateUserId === userId
+  const currentState = belongsToUser ? state : initialState()
+  const loaded = userId !== null && belongsToUser && loadedUserId === userId
 
   // タイマーからの達成は、最後に描いた state ではなく「今の state」で書きたい
-  const latest = useRef(state)
-  latest.current = state
+  const latest = useRef(currentState)
+  latest.current = currentState
 
-  // いまの目標（archived_at が NULL の最新1件）と、その記録を読む
   useEffect(() => {
-    // 未ログインの間は何も読まない。ログアウトすると初期状態に戻る
-    if (!userId) {
-      setState(initialState())
-      setHasStarted(false)
-      setLoaded(false)
-      return
-    }
+    setStateUserId(userId)
+    setState(initialState())
+    setHasStarted(false)
+    setHasGoalHistory(false)
+  }, [userId])
+
+  // 同じ user_id の最新1件を現在の目標とし、その記録を読む。
+  useEffect(() => {
+    setLoadedUserId(null)
+    setLoadError(null)
+    // 未ログインの間は何も読まない。
+    if (!userId) return
 
     let alive = true
 
     async function loadGoal() {
-      const { data, error } = await supabase
-        .from('goals')
-        .select('id, goal, deadline, cycle_days, started_at, avatars(name, hue, seen_stage)')
-        .eq('user_id', userId)
-        .is('archived_at', null)
-        .order('id', { ascending: false })
-        .limit(1)
-        .maybeSingle()
+      try {
+        const { data, error } = await supabase
+          .from('goals')
+          .select('id, goal, deadline, cycle_days, started_at, avatars(name, hue, seen_stage)')
+          .eq('user_id', userId)
+          .order('id', { ascending: false })
+          .limit(1)
+          .maybeSingle()
 
-      if (!alive) return
-
-      if (error) {
-        console.error('Supabase読み込みエラー:', error)
-        setLoaded(true)
-        return
-      }
-
-      if (data) {
-        const avatar = oneOf(data.avatars as { name: string; hue: number; seen_stage: number }[])
-        const { data: records, error: recordsError } = await supabase
-          .from('records')
-          .select('done_on')
-          .eq('goal_id', data.id)
-          .order('done_on')
-
-        if (recordsError) console.error('記録の読み込みエラー:', recordsError)
         if (!alive) return
+        if (error) throw error
 
-        setState({
-          ...initialState(),
-          goalId: data.id,
-          goal: data.goal ?? '',
-          deadline: data.deadline ?? null,
-          cycleDays: data.cycle_days ?? 1,
-          startedAt: data.started_at ?? null,
-          hue: avatar?.hue ?? 150,
-          name: avatar?.name ?? '',
-          seenStage: avatar?.seen_stage ?? 0,
-          done: (records ?? []).map((r) => r.done_on as string),
-        })
-        setHasStarted(true)
+        if (data) {
+          const avatar = oneOf(data.avatars as { name: string; hue: number; seen_stage: number }[])
+          const { data: records, error: recordsError } = await supabase
+            .from('records')
+            .select('done_on')
+            .eq('goal_id', data.id)
+            .order('done_on')
+
+          if (!alive) return
+          if (recordsError) throw recordsError
+
+          setState({
+            ...initialState(),
+            goalId: data.id,
+            goal: data.goal ?? '',
+            deadline: data.deadline ?? null,
+            cycleDays: data.cycle_days ?? 1,
+            startedAt: data.started_at ?? null,
+            hue: avatar?.hue ?? 150,
+            name: avatar?.name ?? '',
+            seenStage: avatar?.seen_stage ?? 0,
+            done: (records ?? []).map((r) => r.done_on as string),
+          })
+          setHasStarted(true)
+          setHasGoalHistory(true)
+        } else {
+          setState(initialState())
+          setHasStarted(false)
+        }
+
+        setLoadedUserId(userId)
+      } catch (error) {
+        if (!alive) return
+        console.error('目標・記録の読み込みエラー:', error)
+        setLoadError('目標の読み込みに失敗しました。時間をおいて再試行してください。')
       }
-
-      setLoaded(true)
     }
 
     loadGoal()
@@ -105,27 +124,20 @@ export function useGoalState(userId: string | null) {
     return () => {
       alive = false
     }
-  }, [userId])
+  }, [userId, loadAttempt])
 
-  const markStarted = () => setHasStarted(true)
+  const retryLoad = useCallback(() => {
+    setLoadedUserId(null)
+    setLoadError(null)
+    setLoadAttempt((attempt) => attempt + 1)
+  }, [])
 
   /** 目標を作る。`goals` → `avatars` の2回。片方だけ成功する余地は残っている */
   const start = async (input: SetupInput) => {
     if (!userId) return false
     const startedAt = key(new Date())
 
-    // 前の目標はしまっておく。記録もアバターも消さない
-    const { error: archiveError } = await supabase
-      .from('goals')
-      .update({ archived_at: new Date().toISOString() })
-      .eq('user_id', userId)
-      .is('archived_at', null)
-
-    if (archiveError) {
-      console.error('前の目標のアーカイブに失敗:', archiveError)
-      return false
-    }
-
+    // 最新の目標を追加する。前の目標・記録・アバターはそのまま残す。
     const { data, error } = await supabase
       .from('goals')
       .insert({
@@ -138,6 +150,7 @@ export function useGoalState(userId: string | null) {
       .select('id')
       .single()
 
+    if (currentUserId.current !== userId) return false
     if (error) {
       console.error('目標作成エラー:', error)
       return false
@@ -147,12 +160,14 @@ export function useGoalState(userId: string | null) {
       .from('avatars')
       .insert({ goal_id: data.id, name: input.name, hue: input.hue })
 
+    if (currentUserId.current !== userId) return false
     if (avatarError) {
       console.error('アバター作成エラー:', avatarError)
       return false
     }
 
     setHasStarted(true)
+    setHasGoalHistory(true)
     setState((s) => ({
       ...resetGoal(s),
       goalId: data.id,
@@ -231,17 +246,19 @@ export function useGoalState(userId: string | null) {
     setState((prev) => ({ ...prev, deadline: newDeadline }))
   }
 
-  /** 目標設定画面へ戻る。**アーカイブは新しい目標を作った時** */
+  /** 目標設定画面へ戻る。新しい目標の保存までは、DB上の現在の目標を維持する。 */
   const newGoal = () => {
     setHasStarted(false)
     setState((s) => resetGoal(s))
   }
 
   return {
-    state,
+    state: currentState,
     loaded,
-    hasStarted,
-    markStarted,
+    loadError: belongsToUser ? loadError : null,
+    retryLoad,
+    hasStarted: belongsToUser && hasStarted,
+    hasGoalHistory: belongsToUser && hasGoalHistory,
     start,
     reset,
     markSessionDone,
