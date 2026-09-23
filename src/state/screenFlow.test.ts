@@ -17,6 +17,11 @@ describe('ログイン時の表示先', () => {
 })
 
 describe('ログイン後の画面遷移', () => {
+  it('目標一覧は案内の完了後に開ける', () => {
+    expect(allowedScreen('goals', false, false)).toBe('top')
+    expect(allowedScreen('goals', true, false)).toBe('goals')
+    expect(allowedScreen('goals', true, true)).toBe('goals')
+  })
   it('チュートリアルが終わるまでは目標設定やダッシュボードへ飛ばない', () => {
     expect(allowedScreen('setup', false, false)).toBe('top')
     expect(allowedScreen('main', false, false)).toBe('top')

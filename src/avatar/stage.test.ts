@@ -41,7 +41,7 @@ describe('evolutionOf()', () => {
     expect(stage(30, [30, 29])).toBe(1)
   })
 
-  it('14サイクル連続で 究極体', () => {
+  it('14サイクル連続で 完全体', () => {
     const days = Array.from({ length: 14 }, (_, i) => 13 - i)
     expect(stage(13, days)).toBe(3)
   })

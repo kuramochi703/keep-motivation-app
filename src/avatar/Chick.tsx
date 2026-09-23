@@ -1,10 +1,11 @@
-import { useEffect, useMemo, useRef } from 'react'
-import { useFrame } from '@react-three/fiber'
-import { ContactShadows, Sparkles, useAnimations, useGLTF } from '@react-three/drei'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { useFrame, type ThreeEvent } from '@react-three/fiber'
+import { ContactShadows, useAnimations, useGLTF } from '@react-three/drei'
 import * as THREE from 'three'
+import { Glow, Gloom, Motes } from './Effects'
 import type { Look } from './look'
-import chickUrl from './models/chick.glb?url'
-import eggUrl from './models/egg.glb?url'
+import chickUrl from './models/chick/chick.glb?url'
+import eggUrl from './models/egg/egg.glb?url'
 
 type Props = {
   look: Look
@@ -14,15 +15,17 @@ type Props = {
   roam?: Roam
   /** たまごを割る（孵化の演出）。false → true になった瞬間に1回だけ流す */
   hatching?: boolean
+  /** 触れるようにする。ひよこを叩くと光の粒が弾ける（ダッシュボード用） */
+  interactive?: boolean
 }
 
 /** 歩き回れる範囲（ワールド座標。定位置を中心にした半径） */
 export type Roam = { x: number; z: number }
 
 /**
- * ひよこ本体。Blender で作ったモデル（models/chick.blend）を読んで動かす。
+ * ひよこ本体。Blender で作ったモデル（models/chick/chick.blend）を読んで動かす。
  *
- * .blend そのものは three.js では読めないので、`models/export_glb.py` で
+ * .blend そのものは three.js では読めないので、`models/chick/export_glb.py` で
  * chick.glb に書き出したものを使う。**形を直したら書き出し直すこと。**
  *
  * **姿勢の動きは全部モデルの中のクリップ**（Idle / Walk / TurnL / TurnR /
@@ -35,9 +38,9 @@ export type Roam = { x: number; z: number }
  * ここでマテリアルに流し込む。だからステージや活力の対応表を変えるときに
  * Blender を開く必要はない。
  */
-export default function Chick({ look, animate, roam, hatching }: Props) {
+export default function Chick({ look, animate, roam, hatching, interactive }: Props) {
   if (look.isEgg) return <Egg look={look} animate={animate} hatching={hatching} />
-  return <ChickModel look={look} animate={animate} roam={roam} />
+  return <ChickModel look={look} animate={animate} roam={roam} interactive={interactive} />
 }
 
 // three.js に入った後のモデルの寸法（Y 上）。値は chick.glb の実測。
@@ -82,9 +85,25 @@ const REST_CHANCE = 0.3
  */
 const EYE_CLIPS = ['Blink', 'Rest', 'Slump', 'Sink']
 
+/**
+ * 叩かれたときに流すクリップ。**1タップにつき1本**を引く（→ `poke`）。
+ * どれも1回きりで、終わったら立ち姿へ戻る。
+ *
+ * | クリップ | 長さ | 中身 |
+ * | --- | --- | --- |
+ * | `Poke` | 0.7秒 | びくっと仰け反って、揺り戻す |
+ * | `Cheer` | 1.25秒 | 翼をぱたぱたさせながら小さく2回跳ねる |
+ * | `Wave` | 1.08秒 | 片翼を上げて2往復振る |
+ */
+const REACTIONS = ['Poke', 'Cheer', 'Wave'] as const
+type Reaction = (typeof REACTIONS)[number]
+
 /** 重みを取り合う姿勢クリップ。ここに無い Idle が、余ったぶんを受け持つ */
-const POSTURE = ['Walk', 'TurnL', 'TurnR', 'Rest', 'Slump', 'Sink', 'Jump'] as const
+const POSTURE = ['Walk', 'TurnL', 'TurnR', 'Rest', 'Slump', 'Sink', 'Jump', ...REACTIONS] as const
 type Posture = (typeof POSTURE)[number]
+
+/** 1回きりで流すクリップ。`reset().play()` で頭から鳴らし、**終わったら必ず止める** */
+const ONE_SHOT = ['Jump', ...REACTIONS] as const
 
 /**
  * 重みの寄せ方の速さ。休憩は遅くして「座り込む」間合いを作り、跳躍は即座に。
@@ -93,6 +112,9 @@ type Posture = (typeof POSTURE)[number]
  */
 const RATE: Record<Posture, number> = {
   Walk: 9, TurnL: 9, TurnR: 9, Rest: 3.5, Slump: 2.4, Sink: 1.6, Jump: 20,
+  // 叩かれた反応は**跳躍と同じで即座に。** 寄せるのに時間をかけると、
+  // 叩いてから動き出すまでが遅れて、自分の操作の結果に見えなくなる
+  Poke: 20, Cheer: 20, Wave: 20,
 }
 
 /** 目を閉じたまま座るクリップ。まばたきと重みを取り合う */
@@ -106,10 +128,17 @@ const EYE_SQUASH: Record<Look['eye'], number> = {
   closed: 0.12,
 }
 
+/**
+ * 輝きのときにからだへ足す光の色。**金色ではなく、白に近い暖色にする。**
+ * 金色を足すと「黄色く塗った」ように見える。白寄りの光を足すと、色はそのままで
+ * からだが明るく飛んで、内側から光っているように見える（Effects.tsx の GOLD の説明）
+ */
+const GLOW_TINT = new THREE.Color('hsl(48, 100%, 82%)')
+
 /** 揺れから割れへ重みを寄せる速さ。割れは待たせるものではないので速い */
 const CRACK_RATE = 14
 
-function ChickModel({ look, animate, roam: area = DEFAULT_ROAM }: Props) {
+function ChickModel({ look, animate, roam: area = DEFAULT_ROAM, interactive = false }: Props) {
   const rig = useRef<THREE.Group>(null)
 
   const { scene, animations } = useGLTF(chickUrl)
@@ -182,6 +211,19 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM }: Props) {
     }
   }, [model])
 
+  // 輝き（look.effects.glow）のとき、からだそのものも金色にほんのり光らせる。
+  // 後光だけだと「後ろが明るい」だけで、ひよこが光っているようには見えない。
+  // 目は光らせない（白目が飛んで表情が消える）
+  const glowing = useMemo(() => {
+    const mats: THREE.MeshStandardMaterial[] = []
+    model.traverse((o) => {
+      const mat = (o as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined
+      if (mat && mat.name !== 'Eye_Black' && !mats.includes(mat)) mats.push(mat)
+    })
+    return mats
+  }, [model])
+  const glowTime = useRef(0)
+
   // 色は毎フレームではなく、look が変わったときだけ流し込む
   useEffect(() => {
     tone.uTop.value.set(look.bodyColor)
@@ -227,9 +269,11 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM }: Props) {
     // Idle が既定で、他がゼロのぶんを受け持つ（→ useFrame）
     for (const name of POSTURE) actions[name]?.play().setEffectiveWeight(0)
     actions.Idle?.play().setEffectiveWeight(1)
-    if (actions.Jump) {
-      actions.Jump.setLoop(THREE.LoopOnce, 1)
-      actions.Jump.clampWhenFinished = true
+    for (const name of ONE_SHOT) {
+      const action = actions[name]
+      if (!action) continue
+      action.setLoop(THREE.LoopOnce, 1)
+      action.clampWhenFinished = true
     }
     return () => {
       mixer.stopAllAction()
@@ -237,16 +281,57 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM }: Props) {
   }, [actions, mixer])
 
   const s = look.bodyRadius * SIZE
+  /** 足の裏から頭のてっぺんまで（ワールド単位）。エフェクトの大きさの基準 */
+  const height = (HEAD_TOP - FOOT_Y) * s
+
+  // 叩かれたときに、反応のクリップを1本流す。
+  // **再描画は起こさない。** 流すクリップは毎フレーム見る側（useFrame）の
+  // 持ち物なので、ref に書いて状態機械へ渡すだけでいい
+  const poke = useCallback((e: ThreeEvent<PointerEvent>) => {
+    // 3D の当たり判定は奥のものまで一度に拾う。手前の1つで止める
+    e.stopPropagation()
+    // 「視差効果を減らす」設定のときは動かさない。跳ねる・仰け反るは
+    // まさにその設定が避けたい動きなので、姿勢と同じ扱いにする
+    if (!animate) return
+
+    // **直前と違うものを引く。** 同じ動きが2回続くと、反応しているのではなく
+    // 決まった演出が再生されているように見える
+    const m = playing.current
+    const choices = REACTIONS.filter((name) => name !== m.reaction)
+    const next = choices[Math.floor(Math.random() * choices.length)]
+    const action = actions[next]
+    if (!action) return
+
+    // 連打されたときに前の1本を残さない。**止めないと最終フレームの姿勢を
+    // 重み1で押さえ続けて、次の動きと半々に混ざる**（Jump と同じ落とし穴）
+    if (m.reaction && m.reaction !== next) actions[m.reaction]?.stop()
+    actions.Jump?.stop()
+    action.reset().play()
+    m.reaction = next
+    m.mode = 'react'
+    // 念のための上限。終わりは再生側（isRunning）で見る
+    m.timer = action.getClip().duration * 3
+  }, [animate, actions])
+
+  // 触れると分かるように、ひよこの上ではカーソルを指に変える。
+  // **キャンバスは枠いっぱいなので、body に当てないと元に戻せない**
+  const hover = useCallback((on: boolean) => {
+    document.body.style.cursor = on ? 'pointer' : ''
+  }, [])
+  useEffect(() => () => { document.body.style.cursor = '' }, [])
 
   // いま流しているクリップと、どこに立っているか。
   // 毎フレーム変わるので、再描画を起こさない ref に持つ
   const walker = useRef<THREE.Group>(null)
+  /** エフェクトの入れ物。walker と同じ場所に置くが、**向きは追わない** */
+  const follower = useRef<THREE.Group>(null)
   const playing = useRef<Walker>({
     mode: 'idle',
     next: 'idle',
     turningLeft: true,
     timer: 1.4,
-    weight: { Walk: 0, TurnL: 0, TurnR: 0, Rest: 0, Slump: 0, Sink: 0, Jump: 0 },
+    weight: { Walk: 0, TurnL: 0, TurnR: 0, Rest: 0, Slump: 0, Sink: 0, Jump: 0, Poke: 0, Cheer: 0, Wave: 0 },
+    reaction: null,
     x: 0,
     z: 0,
     heading: 0,
@@ -258,6 +343,15 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM }: Props) {
     // クリップが持っている。ここが決めるのは「どれを流すか」「どれくらいの
     // 重みで混ぜるか」、そして「歩いた結果どこへ行くか」の3つだけ。
     mixer.timeScale = animate ? 1 : 0
+
+    // 輝きの明滅。ゆっくり息をするように。止めているときは中くらいで固める
+    if (animate) glowTime.current += delta
+    const glow = look.effects.glow ? (animate ? 0.34 + 0.1 * Math.sin(glowTime.current * 1.6) : 0.34) : 0
+    for (const mat of glowing) {
+      if (mat.emissiveIntensity === glow && glow === 0) continue
+      mat.emissive.copy(GLOW_TINT)
+      mat.emissiveIntensity = glow
+    }
     // 止めているときは状態機械ごと凍らせる（prefers-reduced-motion）。
     // 重みを寄せ続けると、クリップが止まっていても姿勢が動いてしまう
     if (!animate) {
@@ -266,7 +360,7 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM }: Props) {
     }
 
     const m = playing.current
-    pick(m, look.liveliness, delta, actions.Jump)
+    pick(m, look.liveliness, delta, actions)
 
     // **重みの合計は1。** 余りは Idle（立ち止まりの呼吸）が受け持つ。
     // 0/1 を直に入れると切り替わりが瞬間的になるので、寄せていく。
@@ -292,6 +386,7 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM }: Props) {
       g.position.set(m.x, 0, m.z)
       g.rotation.y = m.facing
     }
+    follower.current?.position.set(m.x, 0, m.z)
   })
 
   return (
@@ -303,23 +398,35 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM }: Props) {
         <group rotation={[look.droop * 0.12, 0, 0]}>
           <group ref={rig} position={[0, -FOOT_Y * s, 0]} scale={s}>
             <primitive object={model} />
+            {/* 叩かれたことに気づくための当たり判定。**モデルそのものは使わない。**
+                スキンメッシュの当たり判定は素の姿勢の大きさで測られるので、
+                歩いている途中や座り込んでいる間にずれる。ひよこを包む箱を
+                別に置いて、こちらで受ける。
+                `visible={false}` にすると当たり判定からも外れてしまうので、
+                「見えているが何も描かない」材質にしてある */}
+            {interactive && (
+              <mesh
+                position={[0, (FOOT_Y + HEAD_TOP) / 2, 0]}
+                onPointerDown={poke}
+                onPointerOver={() => hover(true)}
+                onPointerOut={() => hover(false)}
+              >
+                <boxGeometry args={[BODY_R * 2.4, HEAD_TOP - FOOT_Y, BODY_R * 2.4]} />
+                <meshBasicMaterial transparent opacity={0} depthWrite={false} />
+              </mesh>
+            )}
             {look.scarf && <Scarf />}
             {look.crown && <Crown />}
-            {look.sweat && <Sweat />}
-            {/* かがやき（7サイクル連続）だけの豪華なエフェクト。
-                まわりを舞う光の粒。**色はアバターの色相に合わせる** */}
-            {look.sparkle && (
-              <Sparkles
-                count={26}
-                scale={[2.2, 2.4, 2.2]}
-                size={5}
-                speed={0.35}
-                opacity={0.9}
-                color={look.bellyColor}
-              />
-            )}
           </group>
         </group>
+      </group>
+      {/* まわりのエフェクト。**歩く入れ物（walker）の外に置き、位置だけを追わせる。**
+          中に入れると向き直るたびにもやや粒まで一緒に回り、前かがみ（droop）では
+          後光ごと傾いて、ひよこに貼り付いた板に見える */}
+      <group ref={follower}>
+        {look.effects.glow && <Glow height={height} animate={animate} />}
+        {look.effects.motes && <Motes height={height} animate={animate} />}
+        {look.effects.gloom && <Gloom height={height} animate={animate} />}
       </group>
       {/* 影の板は歩き回る範囲ぜんぶを覆う。狭いと端で影が切れる */}
       <ContactShadows
@@ -334,7 +441,7 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM }: Props) {
   )
 }
 
-type Mode = 'idle' | 'walk' | 'turn' | 'jump' | 'rest'
+type Mode = 'idle' | 'walk' | 'turn' | 'jump' | 'rest' | 'react'
 
 type Walker = {
   mode: Mode
@@ -346,6 +453,8 @@ type Walker = {
   timer: number
   /** 姿勢クリップそれぞれの重み 0〜1 */
   weight: Record<Posture, number>
+  /** 叩かれて流している最中のクリップ。**次に引くときの「直前」でもある** */
+  reaction: Reaction | null
   /** 定位置からのずれ */
   x: number
   z: number
@@ -368,6 +477,7 @@ const turnLeft = (m: Walker) => ((m.heading - m.facing + Math.PI * 3) % (Math.PI
  * どれを使うかは look.ts が決めるので、ここは受け取って流すだけ。
  */
 function clipOf(m: Walker, sit: Look['sit']): Posture | null {
+  if (m.mode === 'react') return m.reaction
   if (m.mode === 'walk') return 'Walk'
   if (m.mode === 'rest') return sit
   if (m.mode === 'jump') return 'Jump'
@@ -398,9 +508,23 @@ function startTurn(m: Walker, next: 'idle' | 'walk') {
  * 「2サイクル放置」でいきなり座り込んでしまい、ぐったり（0.0）と区別が
  * つかなくなる（README 2章）。
  */
-function pick(m: Walker, amp: number, delta: number, jump?: THREE.AnimationAction | null) {
+function pick(m: Walker, amp: number, delta: number, actions: Record<string, THREE.AnimationAction | null>) {
   const lively = amp > 0.15
+  const jump = actions.Jump
   m.timer -= delta
+
+  // 叩かれた反応。**気分や時間の都合より優先する。** ここを待たせると、
+  // 叩いたのに歩き続ける、という一番がっかりする見え方になる
+  if (m.mode === 'react') {
+    const action = m.reaction ? actions[m.reaction] : null
+    if (!action?.isRunning() || m.timer <= 0) {
+      action?.stop()
+      m.mode = 'idle'
+      // 反応の直後は間を置く。すぐ歩き出すと、叩かれたことを忘れたように見える
+      m.timer = 0.8 + Math.random() * 1.2
+    }
+    return
+  }
 
   if (m.mode === 'jump') {
     // 終わりは再生側（isRunning）で見る。timer は念のための上限。
@@ -524,19 +648,9 @@ function Crown() {
   )
 }
 
-/** しょんぼりのときの汗。顔の横に浮かべる */
-function Sweat() {
-  return (
-    <mesh position={[0.5, 0.55, 0.28]} scale={[0.8, 1.3, 0.8]}>
-      <sphereGeometry args={[0.085, 16, 12]} />
-      <meshStandardMaterial color="#5FA8D3" roughness={0.2} transparent opacity={0.85} />
-    </mesh>
-  )
-}
-
 /**
  * ステージ0のたまご。**ひよこと同じで、形も動きも Blender のモデルが持っている**
- * （models/egg.blend → egg.glb）。ここがやるのは色を入れることと、
+ * （models/egg/egg.blend → egg.glb）。ここがやるのは色を入れることと、
  * 「いつ割るか」を決めることだけ。
  *
  * クリップは2本。

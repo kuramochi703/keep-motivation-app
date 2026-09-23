@@ -1,4 +1,4 @@
-export type Screen = 'top' | 'setup' | 'main' | 'debug'
+export type Screen = 'top' | 'goals' | 'setup' | 'main' | 'debug'
 
 /** 認証と目標の読み込みが終わってから、ログイン直後の画面を決める。 */
 export function entryScreen(tutorialCompleted: boolean, hasCurrentGoal: boolean): Screen {

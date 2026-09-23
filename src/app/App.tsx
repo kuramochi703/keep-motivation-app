@@ -1,3 +1,4 @@
+import GoalsPage from '../pages/GoalsPage'
 import LoginPage from '../pages/LoginPage'
 import MainPage from '../pages/MainPage'
 import SetupPage from '../pages/SetupPage'
@@ -11,7 +12,7 @@ const DebugPage = import.meta.env.DEV
   : null
 
 export default function App() {
-  const { user, ready, signIn, signOut, state, loaded, loadError, retryLoad, hasStarted, completeTutorial, screen, go, start, reset, extendDeadline, markStageSeen, newGoal, elapsed, running, toggleTimer, recordOnly, nextDay } = useApp()
+  const { user, ready, signIn, signOut, state, goals, currentGoalId, selectGoal, setDayOffset, reload, loaded, loadError, retryLoad, hasStarted, completeTutorial, screen, go, start, reset, extendDeadline, markStageSeen, newGoal, elapsed, running, toggleTimer, recordOnly, nextDay } = useApp()
 
   // ゲートは3段。セッションの確認 → ログイン → 目標の読み込み（AUTH_PLAN 4章）
   if (!ready) {
@@ -42,12 +43,19 @@ export default function App() {
       <main className="content">
         {screen === 'debug' && DebugPage ? (
           <Suspense fallback={<p role="status">読み込み中...</p>}>
-            <DebugPage state={state} loaded={loaded} hasStarted={hasStarted}
+            <DebugPage state={state} userId={user.id} loaded={loaded} hasStarted={hasStarted}
               elapsed={elapsed} running={running} onRecord={recordOnly}
-              onNextDay={nextDay} onNewGoal={newGoal} />
+              onSetDayOffset={setDayOffset} onReload={reload} onNewGoal={newGoal} />
           </Suspense>
         ) : screen === 'top' ? (
           <TopPage onStart={completeTutorial} />
+        ) : screen === 'goals' ? (
+          <GoalsPage
+            goals={goals}
+            currentGoalId={currentGoalId}
+            onSelect={selectGoal}
+            onNewGoal={newGoal}
+          />
         ) : screen === 'setup' ? (
           <SetupPage state={state} onStart={start} />
         ) : (
@@ -58,8 +66,8 @@ export default function App() {
             onToggleTimer={toggleTimer}
             onRecordOnly={recordOnly}
             onNextDay={nextDay}
-            onEditGoal={() => go('setup')}
             onNewGoal={newGoal}
+            onGoalList={() => go('goals')}
             onExtend={extendDeadline}
             onStageSeen={markStageSeen}
             onReset={reset}

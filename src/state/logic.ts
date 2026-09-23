@@ -229,7 +229,7 @@ export const bestRun = (s: State): number => {
  *
  * 気分はステージ1以上のもの。卵に気分は無い（記録が無ければ null）。
  * **落ち込みは彩度で表し、明度は下げない**（下限 58）。暗く沈めると汚く
- * 見えるし、前かがみ（droop）と汗で十分沈んで見える。
+ * 見えるし、前かがみ（droop）とどんよりのエフェクトで十分沈んで見える。
  *
  * **落ち込みは2段ある**（3サイクル放置と4サイクル放置）。2段の差は彩度では
  * ほとんど読めないので、**姿勢のクリップで見せる**（avatar/look.ts の `SIT_OF`）。
@@ -247,10 +247,12 @@ export type Mood = {
   l: number
   /** 0〜1。低いと歩き出さず、立ち止まったままになる */
   liveliness: number
-  /** あぶら汗。しんどいときだけ */
-  sweat: boolean
-  /** 豪華なエフェクト。7サイクル連続から */
-  sparkle: boolean
+  /** アバターが輝く（後光とからだの発光）。7サイクル連続から */
+  glow: boolean
+  /** 光の粒が立ちのぼる。3サイクル連続から */
+  motes: boolean
+  /** どんより（暗いもやと沈む粒）。3サイクル放置から */
+  gloom: boolean
 }
 
 /**
@@ -267,8 +269,9 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
     s: 4,
     l: 58,
     liveliness: 0,
-    sweat: true,
-    sparkle: false,
+    glow: false,
+    motes: false,
+    gloom: true,
     hit: (_run, idle) => idle >= 4,
   },
   {
@@ -278,8 +281,9 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
     s: 8,
     l: 58,
     liveliness: 0,
-    sweat: true,
-    sparkle: false,
+    glow: false,
+    motes: false,
+    gloom: true,
     hit: (_run, idle) => idle >= 3,
   },
   {
@@ -289,8 +293,9 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
     s: 18,
     l: 58,
     liveliness: 0.2,
-    sweat: false,
-    sparkle: false,
+    glow: false,
+    motes: false,
+    gloom: false,
     hit: (_run, idle) => idle >= 2,
   },
   {
@@ -300,8 +305,9 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
     s: 34,
     l: 66,
     liveliness: 0.4,
-    sweat: false,
-    sparkle: false,
+    glow: false,
+    motes: false,
+    gloom: false,
     hit: (run) => run <= 1,
   },
   {
@@ -311,8 +317,9 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
     s: 44,
     l: 72,
     liveliness: 0.6,
-    sweat: false,
-    sparkle: false,
+    glow: false,
+    motes: false,
+    gloom: false,
     hit: (run) => run === 2,
   },
   {
@@ -322,8 +329,9 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
     s: 56,
     l: 80,
     liveliness: 0.9,
-    sweat: false,
-    sparkle: false,
+    glow: false,
+    motes: true,
+    gloom: false,
     hit: (run) => run <= 6,
   },
   {
@@ -333,8 +341,9 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
     s: 56,
     l: 80,
     liveliness: 1,
-    sweat: false,
-    sparkle: true,
+    glow: true,
+    motes: true,
+    gloom: false,
     hit: (run) => run >= 7,
   },
 ]

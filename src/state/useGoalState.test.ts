@@ -21,6 +21,7 @@ class ReadQuery {
   constructor(readonly table: string, private readonly run: ReadPlan['run']) {}
   select(columns: string) { this.columns = columns; return this }
   eq(column: string, value: unknown) { this.filters.push(['eq', column, value]); return this }
+  in(column: string, values: unknown[]) { this.filters.push(['in', column, values]); return this }
   order(column: string, options = { ascending: true }) { this.orders.push({ column, ascending: options.ascending }); return this }
   limit(count: number) { this.maxRows = count; return this }
   maybeSingle() { return this.run() }
@@ -31,7 +32,10 @@ class ReadQuery {
 
 const ok = (data: unknown): Reply => ({ data, error: null })
 const failed: Reply = { data: null, error: { message: 'read failed' } }
-const enqueue = (table: string, reply: Reply) => plans.push({ table, run: () => Promise.resolve(reply) })
+const enqueue = (table: string, reply: Reply) => plans.push({ table, run: () => Promise.resolve(
+  table === 'goals' && reply.data && !Array.isArray(reply.data)
+    ? { ...reply, data: [reply.data] } : reply
+) })
 const goalRow = (id = 1) => ({
   id,
   goal: `Goal ${id}`,
@@ -43,7 +47,7 @@ const goalRow = (id = 1) => ({
 
 function enqueueGoal(id = 1) {
   enqueue('goals', ok(goalRow(id)))
-  enqueue('records', ok([{ done_on: '2026-09-02' }]))
+  enqueue('records', ok([{ goal_id: id, done_on: '2026-09-02' }]))
 }
 
 function deferred() {
@@ -76,6 +80,7 @@ async function render(userId: string | null) {
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true)
   vi.spyOn(console, 'error').mockImplementation(() => {})
+  localStorage.clear()
   plans.length = 0
   reads.length = 0
   snapshots.length = 0
@@ -102,6 +107,55 @@ afterEach(async () => {
 })
 
 describe('useGoalState loading', () => {
+  it('keeps multiple goals and their records separate when selecting and reloading', async () => {
+    const rows = [goalRow(2), goalRow(1)]
+    const records = [{ goal_id: 1, done_on: '2026-09-02' }, { goal_id: 2, done_on: '2026-09-03' }]
+    enqueue('goals', ok(rows))
+    enqueue('records', ok(records))
+    await render('account-a')
+    expect(current.currentGoalId).toBe(2)
+    expect(current.goals).toHaveLength(2)
+    expect(current.state.done).toEqual(['2026-09-03'])
+    await act(async () => current.selectGoal(1))
+    expect(current.state.goalId).toBe(1)
+    expect(current.state.done).toEqual(['2026-09-02'])
+    expect(reads).toHaveLength(2)
+    expect(localStorage.getItem('kma.currentGoal.account-a')).toBe('1')
+    await act(async () => current.setDayOffset(-2))
+    enqueue('goals', ok(rows))
+    enqueue('records', ok(records))
+    await act(async () => current.reload())
+    expect(current.state.goalId).toBe(1)
+    expect(current.state.dayOffset).toBe(-2)
+    await render(null)
+    enqueue('goals', ok(rows))
+    enqueue('records', ok(records))
+    await render('account-a')
+    expect(current.currentGoalId).toBe(1)
+    expect(current.state.dayOffset).toBe(0)
+  })
+
+  it('falls back to the newest goal if the saved selection no longer exists', async () => {
+    localStorage.setItem('kma.currentGoal.account-a', '99')
+    enqueueGoal(2)
+    await render('account-a')
+    expect(current.currentGoalId).toBe(2)
+    await act(async () => current.selectGoal(99))
+    expect(current.currentGoalId).toBe(2)
+  })
+
+  it('clears deleted goals on reload while retaining tutorial completion evidence', async () => {
+    enqueueGoal()
+    await render('account-a')
+    enqueue('goals', ok([]))
+    await act(async () => current.reload())
+    expect(current.loaded).toBe(true)
+    expect(current.goals).toEqual([])
+    expect(current.currentGoalId).toBeNull()
+    expect(current.hasStarted).toBe(false)
+    expect(current.hasGoalHistory).toBe(true)
+  })
+
   it('loads the current account’s goal, avatar and records before reporting ready', async () => {
     enqueueGoal()
     await render('account-a')
@@ -123,9 +177,9 @@ describe('useGoalState loading', () => {
     })
     expect(reads[0].filters).toEqual([['eq', 'user_id', 'account-a']])
     expect(reads[0].orders).toEqual([{ column: 'id', ascending: false }])
-    expect(reads[0].maxRows).toBe(1)
+    expect(reads[0].maxRows).toBeNull()
     expect(reads[0].columns).not.toContain('archived_at')
-    expect(reads[1].filters).toContainEqual(['eq', 'goal_id', 1])
+    expect(reads[1].filters).toContainEqual(['in', 'goal_id', [1]])
     expect(reads).toHaveLength(2)
   })
 
@@ -166,7 +220,7 @@ describe('useGoalState loading', () => {
     expect(current.loadError).toBeNull()
 
     enqueue('records', ok([]))
-    await act(async () => pending.resolve(ok(goalRow())))
+    await act(async () => pending.resolve(ok([goalRow()])))
     expect(current.loaded).toBe(true)
     expect(current.loadError).toBeNull()
     expect(current.hasStarted).toBe(true)
@@ -219,7 +273,7 @@ describe('useGoalState loading', () => {
     enqueueGoal(2)
     await render('account-b')
     expect(current.state.goalId).toBe(2)
-    await act(async () => pending.resolve(phase === 'goal' ? ok(goalRow(1)) : ok([])))
+    await act(async () => pending.resolve(phase === 'goal' ? ok([goalRow(1)]) : ok([])))
     expect(current.loaded).toBe(true)
     expect(current.state.goalId).toBe(2)
     expect(current.state.done).toEqual(['2026-09-02'])
@@ -284,7 +338,7 @@ describe('useGoalState account changes during goal creation', () => {
     expect(created).toBe(false)
     expect(database.from).toHaveBeenCalledTimes(callsBeforeCompletion)
     expect(current.loaded).toBe(true)
-    expect(current.state).toBe(accountBState)
+    expect(current.state).toEqual(accountBState)
     expect(current.state.goalId).toBeNull()
     expect(current.hasStarted).toBe(false)
     expect(current.hasGoalHistory).toBe(false)
@@ -340,7 +394,7 @@ describe('useGoalState goal creation without schema changes', () => {
     await act(async () => current.retryLoad())
     expect(reads[2].filters).toEqual([['eq', 'user_id', 'account-a']])
     expect(reads[2].orders).toEqual([{ column: 'id', ascending: false }])
-    expect(reads[2].maxRows).toBe(1)
+    expect(reads[2].maxRows).toBeNull()
     expect(current.loaded).toBe(true)
     expect(current.state).toMatchObject({ goalId: 2, goal: 'A newer goal', name: 'New avatar', done: [] })
     expect(current.hasStarted).toBe(true)

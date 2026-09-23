@@ -1,16 +1,100 @@
-.debug-page { max-width: 1200px; }
-.debug-page > .card { margin-bottom: 20px; }
-.debug-page h1 { margin-top: 12px; }
-.debug-page h2 { margin: 0 0 12px; font-size: 19px; }
-.debug-page h3 { font-size: 15px; }
+/*
+ * デバッグ画面の見た目。
+ *
+ * **本体（ui/styles.css）より一段軽くする。** 本体のカードは角丸22px・余白22px・
+ * ボタンも大きめで、育てる画面としては気持ちいいが、情報が詰まるこの画面では
+ * 1画面に入る量が減って探しづらい。ここだけ `.debug-page` の中で上書きし、
+ * 角丸と余白を詰め、面ではなく1pxの線で区切る。
+ *
+ * 色は本体のトークン（--surface / --line / --muted / --accent）をそのまま使う。
+ * ここで新しい色を作らないので、テーマを変えても勝手に付いてくる。
+ */
+
+.debug-page {
+  max-width: 1180px;
+  /* 数字と日付はすべて等幅で出す。桁が揃わないと差分を目で追えない */
+  --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
+}
+
+.debug-page header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
+.debug-page h1 { font-size: 20px; font-weight: 700; margin: 0; letter-spacing: -.01em; }
+
+/* カード。影を使わず、1pxの線と余白だけで区切る */
+.debug-page .card { border-radius: 14px; padding: 18px; border: 1px solid var(--line); }
+.debug-page > .card { margin-bottom: 16px; }
+
+/* 見出しは「小さいラベル」。中身より目立たせない */
+.debug-page h2 { margin: 0 0 12px; font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .03em; }
+.debug-page h3 { margin: 14px 0 8px; font-size: 12px; font-weight: 600; color: var(--muted); }
+
+/* ボタンも一回り小さく。本体の 13px 18px はこの密度だと大きすぎる */
+.debug-page .btn { border-radius: 9px; padding: 7px 12px; font-size: 13px; font-weight: 500; }
+.debug-page .btn.sec { background: var(--surface); border-color: var(--line); padding: 7px 12px; font-size: 13px; }
+.debug-page .btn.sec:hover { background: #F5F7FA; }
+.debug-page .btn.ghost { padding: 6px 10px; font-size: 12.5px; }
+.debug-page .tools { gap: 6px; }
+
+/* 値の並び。ラベルと値を1粒にして横に流す */
+.debug-meta { display: flex; flex-wrap: wrap; gap: 6px; margin: 0 0 12px; }
+.debug-meta span {
+  display: inline-flex; align-items: baseline; gap: 5px;
+  font-size: 12px; color: var(--muted);
+  background: #F5F7FA; border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px;
+}
+.debug-meta b { color: var(--ink); font-weight: 600; font-variant-numeric: tabular-nums; }
+/* ふだんと違う状態（日送り中・演出が流れる）だけ色を付ける */
+.debug-meta span.on { background: var(--accent-soft); border-color: transparent; color: var(--accent); }
+.debug-meta span.on b { color: var(--accent); }
+
 .debug-avatar { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
-.debug-avatar-preview { width: min(100%, 320px); margin: auto; }
-.debug-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; margin: 0; }
-.debug-summary dt, .debug-note { color: var(--muted); font-size: 13px; }
-.debug-summary dd { margin: 4px 0 0; font-size: 22px; font-weight: 700; overflow-wrap: anywhere; }
-.debug-summary small { font-size: 12px; font-weight: 400; }
-.debug-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 20px; }
-.debug-columns > .card { min-width: 0; }
-.debug-page pre { padding: 16px; border-radius: 12px; background: #14231f; color: #e1f3e9; font-size: 12px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 540px; overflow: auto; }
-.debug-error { color: var(--danger); overflow-wrap: anywhere; }
-@media (max-width: 760px) { .debug-columns, .debug-summary { grid-template-columns: 1fr; } }
+.debug-avatar h2 { font-size: 17px; font-weight: 700; color: var(--ink); margin: 0 0 10px; letter-spacing: -.01em; }
+/* 3Dは確認用なので小さくてよい。大きいとカードだけで1画面を使う */
+.debug-avatar-preview { width: min(100%, 168px); margin: 0 auto; }
+.debug-say { margin: 0; font-size: 14px; }
+/* エフェクトは後光やもやがひよこの外まで広がるので、上のプレビューより大きく取る */
+.debug-effects-preview { width: min(100%, 260px); margin: 0 auto; }
+.debug-row select {
+  padding: 6px 10px; border: 1px solid var(--line); border-radius: 9px;
+  font: inherit; font-size: 13px; background: var(--surface); color: var(--ink);
+}
+
+.debug-note { color: var(--muted); font-size: 12px; }
+
+/* 一覧。行は面で囲まず、hover と「いま」だけ背景を敷く */
+.debug-records, .debug-goals { list-style: none; margin: 12px 0 0; padding: 0; }
+.debug-records { max-height: 280px; overflow: auto; }
+.debug-records li, .debug-goals li {
+  display: flex; align-items: center; gap: 10px; padding: 7px 10px; border-radius: 9px;
+}
+.debug-records li + li, .debug-goals li + li { margin-top: 2px; }
+.debug-records li:hover, .debug-goals li:hover { background: #F5F7FA; }
+.debug-records li.now, .debug-goals li.now { background: var(--accent-soft); }
+.debug-records li > .btn, .debug-goals li > .btn { margin-left: auto; }
+.debug-record-day, .debug-goal-id { font-family: var(--mono); font-size: 13px; font-variant-numeric: tabular-nums; }
+.debug-goal-id { color: var(--muted); }
+.debug-goal-text { font-weight: 600; font-size: 14px; overflow-wrap: anywhere; }
+
+/* 操作カードは2列。左がふだん使うもの（日付・記録）、右がたまに触るもの */
+.debug-columns { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; margin-bottom: 16px; align-items: start; }
+.debug-columns > .card { min-width: 0; margin: 0; }
+
+.debug-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
+.debug-row label { color: var(--muted); font-size: 12px; }
+.debug-row input[type="date"] {
+  padding: 6px 10px; border: 1px solid var(--line); border-radius: 9px;
+  font: inherit; font-size: 13px; font-family: var(--mono); background: var(--surface); color: var(--ink);
+}
+
+/* 生データ。**暗い塊はやめる。** 明るいまま等幅にすれば、周りと同じ重さで読める */
+.debug-page pre {
+  margin: 0; padding: 14px; border-radius: 10px;
+  background: #F7F9FB; border: 1px solid var(--line); color: #2B3542;
+  font-family: var(--mono); font-size: 12px; line-height: 1.6;
+  white-space: pre-wrap; overflow-wrap: anywhere; max-height: 360px; overflow: auto;
+}
+
+.debug-error { color: var(--danger); font-size: 13px; overflow-wrap: anywhere; }
+/* 取り消せない操作。枠の色だけで区別する（赤べたにはしない） */
+.debug-danger { border-color: #EFC9C1; }
+
+@media (max-width: 860px) { .debug-columns { grid-template-columns: 1fr; } }

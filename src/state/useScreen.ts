@@ -31,7 +31,7 @@ export function useScreen() {
     const onPopState = () => {
       const saved = window.history.state?.screen
       updateScreen(isDebugPath() ? 'debug'
-        : saved === 'main' || saved === 'setup' ? saved : 'top')
+        : saved === 'main' || saved === 'setup' || saved === 'goals' ? saved : 'top')
     }
     window.addEventListener('popstate', onPopState)
     return () => window.removeEventListener('popstate', onPopState)

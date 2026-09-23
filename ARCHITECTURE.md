@@ -77,9 +77,13 @@ src/
 ├── pages/                      画面（1画面 = 1ファイル）
 │   ├── LoginPage.tsx             ログイン（メールアドレス＋パスワード）
 │   ├── TopPage.tsx               トップ
-│   ├── SetupPage.tsx             目標設定
+│   ├── GoalsPage.tsx             目標一覧（どの目標を開くか選ぶ）
+│   ├── SetupPage.tsx             目標設定（新しい目標を作る。メニューには出さない）
 │   ├── MainPage.tsx              ダッシュボード
+│   ├── DebugPage.tsx             デバッグ（開発時だけ。`/debugPage`）
 │   ├── main-page.css
+│   ├── goals-page.css
+│   ├── debug-page.css
 │   └── onboarding-page.css
 │
 ├── features/
@@ -94,6 +98,7 @@ src/
 │   ├── useScreen.ts              画面遷移だけ
 │   ├── useTimer.ts               5分タイマーだけ
 │   ├── useGoalState.ts           目標の状態管理と Supabase の読み書き
+│   ├── debug.ts                  **消す**操作。DebugPage だけが import する
 │   └── logic.ts                  ルールブック。サイクル・連続・気分・日付計算
 │
 ├── lib/
@@ -102,7 +107,8 @@ src/
 ├── avatar/                     アバターの3D描画 → src/avatar/README.md に詳細
 │   ├── Avatar.tsx / AvatarCanvas.tsx / Chick.tsx
 │   ├── look.ts / stage.ts / avatar.css
-│   ├── models/                   chick.blend / chick.glb / export_glb.py
+│   ├── models/                   モデル1体につき1フォルダ（chick / egg / bird）。
+│   │                             中身は .blend と .glb と、それを作るスクリプト
 │   └── docs/                     Blender の作業メモ
 │
 └── ui/                         見た目の共通部品
@@ -126,6 +132,7 @@ flowchart TB
             direction LR
             login["LoginPage.tsx"]
             top["TopPage.tsx"]
+            goalsp["GoalsPage.tsx"]
             setup["SetupPage.tsx"]
             main["MainPage.tsx"]
         end
@@ -155,9 +162,11 @@ flowchart TB
     app --> accountbar
     app -->|"未ログインなら"| login
     app --> top
+    app --> goalsp
     app --> setup
     app --> main
 
+    goalsp -->|"selectGoal(id) で開く目標を替える"| useapp
     setup -->|"start() で目標を確定"| useapp
     main -->|"タイマー操作・達成記録"| useapp
     useapp --> useauth
@@ -178,6 +187,7 @@ flowchart TB
 
     login --> ui
     top --> ui
+    goalsp --> ui
     setup --> ui
     main --> ui
     accountbar --> ui
@@ -251,8 +261,8 @@ sequenceDiagram
     participant M as MainPage.tsx
 
     B->>G: ログインを済ませて uuid が渡ってくる
-    G->>S: goals（user_id が一致する最新1件）＋ avatars を取得
-    G->>S: その goal_id の records を取得
+    G->>S: user_id に一致する全 goals ＋ avatars を新しい順に取得
+    G->>S: 取得した goal_id の records をまとめて取得
     S-->>G: 目標・アバター・達成日の一覧
     G-->>M: State（保存値はこれだけ）
     M->>L: 記録とサイクル長から計算
@@ -306,10 +316,17 @@ flowchart LR
 | `deadline` | `date` | 期限 |
 | `cycle_days` | `int` | サイクル長。「n日に1回」の n |
 | `started_at` | `date` | サイクルの起点（目標を作った日） |
-| `archived_at` | `timestamptz` | スキーマ定義のみ。接続中のDBにはなく、アプリは参照しない |
 
-**現在の目標は、ログイン中の `user_id` に一致する `id` が最大の1件**です。
-`archived_at` の追加や更新は不要です。新しい目標を保存すると、それ以前の目標は履歴として残ります。
+**目標は同時に何本あってもかまいません。** 現役を示す列は持ちません。
+目標ごとにアバターと記録がぶら下がるので、行が並んでいればそれだけで並行になります。
+**どれを開いているかは DB の関心事ではない**ので、画面側（`useGoalState` の `currentId`）が持ち、
+目標一覧（`pages/GoalsPage.tsx`）で選び替えます。切り替えても記録もアバターも消えません。
+
+> **「現役の目標」を列で持たないのは意図的です。** 印を1本だけ立てる形にすると、
+> 「立っている印は1件だけ」を DB が保証できず（部分ユニークインデックスが別途要る）、
+> 印を移す UPDATE と新しい目標の INSERT もトランザクションではないので、
+> 途中で失敗すると現役が0件にも2件にもなりえます。
+> 並行に持てるなら、そもそも現役を1本に決める必要がありません。
 
 ### `avatars` — 育てる1体（目標と 1:1）
 
@@ -332,13 +349,55 @@ flowchart LR
 
 | 操作 | DBへの処理 |
 | --- | --- |
-| 起動 | `goals` を `user_id` で絞り、`id DESC LIMIT 1` に `avatars` を join して取得 ＋ その `records` |
+| 起動 | `goals` を `user_id` で絞り、`id DESC` に `avatars` を join して取得 ＋ 全目標の `records` をまとめて取得 |
 | 目標作成 | `goals` に INSERT（`started_at = 今日`）→ 返った `id` で `avatars` に INSERT |
 | 1日達成 | `records` に **INSERT 1行**（同日は UNIQUE が弾く） |
 | 進化の演出を流し終わった | `avatars.seen_stage` を UPDATE |
 | 期限延長 | `goals.deadline` を UPDATE |
-| 目標の作り直し | 新しい `goals` ＋ `avatars` を INSERT。**以前の目標・記録・アバターは変更しない** |
+| 新しい目標をはじめる | 新しい `goals` ＋ `avatars` を INSERT するだけ。**前の目標には触らない**（記録もアバターも残り、目標一覧に並ぶ） |
+| 目標を切り替える | **なし**（どれを開いているかは DB に持たない） |
 | 画面を描くとき | **なし**（`records` と `cycle_days` / `started_at` から毎回その場で計算） |
+
+**本番の画面から行が減ることはありません。** 記録も目標も増えるだけです。
+DELETE はデバッグ画面にしかありません。
+
+### デバッグ画面（開発時だけ）
+
+`npm run dev` 中に `/debugPage` を開くと出ます。`import.meta.env.DEV` で
+遅延読み込みしているので（`app/App.tsx`）、**本番のバンドルには入りません**。
+
+デバッグが操作するのは**2つだけ**です。気分もステージも `cycleIndex()` でサイクル番号に
+直してからしか判定していないので（`state/logic.ts` / `avatar/stage.ts`）、
+**日付と記録さえ動かせれば、気分7段もステージ4段も全部再現できます。**
+
+| 軸 | 何を動かすか | DB |
+| --- | --- | --- |
+| 日付 | `dayOffset`（±1日 / ±1サイクル / 日付を直接指定 / 今日に戻す） | 触らない |
+| 記録 | `records` の1行＝1日を、つける / 消す | 書く |
+
+**通常の目標一覧は `GoalsPage.tsx` にあります。** デバッグ画面では、
+一覧から目標や記録を削除して、再読み込み後の状態を確認できます。
+
+`dayOffset` は**負の値も入ります**。行き過ぎた日送りを戻せないと、やり直しがききません。
+日付を戻しても計算は壊れません（`lastDoneCycle()` が今より先のサイクルを数えないため）。
+
+DELETE 系は `state/debug.ts` に隔離してあります。`useGoalState` に置くと
+「押せてしまう導線」が本番の画面に生まれるためです。
+
+| 操作 | DBへの処理 |
+| --- | --- |
+| 1日ぶんの記録を消す | `records` から `(goal_id, done_on)` で DELETE |
+| 記録を全部消す | `records` から `goal_id` で DELETE（目標とアバターは残る＝たまごに戻る） |
+| 目標を消す | `records` → `avatars` → `goals` の順に DELETE |
+| 全部の目標を消す | 過去のぶんも含めて、上を全件ぶん繰り返す |
+| 演出の見せ済みを戻す | `avatars.seen_stage` を UPDATE（**下げる**） |
+
+- **子から先に消します。** `records.goal_id` と `avatars.goal_id` に `ON DELETE CASCADE` が
+  無いので（`supabase/schema.sql`）、親から消すと外部キー違反で落ちます
+- 消したあとは必ず DB から読み直します（`useGoalState` の `reload`）。画面の値を手で
+  合わせると「消えたつもりで消えていない」を見逃します
+- **進化の演出は `ステージ > avatars.seen_stage` の間しか流れません**（`pages/MainPage.tsx`）。
+  流し終わると `seen_stage` が上がるので、もう一度見るには戻すしかありません
 
 ### RLS（行レベルセキュリティ）
 
@@ -355,7 +414,7 @@ anon key はブラウザに配られるので、**誰が何を読めるかを決
 `WITH CHECK` が書こうとしている行の条件で、他人の `goal_id` を書き込まれないよう両方に同じ条件を置いています。
 
 JWT は `supabase.from(...)` に自動で付くので、アプリ側に `Authorization` を書く場所はありません。
-`useGoalState.ts` に残っている `.eq('user_id', ...)` はもう防御ではなく「最新1件」の絞り込みです。
+`useGoalState.ts` に残っている `.eq('user_id', ...)` はもう防御ではなく、自分の目標だけを引く絞り込みです。
 
 ### DBに保存していないもの
 
@@ -380,7 +439,13 @@ JWT は `supabase.from(...)` に自動で付くので、アプリ側に `Authori
   「変えたいなら新しい目標＝たまごから」。**1日に1回にした人の逃げ道が作り直しだけ**なのが
   未解決の宿題です
 - 目標作成は `goals` → `avatars` の2回の INSERT で、**トランザクションではありません。**
-  片方だけ成功する余地が残っています（失敗時は Console にエラー）
+  片方だけ成功する余地が残っています（失敗時は Console にエラー）。
+  `goals` だけ入ると、アバターの無い目標が目標一覧に並びます
+- **目標は増える一方で、古いものを片付ける導線がありません。** 作るたびに `goals` が
+  1行ずつ積まれ、**全部が目標一覧に並び続けます**。並行に持てるようになったぶん、
+  終わった目標を畳む導線（並べ替え・非表示）が要るのはこれからの宿題です
+- **どの目標を開いているかは端末ごとです。** `localStorage` に置いているので、
+  別の端末やプライベートウィンドウで開くと、いちばん新しい目標から始まります
 
 **コードまわり**
 

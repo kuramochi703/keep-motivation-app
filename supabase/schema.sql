@@ -12,6 +12,16 @@
 -- パスワードのハッシュは auth.users.encrypted_password にあり、照合は Supabase 内で完結する。
 -- アカウントは管理画面の Authentication → Users で手作業で配る（登録画面は無い）。
 
+-- **目標は同時に何本あってもいい。** 現役を示す列は置かない。
+-- 目標ごとにアバター（avatars）と記録（records）がぶら下がるので、行が並んでいれば
+-- それだけで並行になる。**どれを開いているかは DB の関心事ではない**ので、
+-- 画面側（useGoalState の currentId）が持ち、目標一覧で選び替える。
+--
+-- **現役を列で持たないのは意図的。** 印を1本だけ立てる形にすると、
+--   * 「立っている印は1件だけ」を DB が保証できない（部分ユニークが要る）
+--   * 印を移す UPDATE と INSERT がトランザクションでないので、途中で失敗すると
+--     現役が0件にも2件にもなりえる
+-- 並行に持てるなら、そもそも現役を1本に決める必要がない。
 CREATE TABLE goals (
   id          bigserial PRIMARY KEY,
   user_id     uuid   NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -21,7 +31,6 @@ CREATE TABLE goals (
   deadline    date   NOT NULL,
   cycle_days  int    NOT NULL DEFAULT 1,  -- サイクル長（README 2章）
   started_at  date   NOT NULL DEFAULT current_date,
-  archived_at timestamptz,                -- NULL の最新1件がいまの目標
   created_at  timestamptz NOT NULL DEFAULT now()
 );
 
@@ -43,7 +52,8 @@ CREATE TABLE records (
   UNIQUE (goal_id, done_on)
 );
 
-CREATE INDEX goals_current_idx ON goals (user_id, archived_at, id DESC);
+-- 目標一覧は「自分の目標を新しい順に全部」なので、この2列でそのまま引ける
+CREATE INDEX goals_current_idx ON goals (user_id, id DESC);
 CREATE INDEX records_goal_idx  ON records (goal_id, done_on);
 
 -- RLS（ARCHITECTURE 4章）

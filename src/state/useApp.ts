@@ -61,6 +61,16 @@ export function useApp() {
     setScreen('setup')
   }
 
+  /**
+   * 目標一覧で別の目標に切り替える。**走っているタイマーは捨てる。**
+   * 5分の途中で切り替えたぶんが、切り替え先の記録になってしまうため。
+   */
+  const selectGoal = (id: number) => {
+    timer.reset()
+    goal.selectGoal(id)
+    setScreen('main')
+  }
+
   const recordOnly = () => {
     timer.complete()
     goal.markSessionDone()
@@ -69,6 +79,12 @@ export function useApp() {
   const nextDay = () => {
     timer.reset()
     goal.nextDay()
+  }
+
+  /** デバッグ画面の日付操作。日をまたぐのでタイマーは捨てる */
+  const setDayOffset = (days: number) => {
+    timer.reset()
+    goal.setDayOffset(days)
   }
 
   const newGoal = () => {
@@ -90,6 +106,8 @@ export function useApp() {
     signIn: auth.signIn,
     signOut,
     state: goal.state,
+    goals: goal.goals,
+    currentGoalId: goal.currentGoalId,
     loaded: goal.loaded && routedUserId === userId,
     loadError: goal.loadError,
     retryLoad: goal.retryLoad,
@@ -100,6 +118,7 @@ export function useApp() {
     screen,
     go,
     start,
+    selectGoal,
     reset,
     extendDeadline: goal.extendDeadline,
     markStageSeen: goal.markStageSeen,
@@ -109,5 +128,7 @@ export function useApp() {
     toggleTimer: timer.toggle,
     recordOnly,
     nextDay,
+    setDayOffset,
+    reload: goal.reload,
   }
 }

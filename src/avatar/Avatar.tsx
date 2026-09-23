@@ -1,5 +1,5 @@
 import { Component, Suspense, lazy, type ReactNode, useEffect, useState } from 'react'
-import { lookOf } from './look'
+import { lookOf, type Effects } from './look'
 import { type Mood } from '../state/logic'
 
 // three.js は容量が大きい。初回表示をこれに待たせたくないので
@@ -23,7 +23,17 @@ type Props = {
   /** 置き場いっぱいに広げる。ダッシュボードの背景ステージのように、
       決まった比率の枠ではなく与えられた面積すべてを使いたいときに */
   fill?: boolean
-
+  /**
+   * 触れるようにする。ひよこを叩くと光の粒が弾ける。
+   * **既定は false。** オンボーディングの色選びのように「見せるだけ」の
+   * 場所で反応すると、選んでいる最中の誤タップが演出になってしまう
+   */
+  interactive?: boolean
+  /**
+   * まわりのエフェクトを気分と関係なく指定する。**デバッグ画面の見比べ用。**
+   * 本番では渡さない（気分の表 `MOODS` から決まる）。たまごには効かない
+   */
+  effects?: Effects
 }
 
 /**
@@ -41,10 +51,13 @@ export default function Avatar({
   egg = false,
   fill = false,
   hatching = false,
+  interactive = false,
+  effects,
 }: Props) {
   // **たまごかどうかはステージ判定の結果で決まる。** `egg` は
   // デバッグ画面が殻の姿だけを見たいときの手動上書き
-  const look = lookOf(egg ? 0 : stage, hue, egg ? null : mood)
+  const base = lookOf(egg ? 0 : stage, hue, egg ? null : mood)
+  const look = effects && !base.isEgg ? { ...base, effects } : base
   const animate = useAnimationAllowed()
 
   if (!hasWebGL()) {
@@ -54,7 +67,13 @@ export default function Avatar({
   return (
     <WebGLBoundary fill={fill}>
       <Suspense fallback={<AvatarPlaceholder fill={fill} />}>
-        <AvatarCanvas look={look} animate={animate} fill={fill} hatching={hatching} />
+        <AvatarCanvas
+          look={look}
+          animate={animate}
+          fill={fill}
+          hatching={hatching}
+          interactive={interactive}
+        />
       </Suspense>
     </WebGLBoundary>
   )
