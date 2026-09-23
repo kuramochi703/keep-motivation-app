@@ -1,8 +1,8 @@
-import { useLayoutEffect, useMemo, type ReactNode } from 'react'
+import { Suspense, useLayoutEffect, useMemo, type ReactNode } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import type * as THREE from 'three'
 import Chick, { DEFAULT_ROAM, type Roam } from './Chick'
-import Stage from './Stage'
+import Stage, { STAGE_LAYER } from './Stage'
 import type { Look } from './look'
 import { MOODS } from '../state/logic'
 
@@ -115,6 +115,8 @@ function StageFit({ children }: { children: (roam: Roam) => ReactNode }) {
 
   useLayoutEffect(() => {
     camera.position.z = cameraZ
+    // 部屋は別のレイヤーに載せてある（→ Stage.tsx）。画面のカメラはそれも見る
+    camera.layers.enable(STAGE_LAYER)
     camera.lookAt(0, 0, 0)
     camera.updateProjectionMatrix()
   }, [camera, cameraZ])
@@ -132,7 +134,14 @@ function StageFit({ children }: { children: (roam: Roam) => ReactNode }) {
 
   return (
     <group position={[0, floorY, 0]}>
-      <Stage unitsWide={unitsWide} cameraZ={cameraZ} />
+      {/* **部屋の読み込み待ちは、ここの Suspense で受ける。** 外（Avatar.tsx）の
+          Suspense まで届くと、もう出ているひよこごとキャンバスが隠され
+          （display:none）、枠が一色になる。隠れた間にキャンバスの大きさが 0 になり、
+          環境によってはそのまま WebGL のコンテキストが落ちて戻らない。
+          読み込み中は部屋が無いだけで、ひよこは出たままにする */}
+      <Suspense fallback={null}>
+        <Stage unitsWide={unitsWide} cameraZ={cameraZ} />
+      </Suspense>
       {children(roam)}
     </group>
   )

@@ -9,6 +9,14 @@ const PROPS = ['Book_', 'Pot', 'Soil', 'Leaf_']
 /** 飾りの中心から、見えている端までの取りしろ。いちばん幅のある本（半幅約0.7）が収まる量 */
 const PROP_PAD = 0.85
 
+/**
+ * 部屋を載せるレイヤー。**ひよこの落ち影（ContactShadows）から部屋を隠すため。**
+ * 落ち影は毎フレーム、床の下から見上げたシーン全体を撮って作る。部屋が写ると
+ * 床一面が影になる。撮影用のカメラはレイヤー0しか見ないので、ここへ移せば写らない。
+ * 画面のカメラは StageFit がこのレイヤーも見るようにしている
+ */
+export const STAGE_LAYER = 1
+
 type Props = {
   /** 原点の奥行き（z=0）で見えている横幅。AvatarCanvas の StageFit が測ったもの */
   unitsWide: number
@@ -30,7 +38,11 @@ type Props = {
 export default function Stage({ unitsWide, cameraZ }: Props) {
   const { scene } = useGLTF(stageUrl)
   // 同じ glb を複数の画面で使っても取り合わないよう複製する
-  const room = useMemo(() => scene.clone(true), [scene])
+  const room = useMemo(() => {
+    const r = scene.clone(true)
+    r.traverse((o) => o.layers.set(STAGE_LAYER))
+    return r
+  }, [scene])
   // 寄せる前の位置。枠が広がったら元へ戻すので覚えておく
   const props = useMemo(
     () =>
@@ -52,3 +64,6 @@ export default function Stage({ unitsWide, cameraZ }: Props) {
   // ちらつくので、部屋ごとほんの少し沈める
   return <primitive object={room} position={[0, -0.005, 0]} />
 }
+
+// 先に読み込んでおく。ひよこ（Chick.tsx）と同じく、出てから待たせない
+useGLTF.preload(stageUrl)
