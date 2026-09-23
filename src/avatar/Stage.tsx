@@ -1,10 +1,11 @@
 import { useLayoutEffect, useMemo } from 'react'
 import { useGLTF } from '@react-three/drei'
+import * as THREE from 'three'
 import stageUrl from './models/stage/stage.glb?url'
 
-/** 床に置いた飾り。名前の頭で拾う（Blender のオブジェクト名そのまま）。
+/** 床に置いた飾り（Blender のオブジェクト名そのまま）。足元の影の板は子なので一緒に動く。
     **Blender で改名すると、狭い画面で端へ寄せられなくなる** */
-const PROPS = ['Book_', 'Pot', 'Soil', 'Leaf_']
+const PROPS = ['Books', 'Plant']
 /** 飾りの中心から、見えている端までの取りしろ。いちばん幅のある本（半幅約0.7）が収まる量 */
 const PROP_PAD = 0.85
 
@@ -26,7 +27,9 @@ type Props = {
 /**
  * ダッシュボードの背景の部屋（床・壁・窓・本・植木鉢）。
  *
- * 形も色も Blender のモデル（models/stage/build.py → stage.glb）がそのまま持つ。
+ * 形も色も光も Blender のモデル（models/stage/build.py → stage.glb）がそのまま持つ。
+ * **光と影はテクスチャに焼き込んである**ので、ここでは照明を当てずにそのまま貼る
+ * （MeshBasicMaterial）。照明を当てると、焼いた陰影にさらに陰影が重なって暗くなる。
  * ひよこと違って気分や色相では何も変えない。
  * **原点がひよこの定位置・床が y=0** になるように作ってあるので、
  * ひよこと同じ group に入れれば足元が床に揃う。
@@ -39,7 +42,21 @@ export default function Stage({ unitsWide, cameraZ }: Props) {
   // 同じ glb を複数の画面で使っても取り合わないよう複製する
   const room = useMemo(() => {
     const r = scene.clone(true)
-    r.traverse((o) => o.layers.set(STAGE_LAYER))
+    r.traverse((o) => {
+      o.layers.set(STAGE_LAYER)
+      if (o instanceof THREE.Mesh) {
+        const m = o.material as THREE.MeshStandardMaterial
+        o.material = new THREE.MeshBasicMaterial({
+          map: m.map,
+          color: m.color,
+          transparent: m.transparent,
+          // Blender の面の向きはまちまち（窓ガラスは奥を向いている）。両面を引き継がないと消える
+          side: m.side,
+          // 影の板は床の上に重ねるだけ。奥行きを書くと、後ろのひよこの落ち影を消してしまう
+          depthWrite: !m.transparent,
+        })
+      }
+    })
     return r
   }, [scene])
   // 寄せる前の位置。枠が広がったら元へ戻すので覚えておく

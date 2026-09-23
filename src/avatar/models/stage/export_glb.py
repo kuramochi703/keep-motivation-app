@@ -6,8 +6,8 @@
 .blend は読むだけで保存しない。形を直したら `build.py` を流し直し、
 **続けてこれも流す**（.blend を直しただけではアプリの見た目は変わらない）。
 
-動きも骨も無いので、メッシュとマテリアルをそのまま出すだけ。
-色は Blender で付けた色がそのまま出る（ひよこと違ってアプリは塗り直さない）。
+動きも骨も無いので、メッシュと焼き込んだテクスチャをそのまま出すだけ。
+アプリは照明を当てずにテクスチャを貼る（ひよこと違って塗り直さない）。
 """
 import os
 
@@ -28,7 +28,8 @@ bpy.ops.export_scene.gltf(
     export_yup=True,     # Blender は Z 上、three.js は Y 上
     export_cameras=False,
     export_lights=False,
-    export_texcoords=False,
+    export_texcoords=True,   # 焼き込んだテクスチャを貼る UV
+    export_image_format='AUTO',   # 詰めた形式のまま出す（壁や床は JPEG、影の板は PNG）
     export_animations=False,
 )
 print('exported', out, os.path.getsize(out))

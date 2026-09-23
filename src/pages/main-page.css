@@ -2,6 +2,15 @@
 .dashboard-shell .content .dashboard{width:100%;max-width:1536px;padding:56px 3.3% 28px;--accent:#518d94;--accent-soft:#edf5f2;--muted:#6b7b93;--ink:#101b2d;color:var(--ink)}
 .dash-area{position:relative}
 
+/* 部屋の背景を画面いっぱいに敷く。上のアカウントバーの下を、端から端まで部屋にする。
+   枠に収めて角を丸めると、部屋の縁とページの地色の境目がくっきり出るため。
+   高さは .shell（min-height:100vh）→ .content → ここ、と flex で伝える */
+.dashboard-shell .content .dashboard.dash-full{max-width:none;padding:0;display:flex;flex-direction:column}
+/* overflow は、閉じている右のパネル（.dash-panel）を画面の外へ逃がしているぶんの切り落とし。
+   枠に余白があった頃はその中に収まっていたが、端から端まで広げると横スクロールが出る */
+.dash-full .dash-area{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.dash-full .bg-stage{flex:1;border-radius:0}
+
 /* 背景ステージ（アバター＋常時表示の情報） */
 .bg-stage{position:relative;display:flex;flex-direction:column;align-items:center;
   justify-content:flex-end;min-height:clamp(520px,74vh,840px);
@@ -132,6 +141,7 @@
 @media(max-width:760px){
   .dashboard-shell .content .dashboard{padding:26px 14px 30px}
   .bg-stage{min-height:500px;padding:20px 16px 104px;border-radius:24px}
+  .dash-full .bg-stage{border-radius:0}
   .bg-top{top:16px;left:16px}
   .bg-say{flex-direction:column;align-items:flex-start;gap:8px}
   .dash-menu{top:auto;bottom:16px;right:50%;transform:translateX(50%);flex-direction:row;gap:8px}
