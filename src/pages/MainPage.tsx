@@ -155,10 +155,6 @@ export default function MainPage({
       ) : (
         <div className="dash-area">
           <div className={`bg-stage${open ? ' dim' : ''}`}>
-            <div className="deco-window" aria-hidden="true" />
-            <div className="deco-books" aria-hidden="true"><i /><i /><i /></div>
-            <div className="deco-plant" aria-hidden="true">🪴</div>
-
             <div className="bg-top">
               <div className="bg-say">
                 <span className="badge">

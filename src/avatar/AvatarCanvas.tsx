@@ -2,6 +2,7 @@ import { useLayoutEffect, useMemo, type ReactNode } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import type * as THREE from 'three'
 import Chick, { DEFAULT_ROAM, type Roam } from './Chick'
+import Stage from './Stage'
 import type { Look } from './look'
 import { MOODS } from '../state/logic'
 
@@ -36,6 +37,7 @@ const EDGE_PAD = 0.9
  *
  * 背景は透明にしてある（`gl.alpha`）。カードの背景色や、気分に連動する
  * アクセント色（ui/useAccent.ts）がそのまま透けるようにするため。
+ * 枠いっぱい（`fill`）のときだけは部屋のモデル（Stage.tsx）を置くので、透けない。
  */
 export default function AvatarCanvas({ look, animate, fill = false, hatching, interactive }: Props) {
   return (
@@ -108,12 +110,14 @@ function StageFit({ children }: { children: (roam: Roam) => ReactNode }) {
   const unitsTall = Math.max(height / PX_PER_UNIT, MIN_UNITS_TALL)
   const unitsWide = (unitsTall * width) / height
 
+  // 縦の画角（fov）は固定なので、見たい高さぶんだけ後ろへ下がる
+  const cameraZ = unitsTall / 2 / Math.tan((camera.fov * Math.PI) / 360)
+
   useLayoutEffect(() => {
-    // 縦の画角（fov）は固定なので、見たい高さぶんだけ後ろへ下がる
-    camera.position.z = unitsTall / 2 / Math.tan((camera.fov * Math.PI) / 360)
+    camera.position.z = cameraZ
     camera.lookAt(0, 0, 0)
     camera.updateProjectionMatrix()
-  }, [camera, unitsTall])
+  }, [camera, cameraZ])
 
   // 床は枠の下端近く。手前（+z）に来ると画面では下がるので、奥行きは
   // 足元の余白より狭くしておく
@@ -126,5 +130,10 @@ function StageFit({ children }: { children: (roam: Roam) => ReactNode }) {
     [unitsWide, unitsTall]
   )
 
-  return <group position={[0, floorY, 0]}>{children(roam)}</group>
+  return (
+    <group position={[0, floorY, 0]}>
+      <Stage unitsWide={unitsWide} cameraZ={cameraZ} />
+      {children(roam)}
+    </group>
+  )
 }

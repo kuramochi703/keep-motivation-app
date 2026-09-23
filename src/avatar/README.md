@@ -20,9 +20,11 @@ flowchart LR
 | `Chick.tsx` | モデルを読む・色を塗る・クリップを流す | 動き、パーツの出し入れ |
 | `stage.ts` | 達成の記録 → 成長ステージ（`evolutionOf` / `nextGoalOf`） | 進化の条件 |
 | `AvatarCanvas.tsx` | カメラと照明 | 明るさ、アングル |
+| `Stage.tsx` | ダッシュボードの背景の部屋（枠いっぱいのときだけ）。狭い枠で本と植木鉢を内側へ寄せる | 部屋の置き方 |
 | `avatar.css` | 表示サイズ | 大きさ |
 | `Avatar.tsx` | 入口。遅延読み込みと失敗時の受け止め | ほぼ触らない |
 | `models/chick.blend` | ひよこの形とアニメーションの原典 | 形・歩き方そのもの |
+| `models/stage/build.py` | 背景の部屋（床・壁・窓・本・植木鉢）の原典。形も色も全部この1本が作る | 部屋の形・色 |
 | `models/egg_build.py` | たまごの原典。形もクリップも全部この1本が作る | たまごの形・割れ方 |
 | `models/*.glb`, `egg.blend` | 書き出したもの。**手で触らない** | — |
 | `models/export_*.py` | glb の書き出し | 書き出す内容 |

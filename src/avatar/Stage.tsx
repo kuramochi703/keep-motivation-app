@@ -1,0 +1,54 @@
+import { useLayoutEffect, useMemo } from 'react'
+import { useGLTF } from '@react-three/drei'
+import type * as THREE from 'three'
+import stageUrl from './models/stage/stage.glb?url'
+
+/** 床に置いた飾り。名前の頭で拾う（Blender のオブジェクト名そのまま）。
+    **Blender で改名すると、狭い画面で端へ寄せられなくなる** */
+const PROPS = ['Book_', 'Pot', 'Soil', 'Leaf_']
+/** 飾りの中心から、見えている端までの取りしろ。いちばん幅のある本（半幅約0.7）が収まる量 */
+const PROP_PAD = 0.85
+
+type Props = {
+  /** 原点の奥行き（z=0）で見えている横幅。AvatarCanvas の StageFit が測ったもの */
+  unitsWide: number
+  /** カメラから原点までの距離。奥の飾りほど広く見えるぶんの補正に使う */
+  cameraZ: number
+}
+
+/**
+ * ダッシュボードの背景の部屋（床・壁・窓・本・植木鉢）。
+ *
+ * 形も色も Blender のモデル（models/stage/build.py → stage.glb）がそのまま持つ。
+ * ひよこと違って気分や色相では何も変えない。
+ * **原点がひよこの定位置・床が y=0** になるように作ってあるので、
+ * ひよこと同じ group に入れれば足元が床に揃う。
+ *
+ * コードがやるのは、狭い枠で本と植木鉢を内側へ寄せることだけ。モデルでは
+ * 1400px 幅の枠の端近くに置いてあるので、スマホ幅だと枠の外へ出てしまう。
+ */
+export default function Stage({ unitsWide, cameraZ }: Props) {
+  const { scene } = useGLTF(stageUrl)
+  // 同じ glb を複数の画面で使っても取り合わないよう複製する
+  const room = useMemo(() => scene.clone(true), [scene])
+  // 寄せる前の位置。枠が広がったら元へ戻すので覚えておく
+  const props = useMemo(
+    () =>
+      room.children
+        .filter((o) => PROPS.some((p) => o.name.startsWith(p)))
+        .map((o) => ({ node: o as THREE.Object3D, x: o.position.x })),
+    [room]
+  )
+
+  useLayoutEffect(() => {
+    for (const { node, x } of props) {
+      // 奥（-z）にあるものほど、同じ画角でも広い範囲が見えている
+      const half = ((unitsWide / 2) * (cameraZ - node.position.z)) / cameraZ
+      node.position.x = Math.sign(x) * Math.min(Math.abs(x), half - PROP_PAD)
+    }
+  }, [props, unitsWide, cameraZ])
+
+  // ひよこの落ち影（ContactShadows）も y=0 に敷かれる。床と同じ高さだと
+  // ちらつくので、部屋ごとほんの少し沈める
+  return <primitive object={room} position={[0, -0.005, 0]} />
+}

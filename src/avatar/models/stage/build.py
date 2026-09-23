@@ -7,7 +7,7 @@
 （→ docs/BLENDER_MODELING_NOTES.md「成果物の残し方」）。
 出来上がった stage.blend には、このファイル自身が `stage_build` テキストとして入る。
 
-いまの背景（main-page.css の `.bg-stage` / `.deco-*`）を立体に起こしたもの:
+もとは CSS で描いていたダッシュボードの背景を立体に起こしたもの。アプリでは `Stage.tsx` が置く:
 
 - `Floor` / `Wall` / `Baseboard` … 床と奥の壁、壁の足元の幅木
 - `Window_Frame` / `Window_Glass` / `Window_Sill` / `Window_Cloud` … 上が半円の窓
