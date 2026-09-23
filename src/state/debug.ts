@@ -120,7 +120,7 @@ export async function deleteAllGoals(userId: string): Promise<string | null> {
  *
  * 演出は `stage.id > seenStage` の間だけ流れ、流し終わると `seenStage` が
  * 上がって二度と出ない（pages/MainPage.tsx）。**もう一度見るにはここを戻すしかない。**
- * 0 に戻せば孵化から、2 に戻せば究極体への進化だけを見られる。
+ * 0 に戻せば孵化から、2 に戻せば完全体への進化だけを見られる。
  */
 export async function rewindSeenStage(goalId: number, stage: number): Promise<string | null> {
   const { error } = await supabase

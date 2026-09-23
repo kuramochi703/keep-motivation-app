@@ -208,7 +208,7 @@ export default function DebugPage({
         {/*
           演出の発動条件は `stage.id > seenStage` の1行だけ（MainPage.tsx）。
           流し終わると seenStage が上がって二度と出ないので、**もう一度見るには
-          ここを戻すしかない。** 0 に戻せば孵化から、2 に戻せば究極体への進化だけ。
+          ここを戻すしかない。** 0 に戻せば孵化から、2 に戻せば完全体への進化だけ。
         */}
         <section className="card" aria-label="進化の演出" aria-busy={working}>
           <h2>進化の演出</h2>

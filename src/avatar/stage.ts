@@ -47,7 +47,7 @@ export const STAGES: Stage[] = [
   },
   {
     id: 3,
-    name: '究極体',
+    name: '完全体',
     gains: 'マフラー ＋ 冠',
     to: { kind: 'run', need: 14 },
   },
