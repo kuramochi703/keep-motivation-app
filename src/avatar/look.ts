@@ -91,7 +91,7 @@ export type Effects = {
   glow: boolean
   /** 足元から光の粒が立ちのぼる */
   motes: boolean
-  /** どんより。頭の上の雨雲と、背中の縦線 */
+  /** どんより。背中に垂れ込める暗いもやと、沈んでいく暗い粒 */
   gloom: boolean
 }
 

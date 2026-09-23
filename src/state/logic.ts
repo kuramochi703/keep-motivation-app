@@ -253,7 +253,7 @@ export type Mood = {
   glow: boolean
   /** 光の粒が立ちのぼる。3サイクル連続から */
   motes: boolean
-  /** どんより（雨雲と縦線）。3サイクル放置から */
+  /** どんより（暗いもやと沈む粒）。3サイクル放置から */
   gloom: boolean
 }
 

@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useMemo } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import { Billboard } from '@react-three/drei'
 import * as THREE from 'three'
@@ -13,7 +13,7 @@ import * as THREE from 'three'
  * | --- | --- | --- |
  * | `Glow` | 背中の後光（放射状の光の筋）。粒は出さない | かがやき |
  * | `Motes` | 足元から立ちのぼって消える光の粒 | いきいき・かがやき |
- * | `Gloom` | 頭の上の雨雲と雨粒、背中に垂れる縦線（ずーん） | ぐったり・しずみこみ |
+ * | `Gloom` | 背中に垂れ込める暗いもやと、ゆっくり沈む暗い粒 | ぐったり・しずみこみ |
  *
  * **虫っぽく見せないための約束。** 以前の drei `Sparkles` は丸い点が
  * てんでばらばらに漂っていて、コバエに見えた。ここでは
@@ -270,117 +270,152 @@ export function Glow({ height, animate }: Common) {
 
 /* ------------------------------------------------------------------
  * どんより
+ *
+ * **光の粒の裏返しとして作る。** 元気なときは光が立ちのぼるので、落ち込むと
+ * 暗いものが垂れ込めて沈んでいく。雲や縦線のような「記号」は置かない。
+ * 記号は貼り付けた絵に見えて安っぽい
  * ------------------------------------------------------------------ */
 
+/** 値のノイズと、それを重ねた fbm。煙のゆらぎに使う */
+const NOISE = /* glsl */ `
+  float hash2(vec2 p) { return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453); }
+  float noise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(mix(hash2(i), hash2(i + vec2(1.0, 0.0)), u.x),
+               mix(hash2(i + vec2(0.0, 1.0)), hash2(i + vec2(1.0, 1.0)), u.x), u.y);
+  }
+  float fbm(vec2 p) {
+    float v = 0.0;
+    float a = 0.5;
+    // 重ねるたびに少し回す。回さないとノイズの格子が揃って、四角いむらが透ける
+    mat2 turn = mat2(0.8, 0.6, -0.6, 0.8);
+    for (int i = 0; i < 4; i++) {
+      v += a * noise(p);
+      p = turn * p * 2.03 + vec2(1.7, 9.2);
+      a *= 0.5;
+    }
+    return v;
+  }
+`
+
 /**
- * 背中に垂れる縦線（漫画の「ずーん」）。上から下へ伸びて、下ほど薄くなる。
- * 線の長さは1本ずつ変え、ゆっくり伸び縮みさせる
+ * 暗いもや。ひよこの後ろで、ゆっくり渦を巻きながら下へ流れる煙。
+ * **ノイズでゆがめた上でさらにノイズを引く**（domain warping）と、
+ * 板のむらではなく煙のうねりに見える
  */
-const LINES_FRAGMENT = /* glsl */ `
+const HAZE_FRAGMENT = /* glsl */ `
   uniform float uTime;
   uniform vec3 uColor;
+  uniform vec3 uDeep;
   varying vec2 vUv;
-  float hash(float n) { return fract(sin(n) * 43758.5453); }
+  ${NOISE}
   void main() {
-    float columns = 11.0;
-    float x = vUv.x * columns;
-    float id = floor(x);
-    float line = smoothstep(0.09, 0.02, abs(fract(x) - 0.5));
-    // 線の長さ。上端（vUv.y = 1）から、この長さぶん下へ伸びる
-    float len = 0.45 + 0.4 * hash(id * 7.3) + 0.08 * sin(uTime * 0.8 + id * 1.7);
-    float fromTop = 1.0 - vUv.y;
-    float body = smoothstep(len, len - 0.3, fromTop);
-    // 左右の端は薄く。四角い板の形が見えないように
-    float edge = smoothstep(0.0, 0.2, vUv.x) * smoothstep(1.0, 0.8, vUv.x);
-    // うすい影のもや。線だけだと軽く見える
-    float haze = smoothstep(0.9, 0.0, fromTop) * 0.18;
-    float alpha = (line * 0.4 + haze) * body * edge;
+    vec2 p = vUv * 2.0 - 1.0;
+    // 楕円のふち。**四角い板の形が絶対に見えないよう**、端のずっと手前で消す
+    float shape = smoothstep(1.0, 0.25, length(p * vec2(1.05, 0.9)));
+    // 上のほうが濃い。頭の上に垂れ込める
+    shape *= 0.55 + 0.45 * smoothstep(-0.6, 0.5, p.y);
+    // uv を上へずらすと、模様は下へ流れて見える
+    vec2 q = vUv * vec2(1.7, 2.0) + vec2(0.0, uTime * 0.07);
+    vec2 warp = vec2(fbm(q + vec2(0.0, uTime * 0.03)), fbm(q + vec2(5.2, 1.3)));
+    float n = fbm(q + warp * 1.6);
+    float smoke = smoothstep(0.28, 0.78, n);
+    float alpha = shape * smoke * 0.58;
     if (alpha < 0.004) discard;
-    gl_FragColor = vec4(uColor, alpha);
+    gl_FragColor = vec4(mix(uColor, uDeep, smoothstep(0.5, 0.9, n)), alpha);
     #include <colorspace_fragment>
   }
 `
 
-/** 雨粒の数 */
-const DROPS = 5
+/**
+ * 沈むもや。頭の上から、揺れながらゆっくり足元へ落ちて消える。
+ * **小さな暗い点にはしない。** 暗い点は虫やごみに見える。大きく淡い
+ * 煙のかたまりにして、もやの一部がちぎれて落ちていくように見せる
+ */
+const SINK_VERTEX = /* glsl */ `
+  uniform float uTime;
+  uniform float uHeight;
+  uniform float uRadius;
+  uniform float uSize;
+  uniform float uScale;
+  attribute vec4 aSeed;
+  varying float vAlpha;
+  void main() {
+    // 光の粒より**ずっと遅い。** 速いと雨や雪に見える
+    float life = fract(aSeed.z + uTime * 0.07 * (0.8 + 0.4 * aSeed.w));
+    float angle = aSeed.x * 6.2832;
+    float radius = uRadius * (0.5 + 0.5 * aSeed.y);
+    // 左右にふらふら揺れながら落ちる
+    float sway = sin(uTime * 0.9 + aSeed.x * 20.0) * 0.08;
+    vec3 pos = vec3(cos(angle) * radius + sway, (1.0 - life) * uHeight * 1.2, sin(angle) * radius);
 
-/** どんより。頭の上の雨雲と雨粒、背中に垂れる縦線 */
+    vec4 mv = modelViewMatrix * vec4(pos, 1.0);
+    gl_Position = projectionMatrix * mv;
+    gl_PointSize = uSize * (0.6 + 0.8 * aSeed.w) * uScale / -mv.z;
+    vAlpha = smoothstep(0.0, 0.2, life) * (1.0 - smoothstep(0.65, 1.0, life));
+  }
+`
+
+/** 沈むもやの見た目。**芯を白くしない、光芒も付けない。** ふちまでぼかした煙 */
+const SINK_FRAGMENT = /* glsl */ `
+  uniform vec3 uColor;
+  varying float vAlpha;
+  void main() {
+    vec2 p = gl_PointCoord * 2.0 - 1.0;
+    float a = exp(-dot(p, p) * 2.2) * vAlpha * 0.28;
+    if (a < 0.01) discard;
+    gl_FragColor = vec4(uColor, a);
+    #include <colorspace_fragment>
+  }
+`
+
+/** どんより。背中に垂れ込める暗いもやと、ちぎれてゆっくり沈んでいくもや */
 export function Gloom({ height, animate }: Common) {
-  const lines = useMemo(
-    () => ({ uTime: { value: 0 }, uColor: { value: new THREE.Color('hsl(235, 22%, 30%)') } }),
+  const haze = useMemo(
+    () => ({
+      uTime: { value: 0 },
+      // 真っ黒にはしない。青みのある鈍い灰色で、沈んだ空気に見せる
+      uColor: { value: new THREE.Color('hsl(232, 18%, 46%)') },
+      uDeep: { value: new THREE.Color('hsl(238, 24%, 24%)') },
+    }),
     []
   )
-  useClock(lines, animate)
-  const linesMaterial = useShader(lines, HALO_VERTEX, LINES_FRAGMENT)
+  useClock(haze, animate)
+  const hazeMaterial = useShader(haze, HALO_VERTEX, HAZE_FRAGMENT)
 
-  const cloud = useRef<THREE.Group>(null)
-  const drops = useRef<(THREE.Mesh | null)[]>([])
-  const time = useRef(0)
-  // 雨粒の横位置と、落ち始めのずれ
-  const dropSeeds = useMemo(
-    () => Array.from({ length: DROPS }, (_, i) => ({ x: (i / (DROPS - 1) - 0.5) * 0.5, phase: Math.random() })),
+  const geo = useSeeds(6)
+  const sink = useMemo(
+    () => ({
+      uTime: { value: 0 },
+      uHeight: { value: height },
+      uRadius: { value: height * 0.6 },
+      uSize: { value: 0.55 },
+      uScale: { value: 1 },
+      uColor: { value: new THREE.Color('hsl(236, 18%, 38%)') },
+    }),
     []
   )
+  sink.uHeight.value = height
+  sink.uRadius.value = height * 0.6
+  useClock(sink, animate)
+  usePointScale(sink)
+  const sinkMaterial = useShader(sink, SINK_VERTEX, SINK_FRAGMENT)
 
-  // 頭のすぐ上。高く置くと小さな枠では上で切れる
-  const top = height + 0.2
-  // 真上だととさかに隠れるので、少し横へずらす
-  const side = height * 0.2
-  const fall = 0.3
-
-  useFrame((_, delta) => {
-    time.current = animate ? time.current + delta : STILL
-    const t = time.current
-    // 雲はゆっくり上下するだけ。速く動くと元気に見える
-    if (cloud.current) cloud.current.position.y = top + Math.sin(t * 1.1) * 0.03
-    drops.current.forEach((drop, i) => {
-      if (!drop) return
-      const life = (t * 0.9 + dropSeeds[i].phase) % 1
-      drop.position.y = top - 0.1 - life * fall
-      const mat = drop.material as THREE.MeshBasicMaterial
-      // 落ちきる前に消す。頭に刺さって見えないように
-      mat.opacity = 0.8 * Math.min(1, life * 6) * (1 - Math.max(0, life - 0.6) / 0.4)
-    })
-  })
-
+  const size = height * 2.1
   return (
     <>
-      <Billboard position={[0, height * 0.72, 0]}>
+      {/* 後光と同じく、ひよこの少し後ろに立てる。輪郭のまわりにだけ見える */}
+      <Billboard position={[0, height * 0.6, 0]}>
         <mesh position={[0, 0, -0.4]} renderOrder={-1}>
-          <planeGeometry args={[height * 1.9, height * 1.35]} />
-          <primitive object={linesMaterial} attach="material" />
+          <planeGeometry args={[size, size]} />
+          <primitive object={hazeMaterial} attach="material" />
         </mesh>
       </Billboard>
-
-      {/* 雨雲。つぶした球を並べて、もこもこの形にする */}
-      <group ref={cloud} position={[side, top, 0]}>
-        {CLOUD.map(([x, y, r], i) => (
-          <mesh key={i} position={[x, y, 0]} scale={[1, 0.78, 0.8]}>
-            <sphereGeometry args={[r, 18, 14]} />
-            <meshStandardMaterial color="#8C93A6" roughness={0.95} />
-          </mesh>
-        ))}
-      </group>
-      {dropSeeds.map((seed, i) => (
-        <mesh
-          key={i}
-          ref={(m) => { drops.current[i] = m }}
-          position={[side + seed.x, top, 0.05]}
-          scale={[0.7, 2, 0.7]}
-        >
-          <sphereGeometry args={[0.028, 10, 8]} />
-          <meshBasicMaterial color="#4F86C0" transparent depthWrite={false} />
-        </mesh>
-      ))}
+      <points geometry={geo} frustumCulled={false}>
+        <primitive object={sinkMaterial} attach="material" />
+      </points>
     </>
   )
 }
-
-/** 雨雲の球。[x, y, 半径] */
-const CLOUD: [number, number, number][] = [
-  [-0.24, -0.02, 0.15],
-  [-0.08, 0.05, 0.2],
-  [0.12, 0.04, 0.18],
-  [0.28, -0.03, 0.13],
-  [0.02, -0.06, 0.16],
-]

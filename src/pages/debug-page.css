@@ -51,7 +51,7 @@
 /* 3Dは確認用なので小さくてよい。大きいとカードだけで1画面を使う */
 .debug-avatar-preview { width: min(100%, 168px); margin: 0 auto; }
 .debug-say { margin: 0; font-size: 14px; }
-/* エフェクトは後光や雨雲がひよこの外まで広がるので、上のプレビューより大きく取る */
+/* エフェクトは後光やもやがひよこの外まで広がるので、上のプレビューより大きく取る */
 .debug-effects-preview { width: min(100%, 260px); margin: 0 auto; }
 .debug-row select {
   padding: 6px 10px; border: 1px solid var(--line); border-radius: 9px;
