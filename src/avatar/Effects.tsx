@@ -33,11 +33,25 @@ import * as THREE from 'three'
 const STILL = 1.7
 
 /**
- * 光の色。ふちの金色と、芯の白。**ふちは濃いめの山吹色にする。** 画面の地が
- * 白に近いので、淡い金色だと粒が背景に溶けて見えなくなる
+ * 光の色。にじみの金色と、芯の白。
+ *
+ * **「光って見える」かどうかは色そのものより塗り分けで決まる。** 本物の光は
+ * 明るいところほど白く飛び、色は外側の淡いにじみにしか残らない。全体を金色で
+ * 塗ると、明るくしても「色の付いた絵の具」に見える。だからシェーダーでは
+ * **明るさに応じて金色 → 白へ寄せる**（`glowColor`）。
+ *
+ * 金色はにじみにしか出ないので、濃いめの山吹色にしておく。淡いと地の白に
+ * 溶けて、光の輪郭が消える
  */
-const GOLD = new THREE.Color('hsl(42, 100%, 55%)')
-const CORE = new THREE.Color('hsl(48, 100%, 94%)')
+const GOLD = new THREE.Color('hsl(40, 100%, 56%)')
+const CORE = new THREE.Color('hsl(50, 100%, 97%)')
+
+/** 明るさ（0〜1）から色を決める。明るいほど白く飛ぶ */
+const GLOW_COLOR = /* glsl */ `
+  vec3 glowColor(vec3 gold, vec3 core, float intensity) {
+    return mix(gold, core, smoothstep(0.45, 0.95, intensity));
+  }
+`
 
 type Common = {
   /** ひよこの背の高さ（ワールド単位）。エフェクトの大きさはこれに合わせる */
@@ -104,18 +118,20 @@ const SPARK_FRAGMENT = /* glsl */ `
   uniform vec3 uCore;
   varying float vAlpha;
   varying float vStar;
+  ${GLOW_COLOR}
   void main() {
     vec2 p = gl_PointCoord * 2.0 - 1.0;
     float r = length(p);
-    float halo = exp(-r * r * 3.2);
+    // 2段重ね。小さく強い芯と、広く淡いにじみ（ブルームの代わり）
+    float core = exp(-r * r * 16.0);
+    float bloom = exp(-r * r * 2.6) * 0.8;
     // 十字の光芒。縦横に細く伸びて、先ほど細くなる
-    float ray = max(0.0, 1.0 - abs(p.x) * 8.0) * max(0.0, 1.0 - abs(p.y))
-              + max(0.0, 1.0 - abs(p.y) * 8.0) * max(0.0, 1.0 - abs(p.x));
-    float a = clamp(halo * 1.3 + ray * vStar, 0.0, 1.0) * vAlpha;
+    float ray = max(0.0, 1.0 - abs(p.x) * 9.0) * max(0.0, 1.0 - abs(p.y))
+              + max(0.0, 1.0 - abs(p.y) * 9.0) * max(0.0, 1.0 - abs(p.x));
+    float intensity = clamp(core + bloom + ray * vStar * 0.9, 0.0, 1.0);
+    float a = intensity * vAlpha;
     if (a < 0.01) discard;
-    // 白い芯は小さく。地が白いので、芯が大きいと粒ごと背景に溶ける
-    vec3 color = mix(uGold, uCore, smoothstep(0.2, 0.0, r));
-    gl_FragColor = vec4(color, a);
+    gl_FragColor = vec4(glowColor(uGold, uCore, intensity), a);
     #include <colorspace_fragment>
   }
 `
@@ -163,7 +179,7 @@ export function Motes({ height, animate, count = 22 }: Common & { count?: number
       uTime: { value: 0 },
       uHeight: { value: height * 1.35 },
       uRadius: { value: height * 0.62 },
-      uSize: { value: 0.2 },
+      uSize: { value: 0.24 },
       uScale: { value: 1 },
       uGold: { value: GOLD },
       uCore: { value: CORE },
@@ -202,6 +218,7 @@ const HALO_FRAGMENT = /* glsl */ `
   uniform vec3 uGold;
   uniform vec3 uCore;
   varying vec2 vUv;
+  ${GLOW_COLOR}
   void main() {
     vec2 p = vUv * 2.0 - 1.0;
     float r = length(p);
@@ -214,9 +231,11 @@ const HALO_FRAGMENT = /* glsl */ `
                + 0.7 * pow(0.5 + 0.5 * sin(a * 14.0 - uTime * 0.18), 8.0);
     // ゆっくり息をするように明るさを揺らす
     float pulse = 0.85 + 0.15 * sin(uTime * 1.6);
-    float alpha = (glow * 0.55 + rays * fade * 0.3) * pulse;
+    float alpha = (glow * 0.7 + rays * fade * 0.3) * pulse;
     if (alpha < 0.004) discard;
-    gl_FragColor = vec4(mix(uGold, uCore, glow), min(alpha, 0.9));
+    // ひよこのすぐ後ろは白く飛ばし、外へ行くほど金色のにじみに。逆光で
+    // 輪郭が光っているように見える
+    gl_FragColor = vec4(glowColor(uGold, uCore, glow * 1.3), min(alpha, 0.92));
     #include <colorspace_fragment>
   }
 `

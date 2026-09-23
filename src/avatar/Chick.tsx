@@ -128,8 +128,12 @@ const EYE_SQUASH: Record<Look['eye'], number> = {
   closed: 0.12,
 }
 
-/** 輝きのときにからだへ足す光の色（Effects.tsx の金色と揃える） */
-const GLOW_TINT = new THREE.Color('hsl(44, 100%, 62%)')
+/**
+ * 輝きのときにからだへ足す光の色。**金色ではなく、白に近い暖色にする。**
+ * 金色を足すと「黄色く塗った」ように見える。白寄りの光を足すと、色はそのままで
+ * からだが明るく飛んで、内側から光っているように見える（Effects.tsx の GOLD の説明）
+ */
+const GLOW_TINT = new THREE.Color('hsl(48, 100%, 82%)')
 
 /** 揺れから割れへ重みを寄せる速さ。割れは待たせるものではないので速い */
 const CRACK_RATE = 14
@@ -342,7 +346,7 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM, interactive = fa
 
     // 輝きの明滅。ゆっくり息をするように。止めているときは中くらいで固める
     if (animate) glowTime.current += delta
-    const glow = look.effects.glow ? (animate ? 0.3 + 0.1 * Math.sin(glowTime.current * 1.6) : 0.3) : 0
+    const glow = look.effects.glow ? (animate ? 0.34 + 0.1 * Math.sin(glowTime.current * 1.6) : 0.34) : 0
     for (const mat of glowing) {
       if (mat.emissiveIntensity === glow && glow === 0) continue
       mat.emissive.copy(GLOW_TINT)
