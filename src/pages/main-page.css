@@ -1,9 +1,5 @@
 .dashboard-shell{background:radial-gradient(ellipse at 70% 15%,#f6fafc,transparent 65%),#edf3f7;}
-.dashboard-shell .content .dashboard{width:100%;max-width:1536px;padding:32px 3.3% 28px;--accent:#518d94;--accent-soft:#edf5f2;--muted:#6b7b93;--ink:#101b2d;color:var(--ink)}
-.dashboard header{position:relative;margin-bottom:26px;text-align:center}
-.dashboard h1{font-size:clamp(28px,3vw,46px);letter-spacing:-.045em;margin-bottom:6px}
-.dashboard header>p{max-width:980px;font-size:14px;margin-left:auto;margin-right:auto}
-
+.dashboard-shell .content .dashboard{width:100%;max-width:1536px;padding:56px 3.3% 28px;--accent:#518d94;--accent-soft:#edf5f2;--muted:#6b7b93;--ink:#101b2d;color:var(--ink)}
 .dash-area{position:relative}
 
 /* 背景ステージ（アバター＋常時表示の情報） */
@@ -36,7 +32,7 @@
    名前・連続日数は左上（.bg-top）に寄せて、床のあたりを空けている */
 .stage-avatar{position:absolute;inset:0;z-index:0;filter:drop-shadow(0 14px 18px #bca78c26)}
 
-.dashboard .owner{font-size:16px;margin:0}
+.dashboard .owner{font-size:24px;margin:0;letter-spacing:-.02em}
 .bg-streak{position:relative;z-index:1;display:inline-flex;align-items:center;gap:7px;
   font-size:14px;font-weight:700;color:#3f7d5f;margin:0;
   padding:6px 14px;border-radius:99px;background:#fff;border:1px solid #e7eef0}
@@ -47,7 +43,7 @@
 .dashboard .gauge{height:12px}
 
 /* 右側メニュー（タイマーウィジェットの下に配置） */
-.dash-menu{position:absolute;right:18px;top:282px;z-index:3;display:flex;flex-direction:column;gap:10px}
+.dash-menu{position:absolute;right:48px;top:282px;z-index:3;display:flex;flex-direction:column;gap:10px}
 .menu-btn{display:flex;flex-direction:column;align-items:center;gap:5px;cursor:pointer;
   min-width:82px;padding:12px 8px;border:1px solid #e0e8ef;border-radius:17px;background:rgba(255,255,255,.92);
   font:inherit;font-size:13px;font-weight:700;color:#45566c;box-shadow:0 8px 20px -14px #27405835;transition:.18s}
@@ -80,7 +76,7 @@
 .dashboard .goal .btn{padding:8px 13px;white-space:nowrap}
 
 /* ステージ上のタイマーウィジェット（常時表示） */
-.stage-timer{position:absolute;top:16px;right:20px;z-index:2;display:flex;flex-direction:column;align-items:center;gap:12px}
+.stage-timer{position:absolute;top:16px;right:48px;z-index:2;display:flex;flex-direction:column;align-items:center;gap:12px}
 .stage-timer .ring{width:160px;height:160px}
 .stage-timer .ring .track{stroke:#ead9ba;stroke-width:10}
 .stage-timer .ring .prog{stroke-width:10}
@@ -143,8 +139,7 @@
   .deco-window{width:112px;height:186px}
 }
 @media(max-width:760px){
-  .dashboard header{margin-bottom:20px}.dashboard header>p{font-size:12px}
-  .dashboard-shell .content .dashboard{padding:18px 14px 30px}
+  .dashboard-shell .content .dashboard{padding:26px 14px 30px}
   .bg-stage{min-height:500px;padding:20px 16px 104px;border-radius:24px}
   .bg-top{top:16px;left:16px}
   .bg-say{flex-direction:column;align-items:flex-start;gap:8px}
