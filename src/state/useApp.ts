@@ -1,9 +1,10 @@
 import type { SetupInput } from './logic'
-import { useEffect } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useAuth } from './useAuth'
 import { useGoalState } from './useGoalState'
 import { isDebugPath, useScreen, type Screen } from './useScreen'
 import { useTimer } from './useTimer'
+import { allowedScreen, entryScreen } from './screenFlow'
 
 export type { Screen }
 
@@ -13,25 +14,43 @@ export type { Screen }
  * 4つの間をまたぐ操作（達成でタイマーを止める、ログアウトで全部戻す、など）はここで配線する。
  */
 export function useApp() {
-  const { screen, setScreen } = useScreen()
+  const { screen: requestedScreen, setScreen } = useScreen()
   const auth = useAuth()
+  const userId = auth.user?.id ?? null
   // useGoalState が知るのは uuid 1つだけ。誰かはここで渡す
-  const goal = useGoalState(auth.user?.id ?? null)
+  const goal = useGoalState(userId)
   const timer = useTimer(goal.markSessionDone)
+  const [routedUserId, setRoutedUserId] = useState<string | null>(null)
+  const currentUserId = useRef(userId)
+  currentUserId.current = userId
+  // 以前に目標を設定したアカウントも、初回の案内は完了済みとして扱う。
+  const tutorialCompleted = auth.tutorialCompleted || goal.hasGoalHistory
+  const hasCurrentGoal = goal.hasStarted && goal.state.goalId !== null
+  const screen = allowedScreen(requestedScreen, tutorialCompleted, hasCurrentGoal)
 
   useEffect(() => {
-    if (goal.loaded && goal.hasStarted && !isDebugPath()) {
-      setScreen('main')
+    if (!userId || !goal.loaded) {
+      setRoutedUserId(null)
+      return
     }
-  }, [goal.loaded, goal.hasStarted, setScreen])
+    if (routedUserId === userId) return
+    setScreen(isDebugPath() ? 'debug' : entryScreen(tutorialCompleted, hasCurrentGoal))
+    setRoutedUserId(userId)
+  }, [userId, goal.loaded, tutorialCompleted, hasCurrentGoal, routedUserId, setScreen])
 
   const go = (id: Screen) => {
-    if (id === 'main') goal.markStarted()
-    setScreen(id)
+    setScreen(allowedScreen(id, tutorialCompleted, hasCurrentGoal))
+  }
+
+  const completeTutorial = async () => {
+    if (!userId) return
+    if (await auth.completeTutorial() && currentUserId.current === userId) {
+      setScreen('setup')
+    }
   }
 
   const start = async (input: SetupInput) => {
-    if (await goal.start(input)) {
+    if (await goal.start(input) && currentUserId.current === userId) {
       setScreen('main')
     }
   }
@@ -39,7 +58,7 @@ export function useApp() {
   const reset = () => {
     timer.reset()
     goal.reset()
-    setScreen('top')
+    setScreen('setup')
   }
 
   /**
@@ -89,8 +108,13 @@ export function useApp() {
     state: goal.state,
     goals: goal.goals,
     currentGoalId: goal.currentGoalId,
-    loaded: goal.loaded,
+    loaded: goal.loaded && routedUserId === userId,
+    loadError: goal.loadError,
+    retryLoad: goal.retryLoad,
     hasStarted: goal.hasStarted,
+    hasCurrentGoal,
+    tutorialCompleted,
+    completeTutorial,
     screen,
     go,
     start,

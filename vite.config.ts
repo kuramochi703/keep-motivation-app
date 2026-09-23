@@ -3,8 +3,8 @@ import react from '@vitejs/plugin-react'
 
 export default defineConfig({
   plugins: [react()],
-  // ルール（state/ と avatar/ の純粋関数）のテストだけを見る。
-  // 画面は 3D / Supabase を抱えていてブラウザが要るので、ここでは動かさない。
+  // ルールは Node、認証・画面遷移の hook はファイル指定の jsdom で検証する。
+  // Supabase はモックを使い、実際のアカウントやDBには触れない。
   test: {
     environment: 'node',
     include: ['src/**/*.test.ts'],

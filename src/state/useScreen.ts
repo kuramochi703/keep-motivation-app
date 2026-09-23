@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
+import type { Screen } from './screenFlow'
 
-
-export type Screen = 'top' | 'goals' | 'setup' | 'main' | 'debug'
+export type { Screen } from './screenFlow'
 
 export const isDebugPath = () =>
   import.meta.env.DEV && /^\/debugPage\/?$/.test(window.location.pathname)
