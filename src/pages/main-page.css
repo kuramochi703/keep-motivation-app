@@ -15,7 +15,7 @@
 .bg-stage{position:relative;display:flex;flex-direction:column;align-items:center;
   justify-content:flex-end;min-height:clamp(420px,60vh,720px);
   border-radius:30px;padding:24px 28px 30px;overflow:hidden;
-  /* 部屋（壁・床・窓・本・植木鉢）は 3D のモデルが描く（avatar/Room.tsx）。
+  /* 部屋（壁・床・窓・本・植木鉢）は 3D のモデルが描く（avatar/Stage.tsx）。
      ここの色はモデルが読み込まれるまでの下地。壁の色に合わせてある */
   background:#fcf4e5;
   transition:filter .25s ease}
