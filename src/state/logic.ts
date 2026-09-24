@@ -240,7 +240,6 @@ export type MoodId = 'sink' | 'down' | 'low' | 'ok' | 'good' | 'lively' | 'shine
 export type Mood = {
   id: MoodId
   name: string
-  say: string
   /** 彩度 */
   s: number
   /** 明度 */
@@ -263,7 +262,6 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
   {
     id: 'sink',
     name: 'しずみこみ',
-    say: 'なにも かんがえられない…',
     // 彩度をここまで落とすと色味がほとんど消える。**明度は下げない**ので
     // 汚くはならず、沈んで見えるぶんは姿勢（Sink クリップ）が受け持つ
     s: 4,
@@ -277,7 +275,6 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
   {
     id: 'down',
     name: 'ぐったり',
-    say: 'もう、うごけない…',
     s: 8,
     l: 58,
     liveliness: 0,
@@ -289,7 +286,6 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
   {
     id: 'low',
     name: 'うつむき',
-    say: 'ちょっとしんどいかも。',
     s: 18,
     l: 58,
     liveliness: 0.2,
@@ -301,7 +297,6 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
   {
     id: 'ok',
     name: 'すこし元気',
-    say: 'ここからだよ。',
     s: 34,
     l: 66,
     liveliness: 0.4,
@@ -313,7 +308,6 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
   {
     id: 'good',
     name: '元気',
-    say: '調子いいね。',
     s: 44,
     l: 72,
     liveliness: 0.6,
@@ -325,7 +319,6 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
   {
     id: 'lively',
     name: 'いきいき',
-    say: '続いてるね。いい調子。',
     s: 56,
     l: 80,
     liveliness: 0.9,
@@ -337,7 +330,6 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
   {
     id: 'shine',
     name: 'かがやき',
-    say: '絶好調。今日もいける。',
     s: 56,
     l: 80,
     liveliness: 1,
