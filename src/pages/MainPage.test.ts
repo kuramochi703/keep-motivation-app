@@ -42,7 +42,7 @@ async function render(expired = false) {
   const state = { ...goal(1), deadline: expired ? '2000-01-01' : '2099-12-31' }
   await act(async () => root.render(createElement(MainPage, {
     state, goals: [state, goal(2)], currentGoalId: 1, onSelectGoal: select,
-    elapsed: 0, running: false, onToggleTimer: vi.fn(),
+    elapsed: 0, running: false, onToggleTimer: vi.fn(), onRecordOnly: vi.fn(),
     onNewGoal: newGoal, onExtend: vi.fn(), onStageSeen: vi.fn(),
   })))
 }

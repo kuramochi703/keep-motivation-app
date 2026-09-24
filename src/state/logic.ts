@@ -228,11 +228,16 @@ export const bestRun = (s: State): number => {
  * 連続ボーナス（気分）
  *
  * 気分はステージ1以上のもの。卵に気分は無い（記録が無ければ null）。
- * **落ち込みは彩度で表し、明度は下げない**（下限 58）。暗く沈めると汚く
- * 見えるし、前かがみ（droop）とどんよりのエフェクトで十分沈んで見える。
+ * **落ち込み（ぐったり）は彩度で表し、明度は下げない**（下限 58）。暗く沈めると
+ * 汚く見えるし、前かがみ（droop）とどんよりのエフェクトで十分沈んで見える。
+ * **すこし元気〜かがやきは色を変えない。** どれもいきいきの色（`BASE_S` / `BASE_L`）で、
+ * 色選択画面の見本と同じ。元気さの差は動き・表情・エフェクトで見せる。
+ * うつむきは彩度だけ少し落とす（明度はそのまま）。
  *
- * **落ち込みは2段ある**（3サイクル放置と4サイクル放置）。2段の差は彩度では
- * ほとんど読めないので、**姿勢のクリップで見せる**（avatar/look.ts の `SIT_OF`）。
+ * 落ち込みは本来2段（3サイクル放置のぐったり、4サイクル放置のしずみこみ）で、
+ * 差は色ではなく**姿勢のクリップで見せる**（avatar/look.ts の `SIT_OF`）。
+ * **いまはしずみこみを止めている。** 3サイクル以上の放置はすべてぐったり。しずみこみの定義は `SINK_MOOD` に残してあるので、戻すときは
+ * `MOODS` の先頭に入れ直すだけでいい。
  * ------------------------------------------------------------------ */
 
 export type MoodId = 'sink' | 'down' | 'low' | 'ok' | 'good' | 'lively' | 'shine'
@@ -240,13 +245,26 @@ export type MoodId = 'sink' | 'down' | 'low' | 'ok' | 'good' | 'lively' | 'shine
 export type Mood = {
   id: MoodId
   name: string
-  say: string
   /** 彩度 */
   s: number
   /** 明度 */
   l: number
   /** 0〜1。低いと歩き出さず、立ち止まったままになる */
   liveliness: number
+  /**
+   * 歩かず・跳ばず、座って休むだけにする。`liveliness` を下げずに動きだけ
+   * 止めたいとき用（下げると前かがみ `droop` まで変わってしまう）
+   */
+  restOnly: boolean
+  /** 叩いたときに反応するか。false ならタップしても何もしない */
+  pokeable: boolean
+  /** 歩き回る合間に跳ぶか。false なら歩く・休むだけ */
+  jumps: boolean
+  /**
+   * 前かがみにしない。true なら `liveliness` によらず背筋をまっすぐにする。
+   * 前かがみ（`droop`）は落ち込んだときだけの姿勢にしたいので
+   */
+  upright: boolean
   /** アバターが輝く（後光とからだの発光）。7サイクル連続から */
   glow: boolean
   /** 光の粒が立ちのぼる。3サイクル連続から */
@@ -256,31 +274,54 @@ export type Mood = {
 }
 
 /**
+ * ふだんの色（いきいき）。すこし元気〜かがやきはこの色のまま変えない。
+ * 色選択画面の見本（SetupPage の `SAMPLE_MOOD`）と同じ色にしておくため
+ */
+const BASE_S = 56
+const BASE_L = 80
+
+/** 気分の表の1行。当てはまるかどうか（`hit`）を持つ */
+type MoodRow = Mood & { hit: (run: number, idle: number) => boolean }
+
+/**
+ * しずみこみ（4サイクル放置）。**いまは止めていて `MOODS` に入っていない。**
+ * 戻すときはこれを `MOODS` の先頭（ぐったりより前）に入れ直す。
+ * 姿勢（Sink クリップ）や目の形など、見た目側の対応は look.ts に残してある
+ */
+export const SINK_MOOD: MoodRow = {
+  id: 'sink',
+  name: 'しずみこみ',
+  // 彩度をここまで落とすと色味がほとんど消える。**明度は下げない**ので
+  // 汚くはならず、沈んで見えるぶんは姿勢（Sink クリップ）が受け持つ
+  s: 4,
+  l: 58,
+  liveliness: 0,
+  restOnly: false,
+  pokeable: true,
+  jumps: false,
+  upright: false,
+  glow: false,
+  motes: false,
+  gloom: true,
+  hit: (_run, idle) => idle >= 4,
+}
+
+/**
  * 気分の表。**上から順に見て、最初に当てはまったものを採る。**
  * 数字を動かしたいときはこの表だけを触ればいい。
  */
-export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] = [
-  {
-    id: 'sink',
-    name: 'しずみこみ',
-    say: 'なにも かんがえられない…',
-    // 彩度をここまで落とすと色味がほとんど消える。**明度は下げない**ので
-    // 汚くはならず、沈んで見えるぶんは姿勢（Sink クリップ）が受け持つ
-    s: 4,
-    l: 58,
-    liveliness: 0,
-    glow: false,
-    motes: false,
-    gloom: true,
-    hit: (_run, idle) => idle >= 4,
-  },
+export const MOODS: MoodRow[] = [
   {
     id: 'down',
     name: 'ぐったり',
-    say: 'もう、うごけない…',
     s: 8,
     l: 58,
     liveliness: 0,
+    // 叩いても反応しない。へたり込んで、それどころではない
+    restOnly: false,
+    pokeable: false,
+    jumps: false,
+    upright: false,
     glow: false,
     motes: false,
     gloom: true,
@@ -289,10 +330,16 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
   {
     id: 'low',
     name: 'うつむき',
-    say: 'ちょっとしんどいかも。',
-    s: 18,
-    l: 58,
+    // 彩度だけ少し落とす。**明度はいきいきのまま**なので暗くはならず、
+    // 落ち込みは主に動きの少なさで見せる
+    s: 40,
+    l: BASE_L,
     liveliness: 0.2,
+    // 歩き回らず、座って休むのと叩かれたときの反応だけ
+    restOnly: true,
+    pokeable: true,
+    jumps: false,
+    upright: false,
     glow: false,
     motes: false,
     gloom: false,
@@ -301,10 +348,14 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
   {
     id: 'ok',
     name: 'すこし元気',
-    say: 'ここからだよ。',
-    s: 34,
-    l: 66,
+    s: BASE_S,
+    l: BASE_L,
     liveliness: 0.4,
+    restOnly: false,
+    pokeable: true,
+    // 跳ばず、背筋はまっすぐ。歩いて休むだけ
+    jumps: false,
+    upright: true,
     glow: false,
     motes: false,
     gloom: false,
@@ -313,10 +364,13 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
   {
     id: 'good',
     name: '元気',
-    say: '調子いいね。',
-    s: 44,
-    l: 72,
+    s: BASE_S,
+    l: BASE_L,
     liveliness: 0.6,
+    restOnly: false,
+    pokeable: true,
+    jumps: true,
+    upright: true,
     glow: false,
     motes: false,
     gloom: false,
@@ -325,10 +379,13 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
   {
     id: 'lively',
     name: 'いきいき',
-    say: '続いてるね。いい調子。',
-    s: 56,
-    l: 80,
+    s: BASE_S,
+    l: BASE_L,
     liveliness: 0.9,
+    restOnly: false,
+    pokeable: true,
+    jumps: true,
+    upright: true,
     glow: false,
     motes: true,
     gloom: false,
@@ -337,10 +394,13 @@ export const MOODS: (Mood & { hit: (run: number, idle: number) => boolean })[] =
   {
     id: 'shine',
     name: 'かがやき',
-    say: '絶好調。今日もいける。',
-    s: 56,
-    l: 80,
+    s: BASE_S,
+    l: BASE_L,
     liveliness: 1,
+    restOnly: false,
+    pokeable: true,
+    jumps: true,
+    upright: true,
     glow: true,
     motes: true,
     gloom: false,

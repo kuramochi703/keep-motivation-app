@@ -283,6 +283,14 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM, interactive = fa
   const s = look.bodyRadius * SIZE
   /** 足の裏から頭のてっぺんまで（ワールド単位）。エフェクトの大きさの基準 */
   const height = (HEAD_TOP - FOOT_Y) * s
+  // **影の大きさは useMemo で同じ配列を使い回す。** ContactShadows は scale の配列が
+  // 変わるたびに影を描く面（レンダーターゲット）を作り直し、古いものを捨てない。
+  // 毎回新しい配列を渡すと、再描画のたびに GPU のメモリが増え続け（ダッシュボードは
+  // タイマーで毎秒再描画される）、影も描き上がる前に作り直されて消える
+  const shadowScale = useMemo<[number, number]>(
+    () => [Math.max(5, area.x * 2 + 2.4), Math.max(5, area.z * 2 + 2.4)],
+    [area.x, area.z]
+  )
 
   // 叩かれたときに、反応のクリップを1本流す。
   // **再描画は起こさない。** 流すクリップは毎フレーム見る側（useFrame）の
@@ -319,6 +327,12 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM, interactive = fa
     document.body.style.cursor = on ? 'pointer' : ''
   }, [])
   useEffect(() => () => { document.body.style.cursor = '' }, [])
+  // 気分によっては叩いても反応しない（ぐったり）。当たり判定ごと外し、
+  // 指の形のカーソルも出さない。**乗ったまま外れたときは戻しておく**
+  const pokeable = interactive && look.pokeable
+  useEffect(() => {
+    if (!pokeable) document.body.style.cursor = ''
+  }, [pokeable])
 
   // いま流しているクリップと、どこに立っているか。
   // 毎フレーム変わるので、再描画を起こさない ref に持つ
@@ -360,7 +374,7 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM, interactive = fa
     }
 
     const m = playing.current
-    pick(m, look.liveliness, delta, actions)
+    pick(m, look, delta, actions)
 
     // **重みの合計は1。** 余りは Idle（立ち止まりの呼吸）が受け持つ。
     // 0/1 を直に入れると切り替わりが瞬間的になるので、寄せていく。
@@ -404,7 +418,7 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM, interactive = fa
                 別に置いて、こちらで受ける。
                 `visible={false}` にすると当たり判定からも外れてしまうので、
                 「見えているが何も描かない」材質にしてある */}
-            {interactive && (
+            {pokeable && (
               <mesh
                 position={[0, (FOOT_Y + HEAD_TOP) / 2, 0]}
                 onPointerDown={poke}
@@ -432,7 +446,7 @@ function ChickModel({ look, animate, roam: area = DEFAULT_ROAM, interactive = fa
       <ContactShadows
         position={[0, 0, 0]}
         opacity={0.32}
-        scale={[Math.max(5, area.x * 2 + 2.4), Math.max(5, area.z * 2 + 2.4)]}
+        scale={shadowScale}
         blur={2.6}
         far={2}
         resolution={512}
@@ -503,13 +517,21 @@ function startTurn(m: Walker, next: 'idle' | 'walk') {
  * **向きが大きくずれたら必ず向き直りを挟む。** 立ったままぬるっと回ると
  * 足が地面を滑って見えるので、足踏みするクリップを出してから回す。
  *
- * `amp`（気分の `liveliness`）が低いときは歩かず、座り込んで休む。
+ * 気分の `liveliness` が低いときは歩かず、座り込んで休む。
  * **閾値はうつむき（0.2）より下に置く。** ここを 0.25 のままにすると、
  * 「2サイクル放置」でいきなり座り込んでしまい、ぐったり（0.0）と区別が
  * つかなくなる（README 2章）。
+ *
+ * `restOnly`（うつむき）のときも歩かず・跳ばず、座って休むだけにする。
+ * 叩かれた反応はそのまま流す。`jumps` が false（すこし元気）なら跳ばない。
  */
-function pick(m: Walker, amp: number, delta: number, actions: Record<string, THREE.AnimationAction | null>) {
-  const lively = amp > 0.15
+function pick(
+  m: Walker,
+  look: Pick<Look, 'liveliness' | 'restOnly' | 'jumps'>,
+  delta: number,
+  actions: Record<string, THREE.AnimationAction | null>
+) {
+  const lively = look.liveliness > 0.15 && !look.restOnly
   const jump = actions.Jump
   m.timer -= delta
 
@@ -567,7 +589,9 @@ function pick(m: Walker, amp: number, delta: number, actions: Record<string, THR
     // やつれているときは立ったままにせず座り込ませる。休むほど絵が持つ
     m.mode = 'rest'
     m.timer = lively ? 4 + Math.random() * 4 : 6 + Math.random() * 4
-  } else if (jump && Math.random() < 0.4) {
+  } else if (jump && look.jumps && Math.random() < 0.4) {
+    // 跳ぶかどうかはここ（入るとき）だけで見る。跳んでいる途中で気分が
+    // 変わっても、上の終わり処理で Jump を止められるように `jump` 自体は残す
     jump.reset().play()
     m.mode = 'jump'
     m.timer = jump.getClip().duration * 3

@@ -118,13 +118,20 @@
 
   /* 共通レイアウトとアカウント操作 */
   .shell{display:flex;flex-direction:column;height:100vh;overflow:hidden}
-  .account-bar{display:flex;align-items:center;justify-content:space-between;gap:16px;
-    padding:9px 28px;border-bottom:1px solid #0d1520;background:linear-gradient(135deg,#16202e,#1e2c3e);color:#e7eef6}
-  .account-brand{display:flex;align-items:center;gap:10px;font-size:15px;font-weight:700;color:#fff;letter-spacing:.03em;white-space:nowrap}
-  .account-meta{display:flex;align-items:center;gap:16px;min-width:0}
-  .account-email{min-width:0;font-size:13px;color:#fff;text-align:right;overflow-wrap:anywhere}
-  .account-bar .account-signout{flex-shrink:0;white-space:nowrap;border-color:rgba(255,255,255,.4);color:#fff}
-  .account-bar .account-signout:hover{filter:none;background:#ffffff1a;border-color:#fff}
+  /* 上のバーは白の半透明。濃紺だと、下に広がる部屋の暖色とぶつかる */
+  .account-bar{position:relative;z-index:5;display:flex;align-items:center;justify-content:space-between;gap:16px;
+    padding:9px 28px;background:rgba(255,253,249,.9);-webkit-backdrop-filter:blur(12px);backdrop-filter:blur(12px);
+    border-bottom:1px solid rgba(92,64,28,.1);color:#3a2a1a;box-shadow:0 6px 18px -14px rgba(92,64,28,.35)}
+  .account-brand{display:flex;align-items:center;gap:10px;font-family:"M PLUS Rounded 1c",var(--font);
+    font-size:17px;font-weight:800;color:#3a2a1a;letter-spacing:.04em;white-space:nowrap}
+  .account-meta{display:flex;align-items:center;gap:12px;min-width:0}
+  .account-user{display:flex;align-items:center;gap:8px;min-width:0}
+  .account-avatar{flex:none;display:grid;place-items:center;width:28px;height:28px;border-radius:50%;
+    font-size:13px;font-weight:700;color:#fff;background:linear-gradient(135deg,hsl(var(--h) 55% 52%),hsl(calc(var(--h) - 14) 58% 40%))}
+  .account-email{min-width:0;font-size:12.5px;color:#7a6650;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .account-bar .account-signout{flex-shrink:0;white-space:nowrap;padding:6px 14px;border-radius:99px;
+    font-size:12.5px;font-weight:600;border-color:rgba(92,64,28,.18);color:#5b4631;background:#fff}
+  .account-bar .account-signout:hover{filter:none;background:#fbf4e8;border-color:rgba(92,64,28,.3)}
 
   /* ロゴ（がんばり畑） */
   .logo{display:block}
@@ -140,6 +147,7 @@
 
   @media(max-width:760px){
     .account-bar{gap:12px;padding:8px 16px}
+    .account-email{display:none}
     .content .wrap{padding:16px 16px 24px}
   }
 

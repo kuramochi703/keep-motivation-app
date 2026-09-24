@@ -112,7 +112,6 @@ function GoalCard({
           <span className="goal-card-top">
             <span className="goal-card-name">{goal.name}</span>
             <span className="goal-card-stage">{stage.name}</span>
-            {mood && <span className="goal-card-mood">{mood.name}</span>}
             {current && <span className="goal-card-badge">開いています</span>}
           </span>
 

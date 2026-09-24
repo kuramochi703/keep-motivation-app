@@ -1,7 +1,8 @@
-import { useLayoutEffect, useMemo, type ReactNode } from 'react'
+import { Suspense, useLayoutEffect, useMemo, type ReactNode } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import type * as THREE from 'three'
 import Chick, { DEFAULT_ROAM, type Roam } from './Chick'
+import Stage, { STAGE_LAYER } from './RoomStage'
 import type { Look } from './look'
 import { MOODS } from '../state/logic'
 
@@ -28,6 +29,8 @@ const PX_PER_UNIT = 118
 const MIN_UNITS_TALL = 2.64
 /** 足元から枠の下端までの余白（ワールド単位）。影と地面のぶん */
 const FLOOR_PAD = 0.9
+/** カメラを床の中心より少し上に置く高さ。わずかに見下ろして床を見せる */
+const CAMERA_Y = 0.45
 /** 歩き回れる範囲の、枠の端からの余白。はみ出さないための取りしろ */
 const EDGE_PAD = 0.9
 
@@ -36,6 +39,7 @@ const EDGE_PAD = 0.9
  *
  * 背景は透明にしてある（`gl.alpha`）。カードの背景色や、気分に連動する
  * アクセント色（ui/useAccent.ts）がそのまま透けるようにするため。
+ * 枠いっぱい（`fill`）のときだけは部屋のモデル（RoomStage.tsx）を置くので、透けない。
  */
 export default function AvatarCanvas({ look, animate, fill = false, hatching, interactive }: Props) {
   return (
@@ -61,7 +65,7 @@ export default function AvatarCanvas({ look, animate, fill = false, hatching, in
       // 明るい色ほど灰色へ寄せる。look.ts のパステルがくすんで見えるので、
       // 指定した色をそのまま出す
       flat
-      camera={{ position: [0, 0.45, 4.6], fov: 32 }}
+      camera={{ position: [0, CAMERA_Y, 4.6], fov: 32 }}
       // 見えていない間は回さない
       frameloop="always"
     >
@@ -108,16 +112,25 @@ function StageFit({ children }: { children: (roam: Roam) => ReactNode }) {
   const unitsTall = Math.max(height / PX_PER_UNIT, MIN_UNITS_TALL)
   const unitsWide = (unitsTall * width) / height
 
-  useLayoutEffect(() => {
-    // 縦の画角（fov）は固定なので、見たい高さぶんだけ後ろへ下がる
-    camera.position.z = unitsTall / 2 / Math.tan((camera.fov * Math.PI) / 360)
-    camera.lookAt(0, 0, 0)
-    camera.updateProjectionMatrix()
-  }, [camera, unitsTall])
+  // 縦の画角（fov）は固定なので、見たい高さぶんだけ後ろへ下がる
+  const cameraZ = unitsTall / 2 / Math.tan((camera.fov * Math.PI) / 360)
 
-  // 床は枠の下端近く。手前（+z）に来ると画面では下がるので、奥行きは
-  // 足元の余白より狭くしておく
+  // 床は枠の下端近く（枠の中心から見た高さ）
   const floorY = -unitsTall / 2 + FLOOR_PAD
+
+  useLayoutEffect(() => {
+    // **床ではなくカメラを動かす。** 床はいつもワールドの高さ 0 に置き、枠の下端近くに
+    // 来るぶんカメラを持ち上げる。ひよこの落ち影（ContactShadows）は、ぼかしの板を
+    // ワールドの原点に置いて影のカメラ（床から高さ far=2 まで）で撮る作りなので、
+    // 床を原点から 2 以上下げると影が毎フレーム消える（枠が高いと起きる）
+    camera.position.set(0, CAMERA_Y - floorY, cameraZ)
+    // 部屋は別のレイヤーに載せてある（→ RoomStage.tsx）。画面のカメラはそれも見る
+    camera.layers.enable(STAGE_LAYER)
+    camera.lookAt(0, -floorY, 0)
+    camera.updateProjectionMatrix()
+  }, [camera, cameraZ, floorY])
+
+  // 手前（+z）に来ると画面では下がるので、奥行きは足元の余白より狭くしておく
   const roam = useMemo<Roam>(
     () => ({
       x: Math.max(DEFAULT_ROAM.x, unitsWide / 2 - EDGE_PAD),
@@ -126,5 +139,17 @@ function StageFit({ children }: { children: (roam: Roam) => ReactNode }) {
     [unitsWide, unitsTall]
   )
 
-  return <group position={[0, floorY, 0]}>{children(roam)}</group>
+  return (
+    <>
+      {/* **部屋の読み込み待ちは、ここの Suspense で受ける。** 外（Avatar.tsx）の
+          Suspense まで届くと、もう出ているひよこごとキャンバスが隠され
+          （display:none）、枠が一色になる。隠れた間にキャンバスの大きさが 0 になり、
+          環境によってはそのまま WebGL のコンテキストが落ちて戻らない。
+          読み込み中は部屋が無いだけで、ひよこは出たままにする */}
+      <Suspense fallback={null}>
+        <Stage unitsWide={unitsWide} cameraZ={cameraZ} />
+      </Suspense>
+      {children(roam)}
+    </>
+  )
 }

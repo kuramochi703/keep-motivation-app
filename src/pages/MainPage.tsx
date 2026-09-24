@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import Calendar from '../features/calendar/Calendar'
 import Avatar from '../avatar/Avatar'
 import GoalsList from './GoalsList'
@@ -9,6 +9,7 @@ import {
   cycleLabel,
   daysUntil,
   fmtClock,
+  isDone,
   isExpired,
   key,
   moodOf,
@@ -20,13 +21,50 @@ import {
 import { evolutionOf, nextGoalOf } from '../avatar/stage'
 import { useAccent } from '../ui/useAccent'
 
-const DASH = 326.7
+const DASH = 314.2 // 2π × 50（タイマーの輪の半径）
 
 type PanelId = 'goal' | 'calendar'
 
-const PANELS: { id: PanelId; label: string; icon: string }[] = [
-  { id: 'goal', label: '目標', icon: '✎' },
-  { id: 'calendar', label: 'カレンダー', icon: '▣' },
+/** 線のアイコン。文字（✎ ▣）だとフォントで形が変わるので SVG で持つ */
+const Icon = ({ children }: { children: ReactNode }) => (
+  <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor"
+    strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+    {children}
+  </svg>
+)
+const FlagIcon = () => (
+  <Icon>
+    <path d="M5 21V4" />
+    <path d="M5 4h11l-2 4 2 4H5" />
+  </Icon>
+)
+const CalendarIcon = () => (
+  <Icon>
+    <rect x="3.5" y="5" width="17" height="15" rx="3" />
+    <path d="M3.5 10h17M8 3v4M16 3v4" />
+  </Icon>
+)
+const PlayIcon = () => (
+  <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor">
+    <path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z" />
+  </svg>
+)
+const PauseIcon = () => (
+  <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor">
+    <rect x="6" y="5" width="4.2" height="14" rx="1.4" />
+    <rect x="13.8" y="5" width="4.2" height="14" rx="1.4" />
+  </svg>
+)
+const FlameIcon = () => (
+  <svg viewBox="0 0 24 24" width="1em" height="1em">
+    <path fill="#ff8a3d" d="M12 2c.6 3.2-1.2 4.9-2.8 6.6C7.6 10.3 6 12 6 14.8A6 6 0 0 0 12 21a6 6 0 0 0 6-6.2c0-3.1-1.7-5-3-6.5-.3 1.6-1 2.6-2 3.1.4-3.1-.1-6.3-1-9.4Z" />
+    <path fill="#ffd166" d="M12 21a3.2 3.2 0 0 1-3.2-3.3c0-1.8 1.3-2.8 2.2-4 .4 1 .9 1.5 1.6 1.8.2-.8.6-1.4 1.1-1.9.9 1.1 1.5 2.2 1.5 3.9A3.2 3.2 0 0 1 12 21Z" />
+  </svg>
+)
+
+const PANELS: { id: PanelId; label: string; icon: ReactNode }[] = [
+  { id: 'goal', label: '目標', icon: <FlagIcon /> },
+  { id: 'calendar', label: 'カレンダー', icon: <CalendarIcon /> },
 ]
 
 type Props = {
@@ -37,6 +75,7 @@ type Props = {
   elapsed: number
   running: boolean
   onToggleTimer: () => void
+  onRecordOnly: () => void
   onNewGoal: () => void
   onExtend: () => void
   /** 進化の演出を流し終わったら呼ぶ。`avatars.seen_stage` を進める */
@@ -54,11 +93,13 @@ export default function MainPage({
   elapsed,
   running,
   onToggleTimer,
+  onRecordOnly,
   onNewGoal,
   onExtend,
   onStageSeen,
 }: Props) {
   const t = today(state)
+  const doneToday = isDone(state, t)
   // 気分もステージも保存していない。**記録とサイクル長から毎回その場で計算する**
   const stage = evolutionOf(state.done, state.cycleDays, startOf(state), key(t))
   // **気分はステージ1以上のもの。** たまごに気分は無い
@@ -118,8 +159,11 @@ export default function MainPage({
   }
 
   return (
-    <div className="wrap dashboard">
+    // 部屋の背景は画面いっぱいに敷く（dash-full）。期限切れの振り返りは部屋を出さないので、
+    // 今までどおり余白のある枠に収める
+    <div className={`wrap dashboard${expired ? '' : ' dash-full'}`}>
       <div className="dash-area">
+
       {expired ? (
           <section className="card done-overlay">
             <h2>目標の期間が終わりました</h2>
@@ -153,20 +197,48 @@ export default function MainPage({
       ) : (
         <>
           <div className={`bg-stage${open ? ' dim' : ''}`}>
-            <div className="deco-window" aria-hidden="true" />
-            <div className="deco-books" aria-hidden="true"><i /><i /><i /></div>
-            <div className="deco-plant" aria-hidden="true">🪴</div>
-
+            {/* 左上の HUD。部屋の絵の上に乗るので、すりガラスのカードにして背景から浮かせる */}
             <div className="bg-top">
-              <p className="owner">{state.name}</p>
-              <div className="bg-say">
-                <span className="badge">
-                  <i />
-                  <span>{stage.name}{mood ? ` / ${mood.name}` : ''}</span>
-                </span>
-                <p className="speech">{mood?.say ?? 'まだ殻の中。最初の1回をつけてみよう。'}</p>
+              {/* 気分は言葉にしない。姿勢や色、光の粒といったアバターの見た目で伝わる */}
+              <div className="hud-card char-card">
+                <p className="owner">{state.name}</p>
+                <span className="chip stage-chip">{stage.name}</span>
               </div>
-              <p className="bg-streak">🔥 {run}サイクル連続（{cycleLabel(state.cycleDays)}）</p>
+              <div className="hud-card streak-card">
+                <span className="streak-icon" aria-hidden="true">
+                  <FlameIcon />
+                </span>
+                <b>{run}</b>
+                <span className="streak-text">
+                  サイクル連続
+                  <small>{cycleLabel(state.cycleDays)}</small>
+                </span>
+              </div>
+              {/* 進化ゲージ。下中央だとアバターにかぶって見づらいので、名前・連続日数の下に小さく置く。
+                  **「あと○回」ではなく `x / y`**。ステージ2は窓の条件なので、
+                  「あと○回」はサボるほど増えるうえ、その回数では届かない */}
+              <div className="hud-card meter">
+                <div className="row">
+                  <span>
+                    <small className="hud-label">{next ? 'NEXT' : 'COMPLETE'}</small>
+                    {next ? next.stage.name : `${stage.name}（最終）`}
+                  </span>
+                  <b>
+                    {next ? next.have : '★'}
+                    <small>{next ? `/${next.need}` : ''}</small>
+                  </b>
+                </div>
+                <div className="gauge">
+                  <i style={{ width: `${next ? Math.min(100, (next.have / next.need) * 100) : 100}%` }} />
+                </div>
+                <p className="meter-note">
+                  {next
+                    ? next.kind === 'run'
+                      ? `連続 ${next.have} / ${next.need} サイクル`
+                      : `直近${next.window}サイクルで ${next.have} / ${next.need}`
+                    : 'ここまで育てきりました'}
+                </p>
+              </div>
             </div>
 
             <section className="stage-goal" aria-label="現在の目標と期限">
@@ -207,55 +279,57 @@ export default function MainPage({
               />
             </div>
 
-            {/* 活力ゲージだった場所を、そのまま進化ゲージに作り替えている。
-                **「あと○回」ではなく `x / y`**。ステージ2は窓の条件なので、
-                「あと○回」はサボるほど増えるうえ、その回数では届かない */}
-            <div className="meter">
-              <div className="row">
-                <span>{next ? `つぎは ${next.stage.name}` : `${stage.name}（最終）`}</span>
-                <b>
-                  {next ? next.have : '★'}
-                  <small>{next ? `/${next.need}` : ''}</small>
-                </b>
+            <div className={`hud-card stage-timer${running ? ' running' : ''}`} aria-label="5分タイマー">
+              <div className="timer-head">
+                <span className="hud-label">FOCUS</span>
+                <span className={`timer-state${doneToday ? ' done' : ''}`}>
+                  {doneToday ? '今日は記録ずみ' : running ? '集中しています' : elapsed > 0 ? '一時停止中' : '5分だけ'}
+                </span>
               </div>
-              <div className="gauge">
-                <i style={{ width: `${next ? Math.min(100, (next.have / next.need) * 100) : 100}%` }} />
-              </div>
-              <p className="meter-note">
-                {next
-                  ? next.kind === 'run'
-                    ? `連続 ${next.have} / ${next.need} サイクル`
-                    : `直近${next.window}サイクルで ${next.have} / ${next.need}`
-                  : 'ここまで育てきりました'}
-              </p>
-            </div>
-
-            <div className="stage-timer" aria-label="5分タイマー">
               <div className="ring">
                 <svg viewBox="0 0 120 120">
-                  <circle className="track" cx="60" cy="60" r="52" />
+                  <defs>
+                    <linearGradient id="timer-grad" x1="0" y1="0" x2="1" y2="1">
+                      <stop offset="0%" stopColor="hsl(var(--h) 70% 62%)" />
+                      <stop offset="100%" stopColor="hsl(calc(var(--h) - 14) 72% 46%)" />
+                    </linearGradient>
+                  </defs>
+                  {/* 1分ごとの目盛り。5分タイマーなので5本 */}
+                  {Array.from({ length: 5 }, (_, i) => (
+                    <line key={i} className="tick" x1="60" y1="1.5" x2="60" y2="5" transform={`rotate(${i * 72} 60 60)`} />
+                  ))}
+                  <circle className="track" cx="60" cy="60" r="50" />
                   <circle
                     className="prog"
                     cx="60"
                     cy="60"
-                    r="52"
+                    r="50"
                     strokeDasharray={DASH}
                     strokeDashoffset={(DASH * (1 - Math.min(elapsed / SESSION, 1))).toFixed(1)}
                   />
                 </svg>
                 <div className="num">
-                  <span>{fmtClock(elapsed)}</span>
-                  <button
-                    type="button"
-                    className={`stage-toggler${running ? ' running' : ''}`}
-                    aria-pressed={running}
-                    aria-label={running ? '一時停止' : elapsed > 0 ? '再開する' : 'タイマーをはじめる'}
-                    onClick={onToggleTimer}
-                  >
-                    <span aria-hidden="true">{running ? 'Ⅱ' : '▶'}</span>
-                  </button>
+                  <span className="clock">{fmtClock(elapsed)}</span>
+                  <em>/ {fmtClock(SESSION)}</em>
                 </div>
               </div>
+              <button
+                type="button"
+                className={`stage-toggler${running ? ' running' : ''}`}
+                aria-pressed={running}
+                aria-label={running ? '一時停止' : elapsed > 0 ? '再開する' : 'タイマーをはじめる'}
+                onClick={onToggleTimer}
+              >
+                <span aria-hidden="true" className="toggler-icon">
+                  {running ? <PauseIcon /> : <PlayIcon />}
+                </span>
+                <span aria-hidden="true">{running ? '一時停止' : elapsed > 0 ? '再開' : 'スタート'}</span>
+              </button>
+              {!doneToday && (
+                <button type="button" className="stage-record" onClick={onRecordOnly}>
+                  記録だけつける
+                </button>
+              )}
             </div>
           </div>
 
@@ -278,7 +352,7 @@ export default function MainPage({
                   setShowGoals(false)
                 }}
               >
-                <span aria-hidden="true">{panel.icon}</span>
+                <span aria-hidden="true" className="menu-icon">{panel.icon}</span>
                 {panel.label}
               </button>
             ))}

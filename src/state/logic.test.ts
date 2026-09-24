@@ -154,13 +154,35 @@ describe('moodOf()', () => {
     expect(mood({ cycleDays: 1, startedDaysAgo: 4, doneDaysAgo: [4, 3] })).toBe('down')
   })
 
-  it('4サイクル放置から しずみこみ', () => {
-    expect(mood({ cycleDays: 1, startedDaysAgo: 5, doneDaysAgo: [5, 4] })).toBe('sink')
-    expect(mood({ cycleDays: 1, startedDaysAgo: 9, doneDaysAgo: [9, 8] })).toBe('sink')
+  it('しずみこみは止めているので、4サイクル以上放置しても ぐったり', () => {
+    expect(mood({ cycleDays: 1, startedDaysAgo: 5, doneDaysAgo: [5, 4] })).toBe('down')
+    expect(mood({ cycleDays: 1, startedDaysAgo: 9, doneDaysAgo: [9, 8] })).toBe('down')
+    expect(MOODS.some((m) => m.id === 'sink')).toBe(false)
   })
 
-  it('サイクルが長くても段は同じ（4サイクル＝12日 放置）', () => {
-    expect(mood({ cycleDays: 3, startedDaysAgo: 15, doneDaysAgo: [15, 12] })).toBe('sink')
+  it('サイクルが長くても段は同じ（3サイクル＝9日 放置）', () => {
+    expect(mood({ cycleDays: 3, startedDaysAgo: 12, doneDaysAgo: [12, 9] })).toBe('down')
+  })
+
+  it('うつむきは色を変えず、休むだけ。ぐったりは叩いても反応しない', () => {
+    const low = MOODS.find((m) => m.id === 'low')!
+    expect(low.restOnly).toBe(true)
+    expect(low.pokeable).toBe(true)
+    expect(MOODS.find((m) => m.id === 'down')!.pokeable).toBe(false)
+  })
+
+  it('すこし元気は跳ばず、背筋はまっすぐ', () => {
+    const ok = MOODS.find((m) => m.id === 'ok')!
+    expect(ok.jumps).toBe(false)
+    expect(ok.upright).toBe(true)
+  })
+
+  it('すこし元気〜かがやきは、どれもいきいきの色', () => {
+    const lively = MOODS.find((m) => m.id === 'lively')!
+    for (const id of ['ok', 'good', 'shine']) {
+      const m = MOODS.find((x) => x.id === id)!
+      expect([m.s, m.l]).toEqual([lively.s, lively.l])
+    }
   })
 
   it('落ち込んでも明度は 58 より下げない', () => {

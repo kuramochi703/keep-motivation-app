@@ -59,6 +59,7 @@ export default function App() {
             elapsed={elapsed}
             running={running}
             onToggleTimer={toggleTimer}
+            onRecordOnly={recordOnly}
             onNewGoal={newGoal}
             onExtend={extendDeadline}
             onStageSeen={markStageSeen}
