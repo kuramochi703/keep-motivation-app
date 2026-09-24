@@ -16,8 +16,6 @@
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
 
-.debug-page header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
-.debug-page h1 { font-size: 20px; font-weight: 700; margin: 0; letter-spacing: -.01em; }
 
 /* カード。影を使わず、1pxの線と余白だけで区切る */
 .debug-page .card { border-radius: 14px; padding: 18px; border: 1px solid var(--line); }
@@ -48,8 +46,6 @@
 
 .debug-avatar { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
 .debug-avatar h2 { font-size: 17px; font-weight: 700; color: var(--ink); margin: 0 0 10px; letter-spacing: -.01em; }
-/* 3Dは確認用なので小さくてよい。大きいとカードだけで1画面を使う */
-.debug-avatar-preview { width: min(100%, 168px); margin: 0 auto; }
 /* エフェクトは後光やもやがひよこの外まで広がるので、上のプレビューより大きく取る */
 .debug-effects-preview { width: min(100%, 260px); margin: 0 auto; }
 .debug-row select {
@@ -97,3 +93,22 @@
 .debug-danger { border-color: #EFC9C1; }
 
 @media (max-width: 860px) { .debug-columns { grid-template-columns: 1fr; } }
+
+/*
+ * 上に埋め込むアプリの画面。
+ *
+ * **デバッグ画面は .content（横並びの flex）の中にあるので、縦に積む箱を1枚かませる。**
+ * アプリの画面は .debug-page の外に置き、本体のスタイルがそのまま当たるようにする。
+ * .shell は本番だと 100vh なので、ここでは高さを決め打ちにして枠に収める。
+ */
+.debug-screen { display: flex; flex-direction: column; width: 100%; min-width: 0; }
+.content .wrap.debug-page-body { width: 100%; padding-top: 0; }
+
+.debug-app { width: 100%; max-width: 1180px; margin: 24px auto 16px; padding: 0 28px; }
+.debug-app > .shell {
+  height: clamp(560px, 78vh, 820px);
+  border: 1px solid var(--line); border-radius: 14px;
+  /* 閉じているパネルは右の外へ逃がしてあるので、枠の外に出ないよう切る */
+  overflow: hidden; isolation: isolate;
+}
+@media (max-width: 760px) { .debug-app { padding: 0 16px; } }

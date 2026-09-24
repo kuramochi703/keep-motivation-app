@@ -1,7 +1,8 @@
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useState, type ComponentProps } from 'react'
+import AccountBar from '../app/AccountBar'
 import Avatar from '../avatar/Avatar'
 import { NO_EFFECTS, type Effects } from '../avatar/look'
-import { evolutionOf, nextGoalOf, STAGES } from '../avatar/stage'
+import { evolutionOf, STAGES } from '../avatar/stage'
 import { supabase } from '../lib/supabase'
 import {
   clearRecords,
@@ -17,18 +18,24 @@ import {
   cycleIndex,
   cycleLabel,
   diffDays,
-  idleOf,
   isDone,
   key,
   MOODS,
   moodOf,
   type MoodId,
-  runOf,
   startOf,
   today,
   type State,
 } from '../state/logic'
+import MainPage from './MainPage'
 import './debug-page.css'
+
+/** 上に埋め込むアプリ画面に渡すもの。デバッグ画面自身は使わない */
+type AppProps = Pick<ComponentProps<typeof MainPage>,
+  'goals' | 'currentGoalId' | 'onSelectGoal' | 'onToggleTimer' | 'onExtend' | 'onStageSeen'> & {
+  email: string
+  onSignOut: () => void
+}
 
 type Props = {
   state: State
@@ -43,6 +50,7 @@ type Props = {
   /** DB から読み直す。**消したあとは必ずこれを通す** */
   onReload: () => Promise<void>
   onNewGoal: () => void
+  app: AppProps
 }
 
 /**
@@ -65,12 +73,12 @@ export default function DebugPage({
   onSetDayOffset,
   onReload,
   onNewGoal,
+  app,
 }: Props) {
   // 保存値ではなく、記録から毎回その場で計算した値を出す
   const todayKey = key(today(state))
   const stage = evolutionOf(state.done, state.cycleDays, startOf(state), todayKey)
   const mood = stage.id === 0 ? null : moodOf(state)
-  const next = nextGoalOf(state.done, state.cycleDays, startOf(state), todayKey)
   const [snapshot, setSnapshot] = useState<{ data: unknown; at: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -149,35 +157,35 @@ export default function DebugPage({
   const pending = stage.id > state.seenStage
 
   return (
-    <div className="wrap debug-page">
-      <header>
-        <span className="badge">開発用</span>
-        <h1>デバッグ</h1>
-      </header>
+    <div className="debug-screen">
+    {/*
+      **アバターの姿は、アプリの画面（App.tsx の main と同じ組み立て）をそのまま出す。**
+      切り出した Avatar だけだと、部屋・HUD・演出との重なりが本番と違って見える。
+      ハンドラも本番のものを渡すので、ここでタイマーを回せば本当に記録が付き、
+      「見せ済み」を戻せばここで進化の演出が流れて、流し終わると本番どおり進む。
+      .debug-page の外に置くのは、デバッグ用の詰めた見た目（.btn / .card / h2）を持ち込まないため
+    */}
+    <section className="debug-app" aria-label="アプリの画面">
+      <div className="shell dashboard-shell">
+        <AccountBar email={app.email} onSignOut={app.onSignOut} />
+        <main className="content">
+          <MainPage
+            state={state}
+            goals={app.goals}
+            currentGoalId={app.currentGoalId}
+            onSelectGoal={app.onSelectGoal}
+            elapsed={elapsed}
+            running={running}
+            onToggleTimer={app.onToggleTimer}
+            onNewGoal={onNewGoal}
+            onExtend={app.onExtend}
+            onStageSeen={app.onStageSeen}
+          />
+        </main>
+      </div>
+    </section>
 
-      {/*
-        まとめのカードは置かない。値はそれぞれ関係するカードの中に置く方が、
-        探さずに済むし、同じ数字が2か所に出ることもない。
-        サイクル長と目標IDは目標の一覧に、日送りは日付カードに出ている。
-      */}
-      <section className="card debug-avatar" aria-label="現在のアバター">
-        <div>
-          <h2>{state.name || 'アバター'}</h2>
-          <p className="debug-meta">
-            <span>{stage.name} <b>{stage.id}</b></span>
-            <span>気分 <b>{mood?.name ?? 'なし'}</b></span>
-            <span>連続 <b>{runOf(state)}</b></span>
-            <span>放置 <b>{idleOf(state) ?? '—'}</b></span>
-            <span>
-              つぎ <b>{next ? `${next.kind === 'run' ? '連続' : `直近${next.window}で`} ${next.have}/${next.need}` : '最終'}</b>
-            </span>
-          </p>
-        </div>
-        <div className="debug-avatar-preview">
-          <Avatar stage={stage.id} hue={state.hue} mood={mood} />
-        </div>
-      </section>
-
+    <div className="wrap debug-page debug-page-body">
       {/*
         エフェクト（avatar/Effects.tsx）の見比べ。本番では気分の表（MOODS の
         glow / motes / gloom）で決まるが、ここでは**気分と別に**出し入れできる。
@@ -431,6 +439,7 @@ export default function DebugPage({
             : <pre>{JSON.stringify(snapshot.data, null, 2)}</pre>)}
         </section>
       </div>
+    </div>
     </div>
   )
 }
