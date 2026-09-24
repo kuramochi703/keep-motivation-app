@@ -144,6 +144,16 @@
 
 .goals-actions {
   margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  background: #fff;
+}
+
+.goals-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px;
 }
 
 .goals-empty {

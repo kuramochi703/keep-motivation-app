@@ -128,7 +128,7 @@ export default function MainPage({
   const deadlineDays = daysUntil(state)
   const [yd, mo, dd] = (state.deadline ?? '').split('-').map(Number)
   const deadlineText = mo && dd ? `${mo}月${dd}日まで` : '設定されていません'
-  const [open, setOpen] = useState<PanelId | null>(null)
+  const [open, setOpen] = useState<'calendar' | null>(null)
   const [showGoals, setShowGoals] = useState(false)
   const goalsDialog = useRef<HTMLDialogElement>(null)
   useEffect(() => {
@@ -237,6 +237,24 @@ export default function MainPage({
               </div>
             </div>
 
+            <section className="stage-goal" aria-label="現在の目標と期限">
+            <div className="goal current-goal-card">
+              <span className="goal-text" title={state.goal}>
+                <span aria-hidden="true">✎ </span>{state.goal}
+              </span>
+            </div>
+
+            <div className={`deadline${deadlineDays !== null && deadlineDays <= 3 ? ' warn' : ''}`}>
+              <div className="deadline-label">
+                <small>目標の期限は</small>
+                <span>{deadlineText}</span>
+              </div>
+              <p className="deadline-days">
+                {expired ? '期限から' : 'あと'} <b>{deadlineDays !== null ? Math.abs(deadlineDays) : '—'}</b><small>{expired ? '日経過' : '日'}</small>
+              </p>
+            </div>
+            </section>
+
             {celebrating && (
               <div className="evolve-banner" role="status">
                 <b>{state.seenStage === 0 ? `${state.name} がうまれた！` : `${stage.name} に進化！`}</b>
@@ -311,10 +329,17 @@ export default function MainPage({
               <button
                 key={panel.id}
                 type="button"
-                className={`menu-btn${open === panel.id ? ' active' : ''}`}
-                aria-pressed={open === panel.id}
+                className={`menu-btn${(panel.id === 'goal' ? showGoals : open === panel.id) ? ' active' : ''}`}
+                aria-pressed={panel.id === 'goal' ? showGoals : open === panel.id}
+                aria-haspopup={panel.id === 'goal' ? 'dialog' : undefined}
+                aria-controls={panel.id === 'goal' ? 'goal-list-dialog' : undefined}
                 onClick={() => {
-                  setOpen((current) => (current === panel.id ? null : panel.id))
+                  if (panel.id === 'goal') {
+                    setOpen(null)
+                    setShowGoals(true)
+                    return
+                  }
+                  setOpen((current) => (current === 'calendar' ? null : 'calendar'))
                   setShowGoals(false)
                 }}
               >
@@ -335,49 +360,6 @@ export default function MainPage({
             <button type="button" className="panel-close" aria-label="閉じる" onClick={closePanel}>
               ✕
             </button>
-
-            {open === 'goal' && (
-              <div className="panel-body">
-                <h2>目標</h2>
-                <div className="goal current-goal-card">
-                  <span className="goal-text" title={state.goal}>
-                    <span aria-hidden="true">✎ </span>{state.goal}
-                  </span>
-                </div>
-
-                <div className={`deadline${deadlineDays !== null && deadlineDays <= 3 ? ' warn' : ''}`}>
-                  <div className="deadline-label">
-                    <small>目標の期限は</small>
-                    <span>{deadlineText}</span>
-                  </div>
-                  <p className="deadline-days">
-                    {expired ? '期限から' : 'あと'} <b>{deadlineDays !== null ? Math.abs(deadlineDays) : '—'}</b><small>{expired ? '日経過' : '日'}</small>
-                  </p>
-                </div>
-                <p className="deadline-hint">
-                  {expired ? '期間が終了しています。続ける目標を一覧から選べます。' : deadlineDays !== null && deadlineDays <= 3 ? 'あと少し！今日の1つを積んでいこう。' : '自分のペースで続ければ、きっと大丈夫。'}
-                </p>
-
-                <div className="goal-panel-actions">
-                  <button
-                    type="button"
-                    className="btn sec"
-                    aria-haspopup="dialog"
-                    aria-controls="goal-list-dialog"
-                    onClick={() => setShowGoals(true)}
-                  >
-                    目標一覧を見る
-                  </button>
-                  <button type="button" className="btn" onClick={confirmNewGoal}>
-                    新しい目標を作る
-                  </button>
-                </div>
-<<<<<<< HEAD
-=======
-
->>>>>>> 6b86816 (目標一覧をポップアップで表示できるようにした)
-              </div>
-            )}
 
             {open === 'calendar' && (
               <div className="panel-body">

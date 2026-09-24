@@ -39,15 +39,12 @@ export default function GoalsList({ goals, currentGoalId, onSelect, onNewGoal }:
         </p>
       </header>
 
+      <div className="goals-scroll">
       {goals.length === 0 ? (
         <div className="card goals-empty">
           <p>まだ目標がありません。</p>
-          <button type="button" className="btn" onClick={onNewGoal}>
-            最初の目標を作る
-          </button>
         </div>
       ) : (
-        <>
           <ul className="goal-list">
             {goals.map((g) => (
               <GoalCard
@@ -58,13 +55,13 @@ export default function GoalsList({ goals, currentGoalId, onSelect, onNewGoal }:
               />
             ))}
           </ul>
-          <div className="goals-actions">
-            <button type="button" className="btn" onClick={onNewGoal}>
-              新しい目標を作る
-            </button>
-          </div>
-        </>
       )}
+      </div>
+      <footer className="goals-actions">
+        <button type="button" className="btn" onClick={onNewGoal}>
+          新しい目標を作る
+        </button>
+      </footer>
     </section>
   )
 }

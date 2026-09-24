@@ -59,10 +59,6 @@ it.each([false, true])('selects a goal inside the goal popup (expired = %s)', as
   expect(container.querySelector('.goal-list')).toBeNull()
   await clickButton(expired ? '目標一覧を見る' : '目標')
   const panel = container.querySelector<HTMLDialogElement>('.goals-dialog')!
-  if (!expired) {
-    expect(panel.querySelector('.goal-list')).toBeNull()
-    await clickButton('目標一覧を見る')
-  }
   expect(panel.querySelectorAll('.goal-list > li')).toHaveLength(2)
   expect(panel.open).toBe(true)
   expect(container.querySelector('.dash-panel .goal-list')).toBeNull()
@@ -77,7 +73,6 @@ it('starts a new goal from the popup only after confirmation', async () => {
   const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true)
   await render()
   await clickButton('目標')
-  await clickButton('目標一覧を見る')
   await clickButton('新しい目標を作る')
   expect(newGoal).not.toHaveBeenCalled()
   await clickButton('新しい目標を作る')
@@ -85,19 +80,17 @@ it('starts a new goal from the popup only after confirmation', async () => {
   expect(newGoal).toHaveBeenCalledOnce()
 })
 
-it('closes the list popup and returns to the goal panel', async () => {
+it('closes the list popup and returns to the dashboard', async () => {
   await render()
   await clickButton('目標')
   const dialog = container.querySelector<HTMLDialogElement>('.goals-dialog')!
-  expect(dialog.open).toBe(false)
-  await clickButton('目標一覧を見る')
   expect(dialog.open).toBe(true)
   expect(container.querySelector('.goal-list')).not.toBeNull()
   await act(async () => dialog.querySelector<HTMLButtonElement>('.panel-close')!.click())
   expect(dialog.open).toBe(false)
-  expect(container.querySelector('.dash-panel')?.getAttribute('aria-hidden')).toBe('false')
+  expect(container.querySelector('.dash-panel')?.getAttribute('aria-hidden')).toBe('true')
   expect(container.querySelector('.goal-list')).toBeNull()
-  await clickButton('目標一覧を見る')
+  await clickButton('目標')
   await act(async () => dialog.dispatchEvent(new Event('cancel')))
   expect(dialog.open).toBe(false)
   expect(container.querySelector('.goal-list')).toBeNull()
