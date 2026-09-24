@@ -16,8 +16,6 @@
   --mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, Consolas, monospace;
 }
 
-.debug-page header { display: flex; align-items: center; gap: 10px; margin-bottom: 20px; }
-.debug-page h1 { font-size: 20px; font-weight: 700; margin: 0; letter-spacing: -.01em; }
 
 /* カード。影を使わず、1pxの線と余白だけで区切る */
 .debug-page .card { border-radius: 14px; padding: 18px; border: 1px solid var(--line); }
@@ -48,9 +46,6 @@
 
 .debug-avatar { display: flex; align-items: center; justify-content: space-between; gap: 20px; flex-wrap: wrap; }
 .debug-avatar h2 { font-size: 17px; font-weight: 700; color: var(--ink); margin: 0 0 10px; letter-spacing: -.01em; }
-/* いまのアバターのカードは値だけ。姿は下のアプリ画面で見る */
-.debug-page h2.debug-avatar-name { font-size: 17px; font-weight: 700; color: var(--ink); margin: 0 0 10px; letter-spacing: -.01em; }
-.debug-page .debug-meta:last-child { margin-bottom: 0; }
 /* エフェクトは後光やもやがひよこの外まで広がるので、上のプレビューより大きく取る */
 .debug-effects-preview { width: min(100%, 260px); margin: 0 auto; }
 .debug-row select {
@@ -107,11 +102,9 @@
  * .shell は本番だと 100vh なので、ここでは高さを決め打ちにして枠に収める。
  */
 .debug-screen { display: flex; flex-direction: column; width: 100%; min-width: 0; }
-.content .wrap.debug-page-head { width: 100%; padding-bottom: 0; }
 .content .wrap.debug-page-body { width: 100%; padding-top: 0; }
-.debug-page-head > .card { margin-bottom: 16px; }
 
-.debug-app { width: 100%; max-width: 1180px; margin: 0 auto 16px; padding: 0 28px; }
+.debug-app { width: 100%; max-width: 1180px; margin: 24px auto 16px; padding: 0 28px; }
 .debug-app > .shell {
   height: clamp(560px, 78vh, 820px);
   border: 1px solid var(--line); border-radius: 14px;

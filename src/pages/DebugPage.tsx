@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState, type ComponentProps } from 'react'
 import AccountBar from '../app/AccountBar'
 import Avatar from '../avatar/Avatar'
 import { NO_EFFECTS, type Effects } from '../avatar/look'
-import { evolutionOf, nextGoalOf, STAGES } from '../avatar/stage'
+import { evolutionOf, STAGES } from '../avatar/stage'
 import { supabase } from '../lib/supabase'
 import {
   clearRecords,
@@ -18,13 +18,11 @@ import {
   cycleIndex,
   cycleLabel,
   diffDays,
-  idleOf,
   isDone,
   key,
   MOODS,
   moodOf,
   type MoodId,
-  runOf,
   startOf,
   today,
   type State,
@@ -81,7 +79,6 @@ export default function DebugPage({
   const todayKey = key(today(state))
   const stage = evolutionOf(state.done, state.cycleDays, startOf(state), todayKey)
   const mood = stage.id === 0 ? null : moodOf(state)
-  const next = nextGoalOf(state.done, state.cycleDays, startOf(state), todayKey)
   const [snapshot, setSnapshot] = useState<{ data: unknown; at: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -161,31 +158,6 @@ export default function DebugPage({
 
   return (
     <div className="debug-screen">
-    <div className="wrap debug-page debug-page-head">
-      <header>
-        <span className="badge">開発用</span>
-        <h1>デバッグ</h1>
-      </header>
-
-      {/*
-        まとめのカードは置かない。値はそれぞれ関係するカードの中に置く方が、
-        探さずに済むし、同じ数字が2か所に出ることもない。
-        サイクル長と目標IDは目標の一覧に、日送りは日付カードに出ている。
-      */}
-      <section className="card" aria-label="現在のアバター">
-        <h2 className="debug-avatar-name">{state.name || 'アバター'}</h2>
-        <p className="debug-meta">
-          <span>{stage.name} <b>{stage.id}</b></span>
-          <span>気分 <b>{mood?.name ?? 'なし'}</b></span>
-          <span>連続 <b>{runOf(state)}</b></span>
-          <span>放置 <b>{idleOf(state) ?? '—'}</b></span>
-          <span>
-            つぎ <b>{next ? `${next.kind === 'run' ? '連続' : `直近${next.window}で`} ${next.have}/${next.need}` : '最終'}</b>
-          </span>
-        </p>
-      </section>
-    </div>
-
     {/*
       **アバターの姿は、アプリの画面（App.tsx の main と同じ組み立て）をそのまま出す。**
       切り出した Avatar だけだと、部屋・HUD・演出との重なりが本番と違って見える。
