@@ -44,7 +44,9 @@ export default function App() {
           <Suspense fallback={<p role="status">読み込み中...</p>}>
             <DebugPage state={state} userId={user.id} loaded={loaded} hasStarted={hasStarted}
               elapsed={elapsed} running={running} onRecord={recordOnly}
-              onSetDayOffset={setDayOffset} onReload={reload} onNewGoal={newGoal} />
+              onSetDayOffset={setDayOffset} onReload={reload} onNewGoal={newGoal}
+              app={{ email: user.email ?? '', onSignOut: signOut, goals, currentGoalId, onSelectGoal: selectGoal,
+                onToggleTimer: toggleTimer, onExtend: extendDeadline, onStageSeen: markStageSeen }} />
           </Suspense>
         ) : screen === 'top' ? (
           <TopPage onStart={completeTutorial} />
