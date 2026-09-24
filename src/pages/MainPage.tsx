@@ -1,6 +1,7 @@
-import { useEffect, useState, type ReactNode } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
 import Calendar from '../features/calendar/Calendar'
 import Avatar from '../avatar/Avatar'
+import GoalsList from './GoalsList'
 import './main-page.css'
 import {
   SESSION,
@@ -68,18 +69,16 @@ const PANELS: { id: PanelId; label: string; icon: ReactNode }[] = [
 
 type Props = {
   state: State
+  goals: State[]
+  currentGoalId: number | null
+  onSelectGoal: (id: number) => void
   elapsed: number
   running: boolean
   onToggleTimer: () => void
-  onRecordOnly: () => void
-  onNextDay: () => void
   onNewGoal: () => void
-  /** 目標一覧へ。期限が切れたときの行き先 */
-  onGoalList: () => void
   onExtend: () => void
   /** 進化の演出を流し終わったら呼ぶ。`avatars.seen_stage` を進める */
   onStageSeen: (stage: number) => void
-  onReset: () => void
 }
 
 /** 演出を流す長さ。たまごが割れるクリップ（3.0秒）に少し余裕を足した値 */
@@ -87,16 +86,15 @@ const EFFECT_MS = 4200
 
 export default function MainPage({
   state,
+  goals,
+  currentGoalId,
+  onSelectGoal,
   elapsed,
   running,
   onToggleTimer,
-  onRecordOnly,
-  onNextDay,
   onNewGoal,
-  onGoalList,
   onExtend,
   onStageSeen,
-  onReset,
 }: Props) {
   const t = today(state)
   const doneToday = isDone(state, t)
@@ -123,7 +121,7 @@ export default function MainPage({
     return () => window.clearTimeout(id)
     // onStageSeen は毎描画で作り直されるので、依存に入れると演出が流れ続ける
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pending, stage.id])
+  }, [pending, stage.id, state.goalId])
 
   // 孵化（たまご → 幼体）だけは、殻が割れるところから見せる
   const hatching = celebrating && state.seenStage === 0 && stage.id >= 1
@@ -132,7 +130,17 @@ export default function MainPage({
   const deadlineDays = daysUntil(state)
   const [yd, mo, dd] = (state.deadline ?? '').split('-').map(Number)
   const deadlineText = mo && dd ? `${mo}月${dd}日まで` : '設定されていません'
-  const [open, setOpen] = useState<PanelId | null>(null)
+  const [open, setOpen] = useState<'calendar' | null>(null)
+  const [showGoals, setShowGoals] = useState(false)
+  const goalsDialog = useRef<HTMLDialogElement>(null)
+  useEffect(() => {
+    if (showGoals) goalsDialog.current?.showModal()
+    else goalsDialog.current?.close()
+  }, [showGoals])
+  const closePanel = () => {
+    setOpen(null)
+    setShowGoals(false)
+  }
 
   /**
    * **押すと目標がもう1本増える。** 新しいアバターはたまごから育て直しになるので一度止める。
@@ -152,9 +160,9 @@ export default function MainPage({
     // 部屋の背景は画面いっぱいに敷く（dash-full）。期限切れの振り返りは部屋を出さないので、
     // 今までどおり余白のある枠に収める
     <div className={`wrap dashboard${expired ? '' : ' dash-full'}`}>
+      <div className="dash-area">
 
       {expired ? (
-        <div className="dash-area">
           <section className="card done-overlay">
             <h2>目標の期間が終わりました</h2>
             <p className="sub">「{state.goal}」の振り返り</p>
@@ -176,7 +184,7 @@ export default function MainPage({
                 作るより「他に育てているものがあったか」を見にいくほうが先。
                 作りたければ目標一覧の「新しい目標を作る」から入れる */}
             <div className="acts done-acts">
-              <button className="btn" onClick={onGoalList}>
+              <button className="btn" onClick={() => setShowGoals(true)}>
                 目標一覧を見る
               </button>
               <button className="btn sec" onClick={onExtend}>
@@ -184,9 +192,8 @@ export default function MainPage({
               </button>
             </div>
           </section>
-        </div>
       ) : (
-        <div className="dash-area">
+        <>
           <div className={`bg-stage${open ? ' dim' : ''}`}>
             {/* 左上の HUD。部屋の絵の上に乗るので、すりガラスのカードにして背景から浮かせる */}
             <div className="bg-top">
@@ -231,6 +238,24 @@ export default function MainPage({
                 </p>
               </div>
             </div>
+
+            <section className="stage-goal" aria-label="現在の目標と期限">
+            <div className="goal current-goal-card">
+              <span className="goal-text" title={state.goal}>
+                <span aria-hidden="true">✎ </span>{state.goal}
+              </span>
+            </div>
+
+            <div className={`deadline${deadlineDays !== null && deadlineDays <= 3 ? ' warn' : ''}`}>
+              <div className="deadline-label">
+                <small>目標の期限は</small>
+                <span>{deadlineText}</span>
+              </div>
+              <p className="deadline-days">
+                {expired ? '期限から' : 'あと'} <b>{deadlineDays !== null ? Math.abs(deadlineDays) : '—'}</b><small>{expired ? '日経過' : '日'}</small>
+              </p>
+            </div>
+            </section>
 
             {celebrating && (
               <div className="evolve-banner" role="status">
@@ -298,11 +323,6 @@ export default function MainPage({
                 </span>
                 <span aria-hidden="true">{running ? '一時停止' : elapsed > 0 ? '再開' : 'スタート'}</span>
               </button>
-              {!doneToday && (
-                <button type="button" className="stage-record" onClick={onRecordOnly}>
-                  記録だけつける
-                </button>
-              )}
             </div>
           </div>
 
@@ -311,61 +331,37 @@ export default function MainPage({
               <button
                 key={panel.id}
                 type="button"
-                className={`menu-btn${open === panel.id ? ' active' : ''}`}
-                aria-pressed={open === panel.id}
-                onClick={() => setOpen((current) => (current === panel.id ? null : panel.id))}
+                className={`menu-btn${(panel.id === 'goal' ? showGoals : open === panel.id) ? ' active' : ''}`}
+                aria-pressed={panel.id === 'goal' ? showGoals : open === panel.id}
+                aria-haspopup={panel.id === 'goal' ? 'dialog' : undefined}
+                aria-controls={panel.id === 'goal' ? 'goal-list-dialog' : undefined}
+                onClick={() => {
+                  if (panel.id === 'goal') {
+                    setOpen(null)
+                    setShowGoals(true)
+                    return
+                  }
+                  setOpen((current) => (current === 'calendar' ? null : 'calendar'))
+                  setShowGoals(false)
+                }}
               >
                 <span aria-hidden="true" className="menu-icon">{panel.icon}</span>
                 {panel.label}
               </button>
             ))}
           </nav>
+        </>
+      )}
 
           <section
             className={`dash-panel${open ? ' open' : ''}`}
             aria-hidden={open === null}
+            inert={open === null}
             aria-label="ダッシュボードパネル"
           >
-            <button type="button" className="panel-close" aria-label="閉じる" onClick={() => setOpen(null)}>
+            <button type="button" className="panel-close" aria-label="閉じる" onClick={closePanel}>
               ✕
             </button>
-
-            {open === 'goal' && (
-              <div className="panel-body">
-                <h2>目標</h2>
-                <div className="goal goal-card">
-                  <span className="goal-text" title={state.goal}>
-                    <span aria-hidden="true">✎ </span>{state.goal}
-                  </span>
-                </div>
-
-                <div className={`deadline${deadlineDays !== null && deadlineDays <= 3 ? ' warn' : ''}`}>
-                  <div className="deadline-label">
-                    <small>目標の期限は</small>
-                    <span>{deadlineText}</span>
-                  </div>
-                  <p className="deadline-days">
-                    あと <b>{deadlineDays !== null ? deadlineDays : '—'}</b><small>日</small>
-                  </p>
-                </div>
-                <p className="deadline-hint">
-                  {deadlineDays !== null && deadlineDays <= 3 ? 'あと少し！今日の1つを積んでいこう。' : '自分のペースで続ければ、きっと大丈夫。'}
-                </p>
-
-                <button className="btn new-goal-cta" onClick={confirmNewGoal}>
-                  新しい目標をはじめる
-                </button>
-
-                <div className="tools">
-                  <button className="btn ghost" onClick={onNextDay}>
-                    翌日にする（お試し）
-                  </button>
-                  <button className="btn ghost" onClick={onReset}>
-                    最初から
-                  </button>
-                </div>
-              </div>
-            )}
 
             {open === 'calendar' && (
               <div className="panel-body">
@@ -374,8 +370,27 @@ export default function MainPage({
               </div>
             )}
           </section>
+          <dialog
+            ref={goalsDialog}
+            id="goal-list-dialog"
+            className="goals-dialog"
+            aria-labelledby="goals-list-title"
+            onCancel={() => setShowGoals(false)}
+            onClose={() => setShowGoals(false)}
+          >
+            <button type="button" className="panel-close" aria-label="目標一覧を閉じる" onClick={() => setShowGoals(false)}>
+              ✕
+            </button>
+            {showGoals && (
+              <GoalsList
+                goals={goals}
+                currentGoalId={currentGoalId}
+                onSelect={(id) => { onSelectGoal(id); closePanel() }}
+                onNewGoal={confirmNewGoal}
+              />
+            )}
+          </dialog>
         </div>
-      )}
     </div>
   )
 }

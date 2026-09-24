@@ -1,5 +1,5 @@
 import type { CSSProperties } from 'react'
-import './goals-page.css'
+import './goals-list.css'
 import {
   cycleLabel,
   daysUntil,
@@ -29,25 +29,22 @@ type Props = {
  * `done` と `cycleDays` から計算している（README 2章）。ダッシュボードと同じ関数を
  * 呼んでいるので、一覧とダッシュボードで値が食い違うことはない。
  */
-export default function GoalsPage({ goals, currentGoalId, onSelect, onNewGoal }: Props) {
+export default function GoalsList({ goals, currentGoalId, onSelect, onNewGoal }: Props) {
   return (
-    <div className="wrap goals">
+    <section className="goals" aria-labelledby="goals-list-title">
       <header className="goals-head">
-        <h1>目標一覧</h1>
+        <h3 id="goals-list-title">目標一覧</h3>
         <p className="goals-lead">
           育てているアバターは目標ごとに別々です。切り替えても記録は消えません。
         </p>
       </header>
 
+      <div className="goals-scroll">
       {goals.length === 0 ? (
         <div className="card goals-empty">
           <p>まだ目標がありません。</p>
-          <button type="button" className="btn" onClick={onNewGoal}>
-            最初の目標を作る
-          </button>
         </div>
       ) : (
-        <>
           <ul className="goal-list">
             {goals.map((g) => (
               <GoalCard
@@ -58,14 +55,14 @@ export default function GoalsPage({ goals, currentGoalId, onSelect, onNewGoal }:
               />
             ))}
           </ul>
-          <div className="goals-actions">
-            <button type="button" className="btn" onClick={onNewGoal}>
-              新しい目標を作る
-            </button>
-          </div>
-        </>
       )}
-    </div>
+      </div>
+      <footer className="goals-actions">
+        <button type="button" className="btn" onClick={onNewGoal}>
+          新しい目標を作る
+        </button>
+      </footer>
+    </section>
   )
 }
 

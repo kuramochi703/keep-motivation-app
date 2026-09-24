@@ -1,16 +1,26 @@
-/* 目標一覧（GoalsPage）
+/* 目標ポップアップ内の一覧（GoalsList）
  *
  * カードは1枚まるごとがボタン。**どこを押しても切り替わる**ほうが、
  * 「選ぶ」画面としては迷いが少ない。
  * 色は目標ごとに違うので、`--h` / `--s` をカード自身に持たせている。 */
 
 .goals {
-  max-width: 760px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid var(--line);
 }
 
-.goals-head {
-  margin-bottom: 16px;
+.dashboard .goals-head {
+  margin-bottom: 14px;
+  text-align: left;
 }
+
+.goals-head h3 { margin: 0 0 6px; font-size: 17px; }
+.goals .goals-lead { font-size: 12px; }
+.goals .goal-card { padding: 14px; gap: 10px; }
+.goals .goal-card-goal { white-space: normal; overflow-wrap: anywhere; font-size: 15px; }
+.goals .goal-card-name { overflow-wrap: anywhere; }
+.goals-actions .btn { width: 100%; }
 
 .goals-lead {
   margin: 0;
@@ -134,6 +144,16 @@
 
 .goals-actions {
   margin-top: 14px;
+  padding-top: 14px;
+  border-top: 1px solid var(--line);
+  background: #fff;
+}
+
+.goals-scroll {
+  min-height: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: 4px;
 }
 
 .goals-empty {
