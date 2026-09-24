@@ -239,23 +239,25 @@ export default function MainPage({
               </div>
             </div>
 
+            {/* 目標と期限も左上の HUD と同じカード・同じ字体にそろえる。
+                部屋の絵の上に文字だけ置くと、壁の柄に負けて浮いて見える */}
             <section className="stage-goal" aria-label="現在の目標と期限">
-            <div className="goal current-goal-card">
-              <span className="goal-text" title={state.goal}>
-                <span aria-hidden="true">✎ </span>{state.goal}
-              </span>
-            </div>
-
-            {/* 期限は HUD と同じすりガラスのカードに乗せる。部屋の絵の上に直接だと数字が柄に負ける */}
-            <div className={`hud-card deadline${deadlineDays !== null && deadlineDays <= 3 ? ' warn' : ''}`}>
-              <div className="deadline-label">
-                <small>目標の期限は</small>
-                <span>{deadlineText}</span>
+              <div className="hud-card goal-card">
+                <small className="hud-label">GOAL</small>
+                <p className="goal-card-text" title={state.goal}>{state.goal}</p>
               </div>
-              <p className="deadline-days">
-                {expired ? '期限から' : 'あと'} <b>{deadlineDays !== null ? Math.abs(deadlineDays) : '—'}</b><small>{expired ? '日経過' : '日'}</small>
-              </p>
-            </div>
+
+              <div className={`hud-card deadline-card${deadlineDays !== null && deadlineDays <= 3 ? ' warn' : ''}`}>
+                <small className="hud-label">DEADLINE</small>
+                <div className="deadline-row">
+                  <span className="deadline-date">{deadlineText}</span>
+                  <p className="deadline-days">
+                    {expired ? '期限から' : 'あと'}
+                    <b>{deadlineDays !== null ? Math.abs(deadlineDays) : '—'}</b>
+                    {expired ? '日経過' : '日'}
+                  </p>
+                </div>
+              </div>
             </section>
 
             {celebrating && (
