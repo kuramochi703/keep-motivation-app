@@ -9,12 +9,16 @@
   background:radial-gradient(ellipse at 50% 32%,#fcf4e5,transparent 66%);
   transition:filter .25s ease}
 .bg-stage.dim{filter:brightness(.95)}
-.stage-goal{position:absolute;left:28px;top:50%;transform:translateY(-50%);z-index:1;width:min(300px,30%);max-height:55%;overflow:auto;text-align:left}
+.stage-goal{position:absolute;left:48px;top:50%;transform:translateY(-50%);z-index:1;width:min(300px,30%);max-height:55%;overflow:auto;text-align:left}
 .dashboard .stage-goal .current-goal-card{margin:0 0 10px;padding:12px 14px;background:none;border:0;box-shadow:none}
-.dashboard .stage-goal .goal-text{font-size:18px}
+.dashboard .stage-goal .current-goal-card .goal-text{font-size:26px}
 .stage-goal .deadline{flex-wrap:wrap;padding:12px 14px;gap:4px 12px}
 .dashboard .stage-goal .deadline{background:none;border:0;box-shadow:none}
-.stage-goal .deadline-days b{font-size:28px}
+.stage-goal .deadline-label small{font-size:16px}
+.stage-goal .deadline-label span{font-size:30px}
+.stage-goal .deadline-days{font-size:18px}
+.stage-goal .deadline-days b{font-size:46px}
+.stage-goal .deadline-days small{font-size:16px}
 .bg-stage::after{content:'';position:absolute;left:-15%;bottom:-30px;width:130%;height:70px;border-radius:50%;background:#f4f3ec}
 
 /* ステージ演出（アバター側のファイルには触れない） */
@@ -150,13 +154,15 @@
   .dashboard-shell .content .dashboard{padding:12px 14px 16px}
   .bg-stage{min-height:440px;padding:20px 16px 104px;border-radius:24px}
   .bg-top{top:16px;left:16px}
-  .stage-goal{left:16px;width:38%;max-height:42%;top:52%}
+  .stage-goal{left:26px;width:38%;max-height:42%;top:52%}
   .dashboard .stage-goal .current-goal-card{padding:8px 10px}
-  .dashboard .stage-goal .goal-text{font-size:14px}
+  .dashboard .stage-goal .current-goal-card .goal-text{font-size:17px}
   .stage-goal .deadline{padding:8px 10px}
-  .stage-goal .deadline-label span{font-size:13px}
-  .stage-goal .deadline-days{font-size:12px}
-  .stage-goal .deadline-days b{font-size:22px}
+  .stage-goal .deadline-label small{font-size:14px}
+  .stage-goal .deadline-label span{font-size:22px}
+  .stage-goal .deadline-days{font-size:14px}
+  .stage-goal .deadline-days b{font-size:35px}
+  .stage-goal .deadline-days small{font-size:14px}
   .bg-say{flex-direction:column;align-items:flex-start;gap:8px}
   .dash-menu{top:auto;bottom:16px;right:50%;transform:translateX(50%);flex-direction:row;gap:8px}
   .menu-btn{flex-direction:row;gap:6px;min-width:0;padding:10px 12px;border-radius:16px}
