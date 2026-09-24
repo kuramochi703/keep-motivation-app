@@ -13,7 +13,12 @@ export default function AccountBar({ email, onSignOut }: Props) {
         <span>がんばり畑</span>
       </div>
       <div className="account-meta">
-        <span className="account-email">{email}</span>
+        <span className="account-user" title={email}>
+          <span className="account-avatar" aria-hidden="true">
+            {(email[0] ?? '?').toUpperCase()}
+          </span>
+          <span className="account-email">{email}</span>
+        </span>
         <button type="button" className="btn ghost account-signout" onClick={onSignOut}>
           ログアウト
         </button>
