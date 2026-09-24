@@ -172,7 +172,6 @@ export default function DebugPage({
               つぎ <b>{next ? `${next.kind === 'run' ? '連続' : `直近${next.window}で`} ${next.have}/${next.need}` : '最終'}</b>
             </span>
           </p>
-          <p className="debug-say">{mood?.say ?? 'まだ殻の中。'}</p>
         </div>
         <div className="debug-avatar-preview">
           <Avatar stage={stage.id} hue={state.hue} mood={mood} />

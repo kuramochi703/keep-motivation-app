@@ -50,7 +50,6 @@
 .debug-avatar h2 { font-size: 17px; font-weight: 700; color: var(--ink); margin: 0 0 10px; letter-spacing: -.01em; }
 /* 3Dは確認用なので小さくてよい。大きいとカードだけで1画面を使う */
 .debug-avatar-preview { width: min(100%, 168px); margin: 0 auto; }
-.debug-say { margin: 0; font-size: 14px; }
 /* エフェクトは後光やもやがひよこの外まで広がるので、上のプレビューより大きく取る */
 .debug-effects-preview { width: min(100%, 260px); margin: 0 auto; }
 .debug-row select {
