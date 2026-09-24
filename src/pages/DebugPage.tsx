@@ -30,7 +30,7 @@ import './debug-page.css'
 
 /** 上に埋め込むアプリ画面に渡すもの。デバッグ画面自身は使わない */
 type AppProps = Pick<ComponentProps<typeof MainPage>,
-  'goals' | 'currentGoalId' | 'onSelectGoal' | 'onToggleTimer' | 'onExtend' | 'onStageSeen'> & {
+  'goals' | 'currentGoalId' | 'onSelectGoal' | 'onToggleTimer' | 'onFinishTimer' | 'onExtend' | 'onStageSeen'> & {
   email: string
   onSignOut: () => void
 }
@@ -40,8 +40,11 @@ type Props = {
   userId: string
   loaded: boolean
   hasStarted: boolean
+  /** タイマーの長さ（秒）。デバッグ画面では5秒（useApp の DEBUG_SESSION） */
+  session: number
   elapsed: number
   running: boolean
+  reached: boolean
   onRecord: () => void
   /** アプリの中の日付をずらす。負の値も渡す（過去へ戻る） */
   onSetDayOffset: (days: number) => void
@@ -65,8 +68,10 @@ export default function DebugPage({
   userId,
   loaded,
   hasStarted,
+  session,
   elapsed,
   running,
+  reached,
   onRecord,
   onSetDayOffset,
   onReload,
@@ -166,9 +171,12 @@ export default function DebugPage({
             goals={app.goals}
             currentGoalId={app.currentGoalId}
             onSelectGoal={app.onSelectGoal}
+            session={session}
             elapsed={elapsed}
             running={running}
+            reached={reached}
             onToggleTimer={app.onToggleTimer}
+            onFinishTimer={app.onFinishTimer}
             onNewGoal={onNewGoal}
             onExtend={app.onExtend}
             onStageSeen={app.onStageSeen}

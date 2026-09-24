@@ -11,7 +11,7 @@ const DebugPage = import.meta.env.DEV
   : null
 
 export default function App() {
-  const { user, ready, signIn, signOut, state, goals, currentGoalId, selectGoal, setDayOffset, reload, loaded, loadError, retryLoad, hasStarted, completeTutorial, screen, start, extendDeadline, markStageSeen, newGoal, elapsed, running, toggleTimer, recordOnly } = useApp()
+  const { user, ready, signIn, signOut, state, goals, currentGoalId, selectGoal, setDayOffset, reload, loaded, loadError, retryLoad, hasStarted, completeTutorial, screen, start, extendDeadline, markStageSeen, newGoal, session, elapsed, running, reached, toggleTimer, finishTimer, recordOnly } = useApp()
 
   // ゲートは3段。セッションの確認 → ログイン → 目標の読み込み（AUTH_PLAN 4章）
   if (!ready) {
@@ -43,10 +43,10 @@ export default function App() {
         {screen === 'debug' && DebugPage ? (
           <Suspense fallback={<p role="status">読み込み中...</p>}>
             <DebugPage state={state} userId={user.id} loaded={loaded} hasStarted={hasStarted}
-              elapsed={elapsed} running={running} onRecord={recordOnly}
+              session={session} elapsed={elapsed} running={running} reached={reached} onRecord={recordOnly}
               onSetDayOffset={setDayOffset} onReload={reload} onNewGoal={newGoal}
               app={{ email: user.email ?? '', onSignOut: signOut, goals, currentGoalId, onSelectGoal: selectGoal,
-                onToggleTimer: toggleTimer, onExtend: extendDeadline, onStageSeen: markStageSeen }} />
+                onToggleTimer: toggleTimer, onFinishTimer: finishTimer, onExtend: extendDeadline, onStageSeen: markStageSeen }} />
           </Suspense>
         ) : screen === 'top' ? (
           <TopPage onStart={completeTutorial} />
@@ -58,9 +58,12 @@ export default function App() {
             goals={goals}
             currentGoalId={currentGoalId}
             onSelectGoal={selectGoal}
+            session={session}
             elapsed={elapsed}
             running={running}
+            reached={reached}
             onToggleTimer={toggleTimer}
+            onFinishTimer={finishTimer}
             onNewGoal={newGoal}
             onExtend={extendDeadline}
             onStageSeen={markStageSeen}

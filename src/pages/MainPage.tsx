@@ -4,7 +4,6 @@ import Avatar from '../avatar/Avatar'
 import GoalsList from './GoalsList'
 import './main-page.css'
 import {
-  SESSION,
   bestRun,
   cycleLabel,
   daysUntil,
@@ -55,6 +54,12 @@ const PauseIcon = () => (
     <rect x="13.8" y="5" width="4.2" height="14" rx="1.4" />
   </svg>
 )
+const CheckIcon = () => (
+  <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor"
+    strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+    <path d="M5 12.5l4.5 4.5L19 7.5" />
+  </svg>
+)
 const FlameIcon = () => (
   <svg viewBox="0 0 24 24" width="1em" height="1em">
     <path fill="#ff8a3d" d="M12 2c.6 3.2-1.2 4.9-2.8 6.6C7.6 10.3 6 12 6 14.8A6 6 0 0 0 12 21a6 6 0 0 0 6-6.2c0-3.1-1.7-5-3-6.5-.3 1.6-1 2.6-2 3.1.4-3.1-.1-6.3-1-9.4Z" />
@@ -72,9 +77,15 @@ type Props = {
   goals: State[]
   currentGoalId: number | null
   onSelectGoal: (id: number) => void
+  /** タイマーの長さ（秒）。本番は300、デバッグ画面は5（useApp） */
+  session: number
   elapsed: number
   running: boolean
+  /** 時間を過ぎた。ボタンが「完了」に変わる */
+  reached: boolean
   onToggleTimer: () => void
+  /** 「完了」。ここで今日の記録が付く */
+  onFinishTimer: () => void
   onNewGoal: () => void
   onExtend: () => void
   /** 進化の演出を流し終わったら呼ぶ。`avatars.seen_stage` を進める */
@@ -89,15 +100,23 @@ export default function MainPage({
   goals,
   currentGoalId,
   onSelectGoal,
+  session,
   elapsed,
   running,
+  reached,
   onToggleTimer,
+  onFinishTimer,
   onNewGoal,
   onExtend,
   onStageSeen,
 }: Props) {
   const t = today(state)
   const doneToday = isDone(state, t)
+  // **今日つけ終わったら、タイマーはもう回さない。** 時間を過ぎると「完了」が出て、
+  // 押すと止まって記録が付く。そのあとは「今日は達成」に置き換える。
+  // 読み込み直した直後（elapsed が 0）でも、記録があれば輪は満タンで見せる
+  const finished = doneToday && !running
+  const shown = finished ? Math.max(elapsed, session) : elapsed
   // 気分もステージも保存していない。**記録とサイクル長から毎回その場で計算する**
   const stage = evolutionOf(state.done, state.cycleDays, startOf(state), key(t))
   // **気分はステージ1以上のもの。** たまごに気分は無い
@@ -284,7 +303,7 @@ export default function MainPage({
               <div className="timer-head">
                 <span className="hud-label">FOCUS</span>
                 <span className={`timer-state${doneToday ? ' done' : ''}`}>
-                  {doneToday ? '今日は記録ずみ' : running ? '集中しています' : elapsed > 0 ? '一時停止中' : '5分だけ'}
+                  {doneToday ? '今日は記録ずみ' : reached ? '5分たちました' : running ? '集中しています' : elapsed > 0 ? '一時停止中' : '5分だけ'}
                 </span>
               </div>
               <div className="ring">
@@ -295,7 +314,7 @@ export default function MainPage({
                       <stop offset="100%" stopColor="hsl(calc(var(--h) - 14) 72% 46%)" />
                     </linearGradient>
                   </defs>
-                  {/* 1分ごとの目盛り。5分タイマーなので5本 */}
+                  {/* 5等分の目盛り。本番の5分なら1分ごと */}
                   {Array.from({ length: 5 }, (_, i) => (
                     <line key={i} className="tick" x1="60" y1="1.5" x2="60" y2="5" transform={`rotate(${i * 72} 60 60)`} />
                   ))}
@@ -306,26 +325,38 @@ export default function MainPage({
                     cy="60"
                     r="50"
                     strokeDasharray={DASH}
-                    strokeDashoffset={(DASH * (1 - Math.min(elapsed / SESSION, 1))).toFixed(1)}
+                    strokeDashoffset={(DASH * (1 - Math.min(shown / session, 1))).toFixed(1)}
                   />
                 </svg>
                 <div className="num">
-                  <span className="clock">{fmtClock(elapsed)}</span>
-                  <em>/ {fmtClock(SESSION)}</em>
+                  <span className="clock">{fmtClock(shown)}</span>
+                  <em>/ {fmtClock(session)}</em>
                 </div>
               </div>
-              <button
-                type="button"
-                className={`stage-toggler${running ? ' running' : ''}`}
-                aria-pressed={running}
-                aria-label={running ? '一時停止' : elapsed > 0 ? '再開する' : 'タイマーをはじめる'}
-                onClick={onToggleTimer}
-              >
-                <span aria-hidden="true" className="toggler-icon">
-                  {running ? <PauseIcon /> : <PlayIcon />}
-                </span>
-                <span aria-hidden="true">{running ? '一時停止' : elapsed > 0 ? '再開' : 'スタート'}</span>
-              </button>
+              {finished ? (
+                <button type="button" className="stage-toggler done" disabled>
+                  <span aria-hidden="true" className="toggler-icon"><CheckIcon /></span>
+                  今日は達成
+                </button>
+              ) : reached ? (
+                <button type="button" className="stage-toggler finish" onClick={onFinishTimer}>
+                  <span aria-hidden="true" className="toggler-icon"><CheckIcon /></span>
+                  完了
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className={`stage-toggler${running ? ' running' : ''}`}
+                  aria-pressed={running}
+                  aria-label={running ? '一時停止' : elapsed > 0 ? '再開する' : 'タイマーをはじめる'}
+                  onClick={onToggleTimer}
+                >
+                  <span aria-hidden="true" className="toggler-icon">
+                    {running ? <PauseIcon /> : <PlayIcon />}
+                  </span>
+                  <span aria-hidden="true">{running ? '一時停止' : elapsed > 0 ? '再開' : 'スタート'}</span>
+                </button>
+              )}
             </div>
           </div>
 

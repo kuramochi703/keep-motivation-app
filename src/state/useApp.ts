@@ -1,4 +1,4 @@
-import type { SetupInput } from './logic'
+import { SESSION, type SetupInput } from './logic'
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from './useAuth'
 import { useGoalState } from './useGoalState'
@@ -7,6 +7,12 @@ import { useTimer } from './useTimer'
 import { allowedScreen, entryScreen } from './screenFlow'
 
 export type { Screen }
+
+/**
+ * デバッグ画面でのタイマーの長さ（秒）。5分待たずに「終わったあと」を確かめる用。
+ * **変わるのは長さだけ。** タイマーも記録の保存も本番と同じもの（useTimer / markSessionDone）を通す
+ */
+const DEBUG_SESSION = 5
 
 /**
  * ログイン状態（useAuth）・画面遷移（useScreen）・タイマー（useTimer）・
@@ -19,7 +25,6 @@ export function useApp() {
   const userId = auth.user?.id ?? null
   // useGoalState が知るのは uuid 1つだけ。誰かはここで渡す
   const goal = useGoalState(userId)
-  const timer = useTimer(goal.markSessionDone)
   const [routedUserId, setRoutedUserId] = useState<string | null>(null)
   const currentUserId = useRef(userId)
   currentUserId.current = userId
@@ -27,6 +32,9 @@ export function useApp() {
   const tutorialCompleted = auth.tutorialCompleted || goal.hasGoalHistory
   const hasCurrentGoal = goal.hasStarted && goal.state.goalId !== null
   const screen = allowedScreen(requestedScreen, tutorialCompleted, hasCurrentGoal)
+  // デバッグ画面は開発時しか読み込まれない（app/App.tsx）が、長さの切り替えも DEV で閉じておく
+  const session = import.meta.env.DEV && screen === 'debug' ? DEBUG_SESSION : SESSION
+  const timer = useTimer(goal.markSessionDone, session)
 
   useEffect(() => {
     if (!userId || !goal.loaded) {
@@ -123,9 +131,12 @@ export function useApp() {
     extendDeadline: goal.extendDeadline,
     markStageSeen: goal.markStageSeen,
     newGoal,
+    session,
     elapsed: timer.elapsed,
     running: timer.running,
+    reached: timer.reached,
     toggleTimer: timer.toggle,
+    finishTimer: timer.finish,
     recordOnly,
     nextDay,
     setDayOffset,
