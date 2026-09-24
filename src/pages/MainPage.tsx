@@ -9,6 +9,7 @@ import {
   cycleLabel,
   daysUntil,
   fmtClock,
+  isDone,
   isExpired,
   key,
   moodOf,
@@ -96,6 +97,7 @@ export default function MainPage({
   onStageSeen,
 }: Props) {
   const t = today(state)
+  const doneToday = isDone(state, t)
   // 気分もステージも保存していない。**記録とサイクル長から毎回その場で計算する**
   const stage = evolutionOf(state.done, state.cycleDays, startOf(state), key(t))
   // **気分はステージ1以上のもの。** たまごに気分は無い

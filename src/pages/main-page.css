@@ -15,17 +15,21 @@
 .bg-stage{position:relative;display:flex;flex-direction:column;align-items:center;
   justify-content:flex-end;min-height:clamp(420px,60vh,720px);
   border-radius:30px;padding:24px 28px 30px;overflow:hidden;
-  /* 部屋（壁・床・窓・本・植木鉢）は 3D のモデルが描く（avatar/Stage.tsx）。
+  /* 部屋（壁・床・窓・本・植木鉢）は 3D のモデルが描く（avatar/RoomStage.tsx）。
      ここの色はモデルが読み込まれるまでの下地。壁の色に合わせてある */
   background:#fcf4e5;
   transition:filter .25s ease}
 .bg-stage.dim{filter:brightness(.95)}
-.stage-goal{position:absolute;left:28px;top:50%;transform:translateY(-50%);z-index:1;width:min(300px,30%);max-height:55%;overflow:auto;text-align:left}
+.stage-goal{position:absolute;left:48px;top:50%;transform:translateY(-50%);z-index:1;width:min(300px,30%);max-height:55%;overflow:auto;text-align:left}
 .dashboard .stage-goal .current-goal-card{margin:0 0 10px;padding:12px 14px;background:none;border:0;box-shadow:none}
-.dashboard .stage-goal .goal-text{font-size:18px}
+.dashboard .stage-goal .current-goal-card .goal-text{font-size:26px}
 .stage-goal .deadline{flex-wrap:wrap;padding:12px 14px;gap:4px 12px}
 .dashboard .stage-goal .deadline{background:none;border:0;box-shadow:none}
-.stage-goal .deadline-days b{font-size:28px}
+.stage-goal .deadline-label small{font-size:16px}
+.stage-goal .deadline-label span{font-size:30px}
+.stage-goal .deadline-days{font-size:18px}
+.stage-goal .deadline-days b{font-size:46px}
+.stage-goal .deadline-days small{font-size:16px}
 
 /* ── ステージ上の HUD ──
    部屋の絵の上に直接文字を置くと、壁や本棚の柄に負けて読みにくい。
@@ -206,13 +210,15 @@
   .menu-btn{flex-direction:row;gap:8px;min-width:0;padding:7px 14px 7px 7px;border-radius:16px}
   .menu-icon{width:30px;height:30px;font-size:16px;border-radius:10px}
   .menu-btn:hover{transform:none}
-  .stage-goal{left:16px;width:38%;max-height:42%;top:52%}
+  .stage-goal{left:26px;width:38%;max-height:42%;top:52%}
   .dashboard .stage-goal .current-goal-card{padding:8px 10px}
-  .dashboard .stage-goal .goal-text{font-size:14px}
+  .dashboard .stage-goal .current-goal-card .goal-text{font-size:17px}
   .stage-goal .deadline{padding:8px 10px}
-  .stage-goal .deadline-label span{font-size:13px}
-  .stage-goal .deadline-days{font-size:12px}
-  .stage-goal .deadline-days b{font-size:22px}
+  .stage-goal .deadline-label small{font-size:14px}
+  .stage-goal .deadline-label span{font-size:22px}
+  .stage-goal .deadline-days{font-size:14px}
+  .stage-goal .deadline-days b{font-size:35px}
+  .stage-goal .deadline-days small{font-size:14px}
   .dash-panel{top:auto;bottom:0;right:0;width:100%;height:min(62vh,560px);border-radius:24px 24px 0 0;
     transform:translateY(calc(100% + 8px));box-shadow:0 -24px 46px -30px #1d3a4e55}
   .dash-panel.open{transform:none}

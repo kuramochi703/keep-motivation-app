@@ -2,7 +2,7 @@ import { Suspense, useLayoutEffect, useMemo, type ReactNode } from 'react'
 import { Canvas, useThree } from '@react-three/fiber'
 import type * as THREE from 'three'
 import Chick, { DEFAULT_ROAM, type Roam } from './Chick'
-import Stage, { STAGE_LAYER } from './Stage'
+import Stage, { STAGE_LAYER } from './RoomStage'
 import type { Look } from './look'
 import { MOODS } from '../state/logic'
 
@@ -39,7 +39,7 @@ const EDGE_PAD = 0.9
  *
  * 背景は透明にしてある（`gl.alpha`）。カードの背景色や、気分に連動する
  * アクセント色（ui/useAccent.ts）がそのまま透けるようにするため。
- * 枠いっぱい（`fill`）のときだけは部屋のモデル（Stage.tsx）を置くので、透けない。
+ * 枠いっぱい（`fill`）のときだけは部屋のモデル（RoomStage.tsx）を置くので、透けない。
  */
 export default function AvatarCanvas({ look, animate, fill = false, hatching, interactive }: Props) {
   return (
@@ -124,7 +124,7 @@ function StageFit({ children }: { children: (roam: Roam) => ReactNode }) {
     // ワールドの原点に置いて影のカメラ（床から高さ far=2 まで）で撮る作りなので、
     // 床を原点から 2 以上下げると影が毎フレーム消える（枠が高いと起きる）
     camera.position.set(0, CAMERA_Y - floorY, cameraZ)
-    // 部屋は別のレイヤーに載せてある（→ Stage.tsx）。画面のカメラはそれも見る
+    // 部屋は別のレイヤーに載せてある（→ RoomStage.tsx）。画面のカメラはそれも見る
     camera.layers.enable(STAGE_LAYER)
     camera.lookAt(0, -floorY, 0)
     camera.updateProjectionMatrix()
