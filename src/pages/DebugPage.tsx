@@ -1,7 +1,5 @@
 import { useCallback, useEffect, useState, type ComponentProps } from 'react'
 import AccountBar from '../app/AccountBar'
-import Avatar from '../avatar/Avatar'
-import { NO_EFFECTS, type Effects } from '../avatar/look'
 import { evolutionOf, STAGES } from '../avatar/stage'
 import { supabase } from '../lib/supabase'
 import {
@@ -11,18 +9,18 @@ import {
   deleteRecord,
   listGoals,
   rewindSeenStage,
+  updateGoal,
+  type GoalEdit,
   type GoalRow,
 } from '../state/debug'
 import {
   currentCycle,
+  CYCLES,
   cycleIndex,
   cycleLabel,
   diffDays,
   isDone,
   key,
-  MOODS,
-  moodOf,
-  type MoodId,
   startOf,
   today,
   type State,
@@ -78,7 +76,6 @@ export default function DebugPage({
   // 保存値ではなく、記録から毎回その場で計算した値を出す
   const todayKey = key(today(state))
   const stage = evolutionOf(state.done, state.cycleDays, startOf(state), todayKey)
-  const mood = stage.id === 0 ? null : moodOf(state)
   const [snapshot, setSnapshot] = useState<{ data: unknown; at: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState('')
@@ -88,18 +85,13 @@ export default function DebugPage({
 
   const goalId = state.goalId
 
-  // エフェクトの見比べ。**DB にも本番の気分にも触らない**、この画面だけの値。
-  // 気分は姿勢と色のため（どんよりは座り込んだ姿で見たい）。最初はいまの気分
-  const [previewMood, setPreviewMood] = useState<MoodId>(mood?.id ?? 'good')
-  const [effects, setEffects] = useState<Effects>(() => effectsOf(mood?.id ?? 'good'))
-  const pickPreviewMood = (id: MoodId) => {
-    setPreviewMood(id)
-    setEffects(effectsOf(id))
-  }
-
   // アプリ本体はいちばん新しい1件しか読まない。たまっている目標はここでだけ見える
   const [goals, setGoals] = useState<GoalRow[]>([])
   const [goalsError, setGoalsError] = useState('')
+  // 編集中の目標。1件ずつしか開かない（id と書きかけの値）
+  const [editing, setEditing] = useState<{ id: number; edit: GoalEdit } | null>(null)
+  const change = (patch: Partial<GoalEdit>) =>
+    setEditing((e) => (e ? { ...e, edit: { ...e.edit, ...patch } } : e))
 
   const refreshGoals = useCallback(async () => {
     const result = await listGoals(userId)
@@ -186,53 +178,6 @@ export default function DebugPage({
     </section>
 
     <div className="wrap debug-page debug-page-body">
-      {/*
-        エフェクト（avatar/Effects.tsx）の見比べ。本番では気分の表（MOODS の
-        glow / motes / gloom）で決まるが、ここでは**気分と別に**出し入れできる。
-        気分を選ぶと、その気分の本番どおりの組み合わせに戻る。
-        ステージはいまのものを使う（たまごには出ないので、たまごなら幼体で見せる）
-      */}
-      <section className="card debug-avatar debug-effects" aria-label="エフェクト">
-        <div>
-          <h2>エフェクト</h2>
-          <div className="tools">
-            {EFFECTS.map(({ id, name }) => (
-              <button
-                key={id}
-                className={effects[id] ? 'btn' : 'btn sec'}
-                aria-pressed={effects[id]}
-                onClick={() => setEffects((e) => ({ ...e, [id]: !e[id] }))}
-              >
-                {name}
-              </button>
-            ))}
-            <button className="btn ghost" onClick={() => setEffects(NO_EFFECTS)}>全部オフ</button>
-          </div>
-          <div className="debug-row">
-            <label htmlFor="debug-effect-mood">気分</label>
-            <select
-              id="debug-effect-mood"
-              value={previewMood}
-              onChange={(e) => pickPreviewMood(e.target.value as MoodId)}
-            >
-              {MOODS.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}（{EFFECTS.filter(({ id }) => m[id]).map(({ name }) => name).join('＋') || 'なし'}）
-                </option>
-              ))}
-            </select>
-          </div>
-        </div>
-        <div className="debug-effects-preview">
-          <Avatar
-            stage={Math.max(1, stage.id)}
-            hue={state.hue}
-            mood={MOODS.find((m) => m.id === previewMood) ?? null}
-            effects={effects}
-          />
-        </div>
-      </section>
-
       <div className="debug-columns">
         {/*
           気分もステージも、生の日付ではなく cycleIndex() で番号に直してからしか
@@ -375,7 +320,65 @@ export default function DebugPage({
 
           {goals.length > 0 && (
             <ul className="debug-goals">
-              {goals.map((g) => (
+              {goals.map((g) => editing?.id === g.id ? (
+                <li key={g.id} className="debug-goal-edit">
+                  <span className="debug-goal-id">#{g.id}</span>
+                  <form
+                    onSubmit={(e) => {
+                      e.preventDefault()
+                      const { id, edit } = editing
+                      run(async () => {
+                        const failed = await updateGoal(id, edit)
+                        if (!failed) setEditing(null)
+                        return failed
+                      })
+                    }}
+                  >
+                    <div className="debug-row">
+                      <label htmlFor="debug-goal-text">目標</label>
+                      <input
+                        id="debug-goal-text"
+                        type="text"
+                        required
+                        value={editing.edit.goal}
+                        onChange={(e) => change({ goal: e.target.value })}
+                      />
+                    </div>
+                    <div className="debug-row">
+                      <label htmlFor="debug-goal-start">起点</label>
+                      <input
+                        id="debug-goal-start"
+                        type="date"
+                        required
+                        value={editing.edit.startedAt}
+                        onChange={(e) => change({ startedAt: e.target.value })}
+                      />
+                      <label htmlFor="debug-goal-deadline">期限</label>
+                      <input
+                        id="debug-goal-deadline"
+                        type="date"
+                        required
+                        value={editing.edit.deadline}
+                        onChange={(e) => change({ deadline: e.target.value })}
+                      />
+                      <label htmlFor="debug-goal-cycle">頻度</label>
+                      <select
+                        id="debug-goal-cycle"
+                        value={editing.edit.cycleDays}
+                        onChange={(e) => change({ cycleDays: Number(e.target.value) })}
+                      >
+                        {CYCLES.map((c) => <option key={c.days} value={c.days}>{c.label}</option>)}
+                      </select>
+                    </div>
+                    <div className="tools">
+                      <button className="btn" type="submit" disabled={working}>保存</button>
+                      <button className="btn ghost" type="button" disabled={working} onClick={() => setEditing(null)}>
+                        やめる
+                      </button>
+                    </div>
+                  </form>
+                </li>
+              ) : (
                 <li key={g.id} className={g.id === goalId ? 'now' : undefined}>
                   <span className="debug-goal-id">#{g.id}</span>
                   <span className="debug-goal-text" title={g.goal}>{g.goal || '（無題）'}</span>
@@ -383,6 +386,17 @@ export default function DebugPage({
                     起点 {g.startedAt} · {cycleLabel(g.cycleDays)} · 記録 {g.records}件
                     {g.id === goalId ? ' · いまの目標' : ''}
                   </span>
+                  <button
+                    className="btn ghost"
+                    aria-label={`目標 #${g.id} を編集する`}
+                    disabled={working}
+                    onClick={() => setEditing({
+                      id: g.id,
+                      edit: { goal: g.goal, startedAt: g.startedAt, cycleDays: g.cycleDays, deadline: g.deadline },
+                    })}
+                  >
+                    編集
+                  </button>
                   <button
                     className="btn ghost"
                     aria-label={`目標 #${g.id} を消す`}
@@ -400,7 +414,7 @@ export default function DebugPage({
             </ul>
           )}
 
-          {/* 1件ずつ消すのは一覧の各行に置いた。ここは一括のものだけ */}
+          {/* 1件ずつの編集・削除は一覧の各行に置いた。ここは一括のものだけ */}
           <div className="tools">
             <button
               className="btn ghost"
@@ -442,17 +456,4 @@ export default function DebugPage({
     </div>
     </div>
   )
-}
-
-/** デバッグ画面で出し入れするエフェクト。並びはボタンの並び */
-const EFFECTS: { id: keyof Effects; name: string }[] = [
-  { id: 'glow', name: '輝き' },
-  { id: 'motes', name: '光の粒' },
-  { id: 'gloom', name: 'どんより' },
-]
-
-/** その気分の本番どおりのエフェクト */
-function effectsOf(id: MoodId): Effects {
-  const m = MOODS.find((x) => x.id === id)
-  return m ? { glow: m.glow, motes: m.motes, gloom: m.gloom } : NO_EFFECTS
 }

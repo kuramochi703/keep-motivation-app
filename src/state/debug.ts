@@ -77,6 +77,30 @@ export async function clearRecords(goalId: number): Promise<string | null> {
   return error ? messageOf(error, '記録を消せませんでした。') : null
 }
 
+/** 目標の中で、デバッグ画面から書き換えられる列 */
+export type GoalEdit = Pick<GoalRow, 'goal' | 'startedAt' | 'cycleDays' | 'deadline'>
+
+/**
+ * 目標の中身を書き換える。本番には編集の導線が無い（期限の延長だけ）ので、ここに置く。
+ *
+ * **起点とサイクルを変えると、記録の数え方ごと変わる。** 気分もステージも
+ * 起点からのサイクル番号で数える（logic.ts の cycleIndex）ので、記録は同じでも
+ * 姿が変わりうる。
+ */
+export async function updateGoal(goalId: number, edit: GoalEdit): Promise<string | null> {
+  const { error } = await supabase
+    .from('goals')
+    .update({
+      goal: edit.goal,
+      started_at: edit.startedAt,
+      cycle_days: edit.cycleDays,
+      deadline: edit.deadline,
+    })
+    .eq('id', goalId)
+
+  return error ? messageOf(error, `目標 #${goalId} を書き換えられませんでした。`) : null
+}
+
 /**
  * 目標を1つ、まるごと消す。
  *
