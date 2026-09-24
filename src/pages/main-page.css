@@ -146,6 +146,14 @@
 .stage-toggler.running{background:#3a2a1a;box-shadow:0 10px 20px -12px rgba(40,25,10,.8)}
 .stage-toggler:hover{filter:brightness(1.07)}
 .stage-toggler:active{transform:scale(.96)}
+/* 今日つけ終わった。押せないが、薄くせずに「できた」ことを見せる */
+.stage-toggler.done{cursor:default;color:hsl(var(--h) 55% 30%);background:hsl(var(--h) 60% 90%);
+  box-shadow:0 0 0 1.5px hsl(var(--h) 50% 70%) inset}
+.stage-toggler.done:hover{filter:none}
+.stage-toggler.done:active{transform:none}
+/* 時間を過ぎた。押してほしいので、走っている間の黒から色付きに戻して目立たせる */
+.stage-toggler.finish{animation:finish-pulse 1.6s ease-in-out infinite}
+@keyframes finish-pulse{0%,100%{box-shadow:0 0 0 0 hsl(var(--h) 60% 50% / .55)}50%{box-shadow:0 0 0 7px hsl(var(--h) 60% 50% / 0)}}
 .stage-toggler:focus-visible{outline:2px solid hsl(var(--h) 50% 40%);outline-offset:2px}
 .stage-record{margin:-2px 0 0;padding:2px 6px;border:none;background:none;cursor:pointer;
   font:inherit;font-family:var(--round);font-size:12px;font-weight:700;color:#8a7458;
