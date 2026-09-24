@@ -24,7 +24,10 @@
 .dashboard .stage-goal .current-goal-card{margin:0 0 10px;padding:12px 14px;background:none;border:0;box-shadow:none}
 .dashboard .stage-goal .current-goal-card .goal-text{font-size:26px}
 .stage-goal .deadline{flex-wrap:wrap;padding:12px 14px;gap:4px 12px}
-.dashboard .stage-goal .deadline{background:none;border:0;box-shadow:none}
+/* 期限は .hud-card。.deadline の緑の面は後ろに書いてあって勝つので、ここで HUD の面に戻す。
+   残り3日を切ったら（.warn）赤みだけ足す */
+.dashboard .stage-goal .deadline{background:rgba(255,252,246,.72);border-color:rgba(255,255,255,.85);border-radius:22px}
+.dashboard .stage-goal .deadline.warn{background:rgba(253,238,233,.8);border-color:rgba(243,214,202,.9)}
 .stage-goal .deadline-label small{font-size:16px}
 .stage-goal .deadline-label span{font-size:30px}
 .stage-goal .deadline-days{font-size:18px}

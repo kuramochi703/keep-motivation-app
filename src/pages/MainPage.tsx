@@ -246,7 +246,8 @@ export default function MainPage({
               </span>
             </div>
 
-            <div className={`deadline${deadlineDays !== null && deadlineDays <= 3 ? ' warn' : ''}`}>
+            {/* 期限は HUD と同じすりガラスのカードに乗せる。部屋の絵の上に直接だと数字が柄に負ける */}
+            <div className={`hud-card deadline${deadlineDays !== null && deadlineDays <= 3 ? ' warn' : ''}`}>
               <div className="deadline-label">
                 <small>目標の期限は</small>
                 <span>{deadlineText}</span>
