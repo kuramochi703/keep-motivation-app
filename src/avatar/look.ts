@@ -28,13 +28,14 @@ export type EyeShape =
 /**
  * 座り込むときに流すクリップ。**落ち込みの2段は、色ではほとんど読めない。**
  * 彩度はもう下限近く、明度は下げない決まりなので、差は姿勢で見せる。
+ * （いまはしずみこみを止めているので、`Sink` は流れない）
  */
 export type SitClip =
   /** ひと休み。背中側へ倒れてくつろぐ。元気なときも流す */
   | 'Rest'
   /** 3サイクル放置。うずくまってうなだれる */
   | 'Slump'
-  /** 4サイクル放置。ぺたんと伏せて、ほとんど動かない */
+  /** 4サイクル放置（しずみこみ。**いまは停止中**）。ぺたんと伏せて、ほとんど動かない */
   | 'Sink'
 
 export type Look = {
@@ -63,6 +64,12 @@ export type Look = {
   liveliness: number
   /** 座り込むときに流すクリップ。気分で変わる */
   sit: SitClip
+  /** 歩かず・跳ばず、座って休むだけにする（うつむき） */
+  restOnly: boolean
+  /** 叩いたときに反応するか（ぐったりでは反応しない） */
+  pokeable: boolean
+  /** 歩き回る合間に跳ぶか（すこし元気は跳ばない） */
+  jumps: boolean
 
   /** 翼。モデルの Wing_L / Wing_R を出し入れする */
   wings: boolean
@@ -168,10 +175,13 @@ export function lookOf(stage: number, hue: number, mood: Mood | null): Look {
     beakColor: hsl(30, 24 + sat * 0.5, 66),
 
     eye: !isEgg && mood ? EYE_OF[mood.id] : 'open',
-    // 元気なほど背筋が伸びる。いきいき（0.9）以上で完全にまっすぐ
-    droop: unit((0.6 - liveliness) / 0.6),
+    // 元気がないほど前かがみになる。**元気の段（`upright`）はまっすぐ**
+    droop: mood?.upright ? 0 : unit((0.6 - liveliness) / 0.6),
     liveliness,
     sit: !isEgg && mood ? SIT_OF[mood.id] : 'Rest',
+    restOnly: !isEgg && !!mood?.restOnly,
+    pokeable: isEgg || (mood?.pokeable ?? true),
+    jumps: !isEgg && !!mood?.jumps,
 
     wings: stage >= 2,
     // とさかは常に出す。ステージ2で「生える」のではなく、そこから立派になる
