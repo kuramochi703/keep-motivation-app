@@ -205,6 +205,31 @@ export default function MainPage({
                   <small>{cycleLabel(state.cycleDays)}</small>
                 </span>
               </div>
+              {/* 進化ゲージ。下中央だとアバターにかぶって見づらいので、名前・連続日数の下に小さく置く。
+                  **「あと○回」ではなく `x / y`**。ステージ2は窓の条件なので、
+                  「あと○回」はサボるほど増えるうえ、その回数では届かない */}
+              <div className="hud-card meter">
+                <div className="row">
+                  <span>
+                    <small className="hud-label">{next ? 'NEXT' : 'COMPLETE'}</small>
+                    {next ? next.stage.name : `${stage.name}（最終）`}
+                  </span>
+                  <b>
+                    {next ? next.have : '★'}
+                    <small>{next ? `/${next.need}` : ''}</small>
+                  </b>
+                </div>
+                <div className="gauge">
+                  <i style={{ width: `${next ? Math.min(100, (next.have / next.need) * 100) : 100}%` }} />
+                </div>
+                <p className="meter-note">
+                  {next
+                    ? next.kind === 'run'
+                      ? `連続 ${next.have} / ${next.need} サイクル`
+                      : `直近${next.window}サイクルで ${next.have} / ${next.need}`
+                    : 'ここまで育てきりました'}
+                </p>
+              </div>
             </div>
 
             {celebrating && (
@@ -225,32 +250,6 @@ export default function MainPage({
                 fill
                 interactive
               />
-            </div>
-
-            {/* 活力ゲージだった場所を、そのまま進化ゲージに作り替えている。
-                **「あと○回」ではなく `x / y`**。ステージ2は窓の条件なので、
-                「あと○回」はサボるほど増えるうえ、その回数では届かない */}
-            <div className="hud-card meter">
-              <div className="row">
-                <span>
-                  <small className="hud-label">{next ? 'NEXT' : 'COMPLETE'}</small>
-                  {next ? next.stage.name : `${stage.name}（最終）`}
-                </span>
-                <b>
-                  {next ? next.have : '★'}
-                  <small>{next ? `/${next.need}` : ''}</small>
-                </b>
-              </div>
-              <div className="gauge">
-                <i style={{ width: `${next ? Math.min(100, (next.have / next.need) * 100) : 100}%` }} />
-              </div>
-              <p className="meter-note">
-                {next
-                  ? next.kind === 'run'
-                    ? `連続 ${next.have} / ${next.need} サイクル`
-                    : `直近${next.window}サイクルで ${next.have} / ${next.need}`
-                  : 'ここまで育てきりました'}
-              </p>
             </div>
 
             <div className={`hud-card stage-timer${running ? ' running' : ''}`} aria-label="5分タイマー">
