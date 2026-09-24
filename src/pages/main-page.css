@@ -67,11 +67,13 @@
 .dashboard .meter-note{margin-top:6px;font-family:var(--round);font-size:10.5px;font-weight:500;color:#8a7458}
 
 /* 目標と期限（左、HUD の列の下）。左端を .bg-top にそろえ、同じ .hud-card・同じ字体で組む */
+/* **ここに overflow を付けない。** 付けるとカードの影が枠の四角で切れて、裏にもやが出る。
+   長い目標は枠で切らず、本文の行数（-webkit-line-clamp）で抑える */
 .stage-goal{position:absolute;left:28px;top:50%;transform:translateY(-35%);z-index:1;width:min(300px,30%);
-  max-height:50%;overflow:auto;display:flex;flex-direction:column;gap:10px;text-align:left}
+  display:flex;flex-direction:column;gap:10px;text-align:left}
 .goal-card,.deadline-card{display:flex;flex-direction:column;gap:7px;padding:12px 16px;border-radius:18px}
 .goal-card-text{margin:0;font-family:var(--round);font-size:18px;font-weight:800;line-height:1.45;color:#3a2a1a;
-  overflow-wrap:anywhere}
+  overflow-wrap:anywhere;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:3;overflow:hidden}
 .deadline-row{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:2px 12px}
 .deadline-date{font-family:var(--round);font-size:15px;font-weight:800;color:#3a2a1a}
 .deadline-days{margin:0;display:flex;align-items:baseline;gap:3px;font-family:var(--round);font-size:12.5px;
@@ -182,7 +184,7 @@
   .dashboard .meter{width:100%;padding:8px 12px;border-radius:16px}
   .dashboard .meter .row b{font-size:19px}
   /* 狭い画面では床のあたりにアバターが立つので、左上の HUD の列のすぐ下に続けて置く */
-  .stage-goal{left:12px;width:calc(100% - 164px);top:272px;transform:none;max-height:none;gap:8px}
+  .stage-goal{left:12px;width:calc(100% - 164px);top:272px;transform:none;gap:8px}
   .goal-card,.deadline-card{padding:8px 12px;border-radius:16px;gap:5px}
   .goal-card-text{font-size:15px}
   .deadline-date{font-size:13.5px}
