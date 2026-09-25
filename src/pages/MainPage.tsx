@@ -93,8 +93,8 @@ type Props = {
   /** 「完了」。ここで今日の記録が付く */
   onFinishTimer: () => void
   onNewGoal: () => void
-  /** 目標の修正画面を開く。デバッグ画面には無い */
-  onEditGoal?: () => void
+  /** 目標の修正画面を開く */
+  onEditGoal: () => void
   onExtend: () => void
   /** 進化の演出を流し終わったら呼ぶ。`avatars.seen_stage` を進める */
   onStageSeen: (stage: number) => void
@@ -259,12 +259,10 @@ export default function MainPage({
               <div className="hud-card goal-hud">
                 <div className="goal-hud-head">
                   <small className="hud-label">GOAL</small>
-                  {onEditGoal && (
-                    <button type="button" className="goal-edit" onClick={onEditGoal}>
-                      <span aria-hidden="true" className="goal-edit-icon"><PencilIcon /></span>
-                      修正
-                    </button>
-                  )}
+                  <button type="button" className="goal-edit" onClick={onEditGoal}>
+                    <span aria-hidden="true" className="goal-edit-icon"><PencilIcon /></span>
+                    修正
+                  </button>
                 </div>
                 <p className="goal-hud-text" title={state.goal}>{state.goal}</p>
               </div>

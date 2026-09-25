@@ -43,7 +43,7 @@ async function render(expired = false) {
   await act(async () => root.render(createElement(MainPage, {
     state, goals: [state, goal(2)], currentGoalId: 1, onSelectGoal: select,
     session: 300, elapsed: 0, running: false, reached: false, onToggleTimer: vi.fn(), onFinishTimer: vi.fn(),
-    onNewGoal: newGoal, onExtend: vi.fn(), onStageSeen: vi.fn(),
+    onNewGoal: newGoal, onEditGoal: vi.fn(), onExtend: vi.fn(), onStageSeen: vi.fn(),
   })))
 }
 

@@ -46,7 +46,7 @@ export default function App() {
               session={session} elapsed={elapsed} running={running} reached={reached} onRecord={recordOnly}
               onSetDayOffset={setDayOffset} onReload={reload} onNewGoal={newGoal}
               app={{ email: user.email ?? '', onSignOut: signOut, goals, currentGoalId, onSelectGoal: selectGoal,
-                onToggleTimer: toggleTimer, onFinishTimer: finishTimer, onExtend: extendDeadline, onStageSeen: markStageSeen }} />
+                onToggleTimer: toggleTimer, onFinishTimer: finishTimer, onEditGoal: editGoal, onExtend: extendDeadline, onStageSeen: markStageSeen }} />
           </Suspense>
         ) : screen === 'top' ? (
           <TopPage onStart={completeTutorial} />
