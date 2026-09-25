@@ -167,6 +167,21 @@
   background: #fffaf2;
 }
 
+.setup .seg:disabled {
+  cursor: default;
+}
+
+/* 修正画面ではペースを変えられない。選んでいないものは薄くする */
+.setup .seg:disabled:not(.active) {
+  opacity: .5;
+}
+
+.setup .seg:disabled:hover:not(.active) {
+  color: var(--text-warm);
+  border-color: var(--line-warm);
+  background: #fff;
+}
+
 .setup .preset.active,
 .setup .seg.active {
   color: #fff6e6;
