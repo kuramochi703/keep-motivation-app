@@ -127,6 +127,27 @@ describe('login and tutorial flow', () => {
     expect(renders.filter((entry) => entry.loaded).map((entry) => entry.screen)).not.toContain('setup')
   })
 
+  it('returns from the new goal page to the goal that was open', async () => {
+    data.auth.tutorialCompleted = true
+    data.goal.hasStarted = true
+    data.goal.hasGoalHistory = true
+    data.goal.state.goalId = 3
+    const goal = data.goal as typeof data.goal & { currentGoalId: number | null; selectGoal: (id: number) => void }
+    goal.currentGoalId = 3
+    goal.selectGoal = vi.fn()
+    await render()
+    expect(app.cancelNewGoal).toBeNull()
+
+    await act(async () => { app.newGoal() })
+    expect(app.screen).toBe('setup')
+    expect(app.cancelNewGoal).not.toBeNull()
+
+    await act(async () => { app.cancelNewGoal!() })
+    expect(goal.selectGoal).toHaveBeenCalledExactlyOnceWith(3)
+    expect(app.screen).toBe('main')
+    expect(app.cancelNewGoal).toBeNull()
+  })
+
   it('keeps loading failures out of the tutorial and exposes retry', async () => {
     data.goal.loaded = false
     data.goal.loadError = '読み込みに失敗しました'

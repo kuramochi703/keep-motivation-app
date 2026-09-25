@@ -210,3 +210,34 @@
     padding: 16px 0;
   }
 }
+
+/* 前の目標へ戻る。上のバーのログアウトと同じ白い丸ボタン */
+.setup-back {
+  display: flex;
+  width: fit-content;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 8px;
+  padding: 8px 16px 8px 12px;
+  border: 1px solid rgba(92, 64, 28, .18);
+  border-radius: 99px;
+  background: #fff;
+  cursor: pointer;
+  font: inherit;
+  font-family: var(--round);
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text-warm);
+  transition: .15s;
+}
+
+.setup-back:hover {
+  background: #fbf4e8;
+  border-color: rgba(92, 64, 28, .3);
+  color: var(--ink-warm);
+}
+
+.setup-back:focus-visible {
+  outline: 2px solid #8a7458;
+  outline-offset: 2px;
+}

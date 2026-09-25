@@ -26,6 +26,11 @@ export function useApp() {
   // useGoalState が知るのは uuid 1つだけ。誰かはここで渡す
   const goal = useGoalState(userId)
   const [routedUserId, setRoutedUserId] = useState<string | null>(null)
+  /**
+   * 「新しい目標を作る」を押す前に開いていた目標。作成画面の「戻る」でここへ帰る。
+   * 初めての目標づくりには戻り先が無いので null のまま（戻るボタンも出さない）
+   */
+  const [returnGoalId, setReturnGoalId] = useState<number | null>(null)
   const currentUserId = useRef(userId)
   currentUserId.current = userId
   // 以前に目標を設定したアカウントも、初回の案内は完了済みとして扱う。
@@ -59,6 +64,7 @@ export function useApp() {
 
   const start = async (input: SetupInput) => {
     if (await goal.start(input) && currentUserId.current === userId) {
+      setReturnGoalId(null)
       setScreen('main')
     }
   }
@@ -97,13 +103,22 @@ export function useApp() {
 
   const newGoal = () => {
     timer.reset()
+    setReturnGoalId(goal.currentGoalId)
     goal.newGoal()
     setScreen('setup')
+  }
+
+  /** 作成画面の「戻る」。**まだ何も作っていない**ので、前に開いていた目標を開き直すだけ */
+  const cancelNewGoal = () => {
+    if (returnGoalId === null) return
+    setReturnGoalId(null)
+    selectGoal(returnGoalId)
   }
 
   /** ログアウト。目標の状態は user が null になった useGoalState 側で戻る */
   const signOut = async () => {
     timer.reset()
+    setReturnGoalId(null)
     setScreen('top')
     await auth.signOut()
   }
@@ -131,6 +146,7 @@ export function useApp() {
     extendDeadline: goal.extendDeadline,
     markStageSeen: goal.markStageSeen,
     newGoal,
+    cancelNewGoal: returnGoalId !== null ? cancelNewGoal : null,
     session,
     elapsed: timer.elapsed,
     running: timer.running,

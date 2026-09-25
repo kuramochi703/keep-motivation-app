@@ -15,6 +15,8 @@ import {
 type Props = {
   state: State
   onStart: (input: SetupInput) => void
+  /** 前の目標へ戻る。初めての目標づくりでは戻り先が無いので null */
+  onBack: (() => void) | null
 }
 
 const PRESETS = [
@@ -27,7 +29,7 @@ const PRESETS = [
 /** 見本のアバター。**気分は「いきいき」で固定**。色で選べるように一番のびのびした姿を出す */
 const SAMPLE_MOOD = MOODS.find((m) => m.id === 'lively') ?? null
 
-export default function SetupPage({ state, onStart }: Props) {
+export default function SetupPage({ state, onStart, onBack }: Props) {
   const [draft, setDraft] = useState(state.goal)
   const [deadline, setDeadline] = useState(state.deadline ?? '')
   const [cycleDays, setCycleDays] = useState(state.cycleDays || 1)
@@ -49,6 +51,15 @@ export default function SetupPage({ state, onStart }: Props) {
 
   return (
     <div className="wrap setup">
+      {onBack && (
+        <button type="button" className="setup-back" onClick={onBack}>
+          <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor"
+            strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M15 5l-7 7 7 7" />
+          </svg>
+          ダッシュボードに戻る
+        </button>
+      )}
       <header className="setup-head">
         <small className="setup-kicker">NEW GOAL</small>
         <h1>目標をつくる</h1>

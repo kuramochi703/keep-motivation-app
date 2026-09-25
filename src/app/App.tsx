@@ -11,7 +11,7 @@ const DebugPage = import.meta.env.DEV
   : null
 
 export default function App() {
-  const { user, ready, signIn, signOut, state, goals, currentGoalId, selectGoal, setDayOffset, reload, loaded, loadError, retryLoad, hasStarted, completeTutorial, screen, start, extendDeadline, markStageSeen, newGoal, session, elapsed, running, reached, toggleTimer, finishTimer, recordOnly } = useApp()
+  const { user, ready, signIn, signOut, state, goals, currentGoalId, selectGoal, setDayOffset, reload, loaded, loadError, retryLoad, hasStarted, completeTutorial, screen, start, extendDeadline, markStageSeen, newGoal, cancelNewGoal, session, elapsed, running, reached, toggleTimer, finishTimer, recordOnly } = useApp()
 
   // ゲートは3段。セッションの確認 → ログイン → 目標の読み込み（AUTH_PLAN 4章）
   if (!ready) {
@@ -51,7 +51,7 @@ export default function App() {
         ) : screen === 'top' ? (
           <TopPage onStart={completeTutorial} />
         ) : screen === 'setup' ? (
-          <SetupPage state={state} onStart={start} />
+          <SetupPage state={state} onStart={start} onBack={cancelNewGoal} />
         ) : (
           <MainPage
             state={state}
