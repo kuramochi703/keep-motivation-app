@@ -23,35 +23,50 @@ export type Stage = {
   name: string
   /** そのステージで見た目に何が増えるか。分岐の実体は look.ts / Chick.tsx */
   gains: string
+  /** 進化の演出で本人が言うセリフ（MainPage.tsx の吹き出し） */
+  says: string
   /** このステージに上がる条件。たまご（0）は初期状態なので持たない */
   to?: StageCondition
 }
 
 /**
+ * 完全体（ステージ3）を出すか。**いまは OFF で、成体が最終ステージ。**
+ * 表・見た目（look.ts のマフラーと冠）・テストは残してあるので、
+ * 戻すときは true にするだけ。
+ */
+export const FINAL_FORM = false
+
+/**
  * 進化の条件はこの表1か所に閉じ込める。**きつすぎたら数字だけ動かす。**
  * （ステージ3の14サイクル連続は、週1回の人だと98日かかる）
  */
-export const STAGES: Stage[] = [
-  { id: 0, name: 'たまご', gains: '殻のまま。気分を持たない1状態だけ' },
+const ALL_STAGES: Stage[] = [
+  { id: 0, name: 'たまご', gains: '殻のまま。気分を持たない1状態だけ', says: '' },
   {
     id: 1,
     name: '幼体',
     gains: 'からだ・あし・くちばし・小さいとさか',
+    says: 'これからいっしょにがんばろうね！',
     to: { kind: 'run', need: 2 },
   },
   {
     id: 2,
     name: '成体',
     gains: 'つばさ ＋ 一回り大きく ＋ とさかが立派に',
+    says: 'みて、つばさが生えたよ！続けてくれてありがとう',
     to: { kind: 'window', window: 5, need: 4 },
   },
   {
     id: 3,
     name: '完全体',
     gains: 'マフラー ＋ 冠',
+    says: 'マフラーと冠、にあってる？ここまで来られたのは、きみのおかげだよ',
     to: { kind: 'run', need: 14 },
   },
 ]
+
+/** 実際に使うステージ。`FINAL_FORM` が false の間は完全体を外す */
+export const STAGES: Stage[] = FINAL_FORM ? ALL_STAGES : ALL_STAGES.filter((s) => s.id !== 3)
 
 /** 次のステージまでの進捗。`あと○` ではなく `have / need` で出す */
 export type NextGoal = {

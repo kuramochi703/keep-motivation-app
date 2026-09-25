@@ -216,12 +216,22 @@
   .stage-record{font-size:11px}
 }
 /* 進化の演出。**条件を満たした瞬間に1回だけ**流れる（seen_stage で管理） */
-.dashboard .evolve-banner{position:absolute;top:18%;left:50%;transform:translateX(-50%);z-index:3;
-  display:flex;flex-direction:column;align-items:center;gap:4px;padding:12px 22px;border-radius:18px;
-  background:#fffffff2;box-shadow:0 10px 30px #1b2a4a1f;text-align:center;
+/* アバターの頭の上に出す（しっぽがアバターを指す位置） */
+.dashboard .evolve-banner{position:absolute;bottom:50%;left:50%;transform:translateX(-50%);z-index:3;
+  width:min(360px,calc(100% - 32px));padding:18px 20px 16px;border-radius:22px;
+  background:#fffffff5;border:2px solid hsl(var(--h) 55% 72%);box-shadow:0 12px 32px #1b2a4a24;
   animation:evolve-pop .5s cubic-bezier(.2,1.4,.4,1)}
-.dashboard .evolve-banner b{font-size:17px;color:var(--ink)}
-.dashboard .evolve-banner span{font-size:12px;color:var(--muted)}
+/* 下のアバターを指すしっぽ。枠線ぶんを外側の三角、塗りを内側の三角で重ねる */
+.dashboard .evolve-banner::before,.dashboard .evolve-banner::after{content:'';position:absolute;left:50%;
+  transform:translateX(-50%);border-style:solid;border-color:transparent}
+.dashboard .evolve-banner::before{bottom:-15px;border-width:15px 12px 0;border-top-color:hsl(var(--h) 55% 72%)}
+.dashboard .evolve-banner::after{bottom:-11px;border-width:12px 10px 0;border-top-color:#fff}
+/* 名前札。吹き出しの左上の枠にかけて、しゃべっているのが誰かを出す */
+.dashboard .evolve-name{position:absolute;top:-13px;left:16px;padding:3px 12px;border-radius:999px;
+  background:hsl(var(--h) 55% 50%);color:#fff;font-size:12.5px;letter-spacing:.04em}
+.dashboard .evolve-event{display:block;margin-bottom:6px;font-size:16px;font-weight:800;letter-spacing:.06em;
+  color:hsl(var(--h) 50% 42%)}
+.dashboard .evolve-line{margin:0;font-size:17px;line-height:1.6;color:var(--ink);word-break:auto-phrase;text-wrap:pretty}
 /* 進化中の光は、キャンバスの上に重ねた枠の内側の光で出す（filter だと部屋の輪郭まで光る → .stage-avatar） */
 .dashboard .stage-avatar.evolving::after{content:'';position:absolute;inset:0;pointer-events:none;
   animation:evolve-glow 1.2s ease-in-out infinite}

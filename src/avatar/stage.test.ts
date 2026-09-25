@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { key, shift } from '../state/logic'
-import { evolutionOf, nextGoalOf } from './stage'
+import { evolutionOf, FINAL_FORM, nextGoalOf } from './stage'
 
 /** 今日から n 日前の日付キー */
 const ago = (n: number) => key(shift(new Date(), -n))
@@ -41,9 +41,14 @@ describe('evolutionOf()', () => {
     expect(stage(30, [30, 29])).toBe(1)
   })
 
-  it('14サイクル連続で 完全体', () => {
+  it.runIf(FINAL_FORM)('14サイクル連続で 完全体', () => {
     const days = Array.from({ length: 14 }, (_, i) => 13 - i)
     expect(stage(13, days)).toBe(3)
+  })
+
+  it.skipIf(FINAL_FORM)('完全体が OFF の間は、14サイクル連続でも 成体どまり', () => {
+    const days = Array.from({ length: 14 }, (_, i) => 13 - i)
+    expect(stage(13, days)).toBe(2)
   })
 
   it('週1回（7日サイクル）でも、2回続ければ 幼体', () => {
@@ -64,8 +69,12 @@ describe('nextGoalOf()', () => {
     expect(next(1, [1, 0])).toMatchObject({ kind: 'window', have: 2, need: 4, window: 5 })
   })
 
-  it('成体の次は「連続 x / 14」', () => {
+  it.runIf(FINAL_FORM)('成体の次は「連続 x / 14」', () => {
     expect(next(4, [4, 3, 2, 0])).toMatchObject({ kind: 'run', need: 14 })
+  })
+
+  it.skipIf(FINAL_FORM)('完全体が OFF の間は、成体が最終ステージ（null）', () => {
+    expect(next(4, [4, 3, 2, 0])).toBeNull()
   })
 
   it('最終ステージなら null', () => {
