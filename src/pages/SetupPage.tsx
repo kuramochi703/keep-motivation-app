@@ -71,6 +71,9 @@ export default function SetupPage({ state, onStart, onBack }: Props) {
 
       {/* 選んだアバターの色をカードに持たせる。始めるボタンや入力欄の枠がその色になる */}
       <section className="card setup-card" style={{ '--h': hue } as CSSProperties}>
+        {/* 項目は「目標」と「アバター」の2つに分ける。何を決めている欄かを見出しで先に伝える */}
+        <section className="setup-group" aria-labelledby="setup-group-goal">
+        <h2 className="setup-group-title" id="setup-group-goal">目標</h2>
         <div className="setup-block">
           <label className="setup-label" htmlFor="goal-input">
             目標はどうする？ <em>必須</em>
@@ -139,10 +142,13 @@ export default function SetupPage({ state, onStart, onBack }: Props) {
             <b>あとから変えられません。</b>変えたくなったら、新しい目標をたまごから始めます。
           </p>
         </div>
+        </section>
 
+        <section className="setup-group" aria-labelledby="setup-group-avatar">
+        <h2 className="setup-group-title" id="setup-group-avatar">アバター</h2>
         <div className="setup-block">
           <label className="setup-label">
-            アバターの色 <em>必須</em>
+            色 <em>必須</em>
           </label>
           {/* 見本の3D は1体だけ。色は CSS の丸で選ぶ。
               選択肢ごとに WebGL キャンバスを並べると、端末によっては
@@ -170,7 +176,7 @@ export default function SetupPage({ state, onStart, onBack }: Props) {
 
         <div className="setup-block">
           <label className="setup-label" htmlFor="name-input">
-            アバターの名前 <em>必須</em>
+            名前 <em>必須</em>
           </label>
           <input
             className="setup-input"
@@ -182,6 +188,7 @@ export default function SetupPage({ state, onStart, onBack }: Props) {
             onChange={(e) => setName(e.target.value)}
           />
         </div>
+        </section>
 
         <button type="button" className="btn top-btn" onClick={submit} disabled={!ready}>
           この目標で始める
