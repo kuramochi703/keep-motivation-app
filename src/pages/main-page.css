@@ -99,18 +99,18 @@
 .menu-btn:focus-visible{outline:2px solid hsl(var(--h) 50% 40%);outline-offset:2px}
 
 /* オーバーレイパネル */
-.dash-panel{position:absolute;top:0;right:124px;bottom:0;z-index:4;width:min(438px,calc(100% - 132px));
+.dash-panel{position:absolute;top:0;right:124px;max-height:100%;z-index:4;width:min(438px,calc(100% - 132px));
   background:#fff;border-radius:28px;box-shadow:-22px 0 46px -26px #1d3a4e40;
-  padding:26px 26px 28px;overflow:auto;
+  padding:20px 24px 18px;overflow:auto;
   transform:translateX(calc(100% + 16px));opacity:0;pointer-events:none;
   transition:transform .3s cubic-bezier(.2,.75,.25,1),opacity .2s ease}
 .dash-panel.open{transform:none;opacity:1;pointer-events:auto}
 .panel-close{position:absolute;top:16px;right:16px;z-index:2;cursor:pointer;
-  width:34px;height:34px;border:none;border-radius:50%;background:#f1f5f9;color:#5a6c84;
+  width:34px;height:34px;border:none;border-radius:50%;background:#f7efe3;color:#8a7458;
   font-size:15px;line-height:1}
-.panel-close:hover{background:#e6edf4}
+.panel-close:hover{background:#efe3d2}
 .panel-close:focus-visible{outline:2px solid #518d94;outline-offset:2px}
-.dash-panel h2{margin:0 0 4px;font-size:20px;letter-spacing:-.02em}
+.dash-panel h2{margin:0 0 8px;font-family:var(--round);font-size:20px;font-weight:800;color:#3a2a1a}
 .panel-body{min-width:0}
 
 /* パネル内の共有部品調整 */
@@ -162,20 +162,13 @@
 .stage-record:focus-visible{outline:2px solid hsl(var(--h) 50% 40%);outline-offset:2px;border-radius:6px}
 @keyframes timer-blink{0%,100%{opacity:1}50%{opacity:.25}}
 
-/* パネル内で崩れないように幅を固定 */
-.dash-panel .activity-summary{grid-template-columns:repeat(3,minmax(0,1fr))}
-.dash-panel .activity-summary aside{grid-column:1/-1}
-.dash-panel .activity-summary>div{gap:6px;padding:9px}
-.dash-panel .week-layout{grid-template-columns:minmax(0,1fr)}
-.dash-panel .week-legend{flex-direction:row;flex-wrap:wrap;gap:8px 14px;box-shadow:none}
-
 /* カレンダー（パネル内） */
 .dashboard .cal{margin-top:10px}
-.dashboard .cal h3{font-size:17px;color:var(--ink)}
+
 
 @media(min-width:1600px){.bg-stage{min-height:clamp(500px,66vh,800px)}}
 @media(max-width:1320px){
-  .dash-panel{width:min(396px,calc(100% - 132px));padding:22px}
+  .dash-panel{width:min(396px,calc(100% - 132px));padding:20px 22px 16px}
 }
 @media(max-width:760px){
   .dashboard-shell .content .dashboard{padding:12px 14px 16px}
@@ -201,7 +194,7 @@
   .menu-btn{flex-direction:row;gap:8px;min-width:0;padding:7px 14px 7px 7px;border-radius:16px}
   .menu-icon{width:30px;height:30px;font-size:16px;border-radius:10px}
   .menu-btn:hover{transform:none}
-  .dash-panel{top:auto;bottom:0;right:0;width:100%;height:min(62vh,560px);border-radius:24px 24px 0 0;
+  .dash-panel{top:auto;bottom:0;right:0;width:100%;max-height:min(80vh,620px);border-radius:24px 24px 0 0;
     transform:translateY(calc(100% + 8px));box-shadow:0 -24px 46px -30px #1d3a4e55}
   .dash-panel.open{transform:none}
   .stage-timer{top:12px;right:12px;width:140px;padding:10px 10px 10px;gap:8px;border-radius:22px}
