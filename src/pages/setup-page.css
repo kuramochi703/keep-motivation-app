@@ -1,0 +1,212 @@
+/* 目標をつくるページ（SetupPage）
+ *
+ * ダッシュボードと目標一覧にそろえる。丸ゴシック・茶系の文字・部屋の壁と同じ暖色の下地。
+ * 共通の部品（.setup-label / .setup-input）はログイン画面でも使うので、ここでは .setup の中だけ上書きする。
+ * `--h` はカードに付けた「選んでいるアバターの色」。始めるボタンや選択中の枠がその色になる */
+
+.setup-shell {
+  background: #fcf4e5;
+}
+
+.setup {
+  --round: "M PLUS Rounded 1c", var(--font);
+  --ink-warm: #3a2a1a;
+  --text-warm: #5b4631;
+  --sub-warm: #8a7458;
+  --line-warm: #f0e4d2;
+  max-width: 720px;
+  font-family: var(--round);
+  color: var(--ink-warm);
+}
+
+.setup .setup-head {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 24px;
+}
+
+.setup-kicker {
+  font-family: "Outfit", var(--round);
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: .18em;
+  color: #9a7a52;
+}
+
+.setup .setup-head h1 {
+  margin: 0;
+  font-size: clamp(24px, 4vw, 30px);
+  font-weight: 800;
+  letter-spacing: .02em;
+  color: var(--ink-warm);
+}
+
+.setup .setup-head p {
+  max-width: 36em;
+  margin: 4px auto 0;
+  font-size: 14px;
+  font-weight: 500;
+  line-height: 1.8;
+  color: var(--text-warm);
+}
+
+.setup .setup-card {
+  padding: 8px 28px 28px;
+  border: 1px solid rgba(255, 255, 255, .9);
+  border-radius: 28px;
+  background: rgba(255, 252, 246, .92);
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .9) inset, 0 24px 50px -30px rgba(92, 64, 28, .45);
+}
+
+/* 項目ごとに線で区切る。見出しは本文と同じ濃さにして、灰色の小さい字にしない */
+.setup .setup-block {
+  margin: 0;
+  padding: 20px 0;
+  border-bottom: 1px solid var(--line-warm);
+}
+
+.setup .setup-block:last-of-type {
+  border-bottom: 0;
+  margin-bottom: 8px;
+}
+
+.setup .setup-label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  font-size: 15px;
+  font-weight: 800;
+  color: var(--ink-warm);
+}
+
+.setup .setup-label em {
+  margin: 0;
+  padding: 3px 8px;
+  border-radius: 99px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 1;
+  color: #d0573b;
+  background: #fdeee9;
+}
+
+.setup .setup-input,
+.setup .date-field {
+  font-family: var(--round);
+  font-weight: 700;
+  color: var(--ink-warm);
+  background: #fffaf2;
+  border: 1px solid var(--line-warm);
+  border-radius: 16px;
+}
+
+.setup .setup-input::placeholder {
+  color: #bfa888;
+  font-weight: 500;
+}
+
+.setup .setup-input:hover,
+.setup .date-field:hover {
+  border-color: #e3d0b3;
+}
+
+.setup .setup-input:focus,
+.setup .date-field:focus {
+  background: #fff;
+  border-color: hsl(var(--h) 50% 50%);
+  box-shadow: 0 0 0 3px hsl(var(--h) 60% 90%);
+}
+
+/* 期限とペースの選択肢。選んでいるものはダッシュボードのメニューと同じ濃い茶 */
+.setup .preset,
+.setup .seg {
+  font-family: var(--round);
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text-warm);
+  background: #fff;
+  border: 1px solid var(--line-warm);
+  box-shadow: 0 6px 14px -12px rgba(92, 64, 28, .5);
+}
+
+.setup .preset:hover,
+.setup .seg:hover {
+  color: var(--ink-warm);
+  border-color: #e3d0b3;
+  background: #fffaf2;
+}
+
+.setup .preset.active,
+.setup .seg.active {
+  color: #fff6e6;
+  background: var(--ink-warm);
+  border-color: var(--ink-warm);
+}
+
+.setup .hint {
+  margin-top: 10px;
+  font-size: 13px;
+  font-weight: 500;
+  line-height: 1.7;
+  color: var(--text-warm);
+}
+
+.setup .hint b {
+  color: var(--ink-warm);
+}
+
+.setup .avatar-picker {
+  gap: 18px;
+  padding: 14px 18px;
+  border: 0;
+  border-radius: 20px;
+  background: #f7efe3;
+}
+
+.setup .hue-dot {
+  border: 3px solid #fff;
+  box-shadow: 0 0 0 1px var(--line-warm), 0 6px 12px -8px rgba(92, 64, 28, .6);
+}
+
+.setup .hue-dot.active {
+  box-shadow: 0 0 0 3px var(--ink-warm);
+}
+
+.setup .top-btn {
+  margin-top: 4px;
+  border: 0;
+  border-radius: 18px;
+  font-family: var(--round);
+  font-weight: 800;
+  background: linear-gradient(135deg, hsl(var(--h) 62% 50%), hsl(calc(var(--h) - 14) 64% 40%));
+  box-shadow: 0 1px 0 rgba(255, 255, 255, .35) inset, 0 14px 24px -14px hsl(var(--h) 60% 35% / .8);
+}
+
+.setup .top-btn:disabled {
+  opacity: 1;
+  color: #b09a7c;
+  background: #efe5d6;
+  box-shadow: none;
+}
+
+.setup .btn:focus-visible,
+.setup .preset:focus-visible,
+.setup .seg:focus-visible,
+.setup .hue-dot:focus-visible {
+  outline: 2px solid hsl(var(--h) 50% 40%);
+  outline-offset: 2px;
+}
+
+@media (max-width: 760px) {
+  .setup .setup-card {
+    padding: 4px 18px 20px;
+    border-radius: 24px;
+  }
+
+  .setup .setup-block {
+    padding: 16px 0;
+  }
+}

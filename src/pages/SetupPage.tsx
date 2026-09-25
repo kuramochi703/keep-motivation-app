@@ -1,5 +1,6 @@
 import { useState, type CSSProperties } from 'react'
 import Avatar from '../avatar/Avatar'
+import './setup-page.css'
 import {
   CYCLES,
   HUES,
@@ -48,18 +49,20 @@ export default function SetupPage({ state, onStart }: Props) {
 
   return (
     <div className="wrap setup">
-      <header>
-        <h1>がんばり畑</h1>
+      <header className="setup-head">
+        <small className="setup-kicker">NEW GOAL</small>
+        <h1>目標をつくる</h1>
         <p>
           やることを細かく決めなくていい。決めたペースで机に向かえば、そのサイクルは達成。
           サイクルを続けるほどアバターは色づき、止まると色が抜けていく。
         </p>
       </header>
 
-      <section className="card setup-card">
+      {/* 選んだアバターの色をカードに持たせる。始めるボタンや入力欄の枠がその色になる */}
+      <section className="card setup-card" style={{ '--h': hue } as CSSProperties}>
         <div className="setup-block">
           <label className="setup-label" htmlFor="goal-input">
-            いま頑張っていることは？
+            いま頑張っていることは？ <em>必須</em>
           </label>
           <input
             className="setup-input"

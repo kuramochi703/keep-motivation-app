@@ -37,7 +37,7 @@ export default function App() {
   }
 
   return (
-    <div className={`shell${screen === 'main' ? ' dashboard-shell' : ''}`}>
+    <div className={`shell${screen === 'main' ? ' dashboard-shell' : screen === 'setup' ? ' setup-shell' : ''}`}>
       <AccountBar email={user.email ?? ''} onSignOut={signOut} />
       <main className="content">
         {screen === 'debug' && DebugPage ? (
