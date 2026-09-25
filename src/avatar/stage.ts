@@ -46,7 +46,7 @@ const ALL_STAGES: Stage[] = [
     id: 1,
     name: '幼体',
     gains: 'からだ・あし・くちばし・小さいとさか',
-    says: 'ぴよっ！はじめまして。これから、いっしょにがんばろうね',
+    says: 'これからいっしょにがんばろうね！',
     to: { kind: 'run', need: 2 },
   },
   {
