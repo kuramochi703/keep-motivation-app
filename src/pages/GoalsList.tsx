@@ -66,14 +66,19 @@ export default function GoalsList({ goals, currentGoalId, onSelect, onNewGoal }:
   )
 }
 
-/** 期限の出し方。残りが読めないと「あと何日ぶんの猶予か」が分からない */
-function deadlineText(g: State): string {
-  if (!g.deadline) return '期限なし'
+/**
+ * 期限の出し方。ダッシュボードと同じ「○月○日」と、残り日数を分けて返す。
+ * 残りが読めないと「あと何日ぶんの猶予か」が分からない
+ */
+function deadlineOf(g: State): { date: string; left: string } {
+  if (!g.deadline) return { date: 'なし', left: '' }
+  const [, m, d] = g.deadline.split('-').map(Number)
+  const date = m && d ? `${m}月${d}日` : g.deadline
   const left = daysUntil(g)
-  if (left === null) return g.deadline
-  if (isExpired(g)) return `${g.deadline}（期限切れ）`
-  if (left === 0) return `${g.deadline}（今日まで）`
-  return `${g.deadline}（あと${left}日）`
+  if (left === null) return { date, left: '' }
+  if (isExpired(g)) return { date, left: '期限切れ' }
+  if (left === 0) return { date, left: '今日まで' }
+  return { date, left: `あと${left}日` }
 }
 
 function GoalCard({
@@ -94,6 +99,8 @@ function GoalCard({
   if (goal.goalId === null) return null
   const id = goal.goalId
 
+  const deadline = deadlineOf(goal)
+  const expired = isExpired(goal)
   // カードごとに色相と彩度を差し替える。目標ごとにアバターの色が違う
   const tint = { ['--h' as string]: goal.hue, ['--s' as string]: mood?.s ?? 24 }
 
@@ -112,16 +119,28 @@ function GoalCard({
           <span className="goal-card-top">
             <span className="goal-card-name">{goal.name}</span>
             <span className="goal-card-stage">{stage.name}</span>
+            <span className="goal-card-cycle">{cycleLabel(goal.cycleDays)}</span>
             {current && <span className="goal-card-badge">開いています</span>}
           </span>
 
           <span className="goal-card-goal">{goal.goal}</span>
 
-          <span className="goal-card-meta">
-            <span>{cycleLabel(goal.cycleDays)}</span>
-            <span>連続 {runOf(goal)} サイクル</span>
-            <span>達成 {goal.done.length} 日</span>
-            <span className={isExpired(goal) ? 'expired' : undefined}>{deadlineText(goal)}</span>
+          <span className="goal-card-stats">
+            <span className="goal-stat">
+              <span className="goal-stat-label">連続</span>
+              <span className="goal-stat-value"><b>{runOf(goal)}</b>サイクル</span>
+            </span>
+            <span className="goal-stat">
+              <span className="goal-stat-label">達成</span>
+              <span className="goal-stat-value"><b>{goal.done.length}</b>日</span>
+            </span>
+            <span className={`goal-stat${expired ? ' expired' : ''}`}>
+              <span className="goal-stat-label">期限</span>
+              <span className="goal-stat-value">
+                <b className="date">{deadline.date}</b>
+                {deadline.left && <small>{deadline.left}</small>}
+              </span>
+            </span>
           </span>
         </span>
       </button>
