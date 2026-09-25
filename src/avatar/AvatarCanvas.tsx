@@ -22,6 +22,7 @@ type Props = {
  * 1ワールド単位あたりの画素数。300px 幅の枠（カメラ距離 4.6・fov 32）での
  * 見え方をそのまま数にしたもの。枠を広げてもこの比率を保つようにカメラを
  * 引くので、**枠の大きさが変わってもひよこの大きさは変わらない。**
+ * 例外は、部屋の外が映るほど枠が広いとき（→ StageFit の上限）。
  */
 const PX_PER_UNIT = 118
 /** 枠に収める高さの下限（ワールド単位）。300px 幅の枠での見え方と同じ。
@@ -33,6 +34,13 @@ const FLOOR_PAD = 0.9
 const CAMERA_Y = 0.45
 /** 歩き回れる範囲の、枠の端からの余白。はみ出さないための取りしろ */
 const EDGE_PAD = 0.9
+/** 部屋のモデルの大きさ（models/stage/build.py の ROOM_W / WALL_Y / WALL_H）。
+    **Blender で部屋の大きさを変えたら、ここも合わせる** */
+const ROOM_HALF_W = 20
+const ROOM_WALL_BACK = 3
+const ROOM_WALL_TOP = 20
+/** 部屋の端から、見えている範囲の端までの取りしろ（ワールド単位） */
+const ROOM_PAD = 1
 
 /**
  * 3D の置き場。カメラと照明はここで決め、キャラの中身は Chick.tsx に任せる。
@@ -107,13 +115,24 @@ function StageFit({ children }: { children: (roam: Roam) => ReactNode }) {
   const width = useThree((s) => s.size.width)
   const height = useThree((s) => s.size.height)
 
-  // 枠に収まるワールドの大きさ。px を 1単位=PX_PER_UNIT で読み替えただけ。
-  // ただし低い枠では全身が入らなくなるので、そこだけ下限で止める
-  const unitsTall = Math.max(height / PX_PER_UNIT, MIN_UNITS_TALL)
-  const unitsWide = (unitsTall * width) / height
-
   // 縦の画角（fov）は固定なので、見たい高さぶんだけ後ろへ下がる
-  const cameraZ = unitsTall / 2 / Math.tan((camera.fov * Math.PI) / 360)
+  const tanHalfFov = Math.tan((camera.fov * Math.PI) / 360)
+
+  // 枠に収まるワールドの大きさ。px を 1単位=PX_PER_UNIT で読み替えただけ。
+  // ただし低い枠では全身が入らなくなるので、そこだけ下限で止める。
+  // **上限は部屋の大きさで止める。** 大きなモニターやブラウザの縮小（Ctrl + −）で
+  // 枠が px で広がると、カメラを引きすぎて部屋の外（壁の端や上）が映る。
+  // そこから先はカメラを引かず、ひよこと部屋をまとめて大きく映して枠を埋める。
+  // 奥の壁は原点より ROOM_WALL_BACK だけ遠いので、同じ画角でもそのぶん広く見えている
+  const aspect = width / height
+  const maxUnitsTall = Math.min(
+    ROOM_WALL_TOP - ROOM_PAD - tanHalfFov * ROOM_WALL_BACK,
+    (2 * (ROOM_HALF_W - ROOM_PAD - aspect * tanHalfFov * ROOM_WALL_BACK)) / aspect
+  )
+  const unitsTall = Math.max(Math.min(height / PX_PER_UNIT, maxUnitsTall), MIN_UNITS_TALL)
+  const unitsWide = unitsTall * aspect
+
+  const cameraZ = unitsTall / 2 / tanHalfFov
 
   // 床は枠の下端近く（枠の中心から見た高さ）
   const floorY = -unitsTall / 2 + FLOOR_PAD
