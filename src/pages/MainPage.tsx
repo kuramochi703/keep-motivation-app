@@ -224,7 +224,7 @@ export default function MainPage({
                 <div className="row">
                   <span>
                     <small className="hud-label">{next ? 'NEXT' : 'COMPLETE'}</small>
-                    {next ? next.stage.name : `${stage.name}（最終）`}
+                    {next ? next.stage.name : stage.name}
                   </span>
                   <b>
                     {next ? next.have : '★'}
@@ -234,13 +234,13 @@ export default function MainPage({
                 <div className="gauge">
                   <i style={{ width: `${next ? Math.min(100, (next.have / next.need) * 100) : 100}%` }} />
                 </div>
-                <p className="meter-note">
-                  {next
-                    ? next.kind === 'run'
+                {next && (
+                  <p className="meter-note">
+                    {next.kind === 'run'
                       ? `連続 ${next.have} / ${next.need} サイクル`
-                      : `直近${next.window}サイクルで ${next.have} / ${next.need}`
-                    : 'ここまで育てきりました'}
-                </p>
+                      : `直近${next.window}サイクルで ${next.have} / ${next.need}`}
+                  </p>
+                )}
               </div>
             </div>
 
