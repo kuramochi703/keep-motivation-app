@@ -73,7 +73,7 @@ export default function SetupPage({ state, onStart, onBack }: Props) {
       <section className="card setup-card" style={{ '--h': hue } as CSSProperties}>
         <div className="setup-block">
           <label className="setup-label" htmlFor="goal-input">
-            いま頑張っていることは？ <em>必須</em>
+            目標はどうする？ <em>必須</em>
           </label>
           <input
             className="setup-input"
