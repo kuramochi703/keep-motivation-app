@@ -4,13 +4,14 @@ import SetupPage from '../pages/SetupPage'
 import AccountBar from './AccountBar'
 import TopPage from '../pages/TopPage'
 import { useApp } from '../state/useApp'
-import { lazy, Suspense } from 'react'
+import { lazy, Suspense, useState } from 'react'
 
 const DebugPage = import.meta.env.DEV
   ? lazy(() => import('../pages/DebugPage'))
   : null
 
 export default function App() {
+  const [tutorialUserId, setTutorialUserId] = useState<string | null>(null)
   const { user, ready, signIn, signOut, state, goals, currentGoalId, selectGoal, setDayOffset, reload, loaded, loadError, retryLoad, hasStarted, completeTutorial, screen, start, extendDeadline, markStageSeen, newGoal, cancelNewGoal, editGoal, saveGoal, cancelEdit, session, elapsed, running, reached, toggleTimer, finishTimer, recordOnly } = useApp()
 
   // ゲートは3段。セッションの確認 → ログイン → 目標の読み込み（AUTH_PLAN 4章）
@@ -37,9 +38,16 @@ export default function App() {
   }
 
   return (
-    <div className={`shell${screen === 'main' ? ' dashboard-shell' : screen === 'setup' || screen === 'edit' ? ' setup-shell' : ''}`}>
-      <AccountBar email={user.email ?? ''} onSignOut={signOut} />
-      <main className="content">
+    <div className={`shell${tutorialUserId === user.id ? '' : screen === 'main' ? ' dashboard-shell' : screen === 'setup' || screen === 'edit' ? ' setup-shell' : ''}`}>
+      <AccountBar email={user.email ?? ''} onSignOut={() => { setTutorialUserId(null); void signOut() }}
+        onShowTutorial={screen !== 'top' && tutorialUserId !== user.id ? () => setTutorialUserId(user.id) : undefined} />
+      {tutorialUserId === user.id && (
+        <main className="content tutorial-content">
+          <button type="button" className="btn ghost" onClick={() => setTutorialUserId(null)}>元の画面に戻る</button>
+          <TopPage onStart={() => setTutorialUserId(null)} />
+        </main>
+      )}
+      <main className="content" hidden={tutorialUserId === user.id}>
         {screen === 'debug' && DebugPage ? (
           <Suspense fallback={<p role="status">読み込み中...</p>}>
             <DebugPage state={state} userId={user.id} loaded={loaded} hasStarted={hasStarted}
