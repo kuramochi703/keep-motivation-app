@@ -23,6 +23,8 @@ export type Stage = {
   name: string
   /** そのステージで見た目に何が増えるか。分岐の実体は look.ts / Chick.tsx */
   gains: string
+  /** 進化の演出で本人が言うセリフ（MainPage.tsx の吹き出し） */
+  says: string
   /** このステージに上がる条件。たまご（0）は初期状態なので持たない */
   to?: StageCondition
 }
@@ -39,23 +41,26 @@ export const FINAL_FORM = false
  * （ステージ3の14サイクル連続は、週1回の人だと98日かかる）
  */
 const ALL_STAGES: Stage[] = [
-  { id: 0, name: 'たまご', gains: '殻のまま。気分を持たない1状態だけ' },
+  { id: 0, name: 'たまご', gains: '殻のまま。気分を持たない1状態だけ', says: '' },
   {
     id: 1,
     name: '幼体',
     gains: 'からだ・あし・くちばし・小さいとさか',
+    says: 'ぴよっ！はじめまして。これから、いっしょにがんばろうね',
     to: { kind: 'run', need: 2 },
   },
   {
     id: 2,
     name: '成体',
     gains: 'つばさ ＋ 一回り大きく ＋ とさかが立派に',
+    says: 'みて、つばさが生えたよ！続けてくれてありがとう',
     to: { kind: 'window', window: 5, need: 4 },
   },
   {
     id: 3,
     name: '完全体',
     gains: 'マフラー ＋ 冠',
+    says: 'マフラーと冠、にあってる？ここまで来られたのは、きみのおかげだよ',
     to: { kind: 'run', need: 14 },
   },
 ]

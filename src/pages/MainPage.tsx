@@ -267,8 +267,9 @@ export default function MainPage({
 
             {celebrating && (
               <div className="evolve-banner" role="status">
-                <b>{state.seenStage === 0 ? `${state.name} がうまれた！` : `${stage.name} に進化！`}</b>
-                <span>{stage.gains}</span>
+                <small className="evolve-event">{state.seenStage === 0 ? 'うまれた！' : `${stage.name}に進化！`}</small>
+                <b className="evolve-name">{state.name}</b>
+                <p className="evolve-line">「{stage.says}」</p>
               </div>
             )}
 
