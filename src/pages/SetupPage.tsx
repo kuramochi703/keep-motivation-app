@@ -17,6 +17,11 @@ type Props = {
   onStart: (input: SetupInput) => void
   /** 前の目標へ戻る。初めての目標づくりでは戻り先が無いので null */
   onBack: (() => void) | null
+  /**
+   * 開いている目標を直す画面として出す。`state` の値を入れた状態で始まり、
+   * **ペースだけは変えられない**（見せるだけ）
+   */
+  editing?: boolean
 }
 
 const PRESETS = [
@@ -29,7 +34,7 @@ const PRESETS = [
 /** 見本のアバター。**気分は「いきいき」で固定**。色で選べるように一番のびのびした姿を出す */
 const SAMPLE_MOOD = MOODS.find((m) => m.id === 'lively') ?? null
 
-export default function SetupPage({ state, onStart, onBack }: Props) {
+export default function SetupPage({ state, onStart, onBack, editing = false }: Props) {
   const [draft, setDraft] = useState(state.goal)
   const [deadline, setDeadline] = useState(state.deadline ?? '')
   const [cycleDays, setCycleDays] = useState(state.cycleDays || 1)
@@ -61,19 +66,29 @@ export default function SetupPage({ state, onStart, onBack }: Props) {
         </button>
       )}
       <header className="setup-head">
-        <small className="setup-kicker">NEW GOAL</small>
-        <h1>目標をつくる</h1>
-        <p>
-          やることを細かく決めなくていい。決めたペースで机に向かえば、そのサイクルは達成。
-          サイクルを続けるほどアバターは色づき、止まると色が抜けていく。
-        </p>
+        <small className="setup-kicker">{editing ? 'EDIT GOAL' : 'NEW GOAL'}</small>
+        <h1>{editing ? '目標を修正する' : '目標をつくる'}</h1>
+        {editing ? (
+          <p>
+            目標・期限・アバターの色と名前を直せます。
+            これまでの記録とアバターの育ち具合はそのまま残ります。
+          </p>
+        ) : (
+          <p>
+            やることを細かく決めなくていい。決めたペースで机に向かえば、そのサイクルは達成。
+            サイクルを続けるほどアバターは色づき、止まると色が抜けていく。
+          </p>
+        )}
       </header>
 
       {/* 選んだアバターの色をカードに持たせる。始めるボタンや入力欄の枠がその色になる */}
       <section className="card setup-card" style={{ '--h': hue } as CSSProperties}>
+        {/* 項目は「目標」と「アバター」の2つに分ける。何を決めている欄かを見出しで先に伝える */}
+        <section className="setup-group" aria-labelledby="setup-group-goal">
+        <h2 className="setup-group-title" id="setup-group-goal">目標</h2>
         <div className="setup-block">
           <label className="setup-label" htmlFor="goal-input">
-            いま頑張っていることは？ <em>必須</em>
+            目標はどうする？ <em>必須</em>
           </label>
           <input
             className="setup-input"
@@ -117,7 +132,7 @@ export default function SetupPage({ state, onStart, onBack }: Props) {
 
         <div className="setup-block">
           <label className="setup-label">
-            取り組むペース <em>必須</em>
+            取り組むペース {!editing && <em>必須</em>}
           </label>
           <div className="freqs">
             {CYCLES.map((c) => (
@@ -126,6 +141,7 @@ export default function SetupPage({ state, onStart, onBack }: Props) {
                 type="button"
                 className={`seg${cycleDays === c.days ? ' active' : ''}`}
                 aria-pressed={cycleDays === c.days}
+                disabled={editing}
                 onClick={() => setCycleDays(c.days)}
               >
                 {c.label}
@@ -136,13 +152,18 @@ export default function SetupPage({ state, onStart, onBack }: Props) {
             連続もお休みも「日」ではなく<b>サイクル</b>で数えます。
             {cycleLabelNote(cycleDays)}
             <br />
-            <b>あとから変えられません。</b>変えたくなったら、新しい目標をたまごから始めます。
+            {editing
+              ? <><b>ペースは変えられません。</b>変えたくなったら、新しい目標をたまごから始めます。</>
+              : <><b>あとから変えられません。</b>変えたくなったら、新しい目標をたまごから始めます。</>}
           </p>
         </div>
+        </section>
 
+        <section className="setup-group" aria-labelledby="setup-group-avatar">
+        <h2 className="setup-group-title" id="setup-group-avatar">アバター</h2>
         <div className="setup-block">
           <label className="setup-label">
-            アバターの色 <em>必須</em>
+            色 <em>必須</em>
           </label>
           {/* 見本の3D は1体だけ。色は CSS の丸で選ぶ。
               選択肢ごとに WebGL キャンバスを並べると、端末によっては
@@ -170,7 +191,7 @@ export default function SetupPage({ state, onStart, onBack }: Props) {
 
         <div className="setup-block">
           <label className="setup-label" htmlFor="name-input">
-            アバターの名前 <em>必須</em>
+            名前 <em>必須</em>
           </label>
           <input
             className="setup-input"
@@ -182,9 +203,10 @@ export default function SetupPage({ state, onStart, onBack }: Props) {
             onChange={(e) => setName(e.target.value)}
           />
         </div>
+        </section>
 
         <button type="button" className="btn top-btn" onClick={submit} disabled={!ready}>
-          この目標で始める
+          {editing ? 'この内容で保存する' : 'この目標で始める'}
         </button>
       </section>
     </div>

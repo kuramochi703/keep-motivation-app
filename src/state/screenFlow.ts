@@ -1,4 +1,4 @@
-export type Screen = 'top' | 'setup' | 'main' | 'debug'
+export type Screen = 'top' | 'setup' | 'edit' | 'main' | 'debug'
 
 /** 認証と目標の読み込みが終わってから、ログイン直後の画面を決める。 */
 export function entryScreen(tutorialCompleted: boolean, hasCurrentGoal: boolean): Screen {
@@ -16,6 +16,7 @@ export function allowedScreen(
   if (!tutorialCompleted || requested === 'top') {
     return entryScreen(tutorialCompleted, hasCurrentGoal)
   }
-  if (requested === 'main' && !hasCurrentGoal) return 'setup'
+  // 目標の修正も、直す目標が開いていないと出せない
+  if ((requested === 'main' || requested === 'edit') && !hasCurrentGoal) return 'setup'
   return requested
 }

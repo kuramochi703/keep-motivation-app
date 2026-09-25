@@ -402,3 +402,57 @@ describe('useGoalState goal creation without schema changes', () => {
     expect(storedRecords).toEqual([{ goal_id: 1, done_on: '2026-09-02' }])
   })
 })
+
+describe('useGoalState goal editing', () => {
+  it('updates the goal and avatar of the open goal but keeps its pace and records', async () => {
+    enqueueGoal(1)
+    await render('account-a')
+
+    const writes: { table: string; values: Record<string, unknown>; filter: [string, unknown] }[] = []
+    for (const table of ['goals', 'avatars']) {
+      database.from.mockImplementationOnce((name: string) => {
+        expect(name).toBe(table)
+        return {
+          update: (values: Record<string, unknown>) => ({
+            eq: async (column: string, value: unknown) => {
+              writes.push({ table, values, filter: [column, value] })
+              return ok(null)
+            },
+          }),
+        }
+      })
+    }
+
+    let saved: boolean | undefined
+    await act(async () => {
+      saved = await current.updateGoal({ goal: 'Renamed', deadline: '2027-03-31', name: 'New name', hue: 205 })
+    })
+
+    expect(saved).toBe(true)
+    expect(writes).toEqual([
+      { table: 'goals', values: { goal: 'Renamed', deadline: '2027-03-31' }, filter: ['id', 1] },
+      { table: 'avatars', values: { name: 'New name', hue: 205 }, filter: ['goal_id', 1] },
+    ])
+    expect(current.state).toMatchObject({
+      goalId: 1, goal: 'Renamed', deadline: '2027-03-31', name: 'New name', hue: 205,
+      cycleDays: 3, seenStage: 1, done: ['2026-09-02'],
+    })
+  })
+
+  it('reports failure and leaves the goal as it was when the goal update fails', async () => {
+    enqueueGoal(1)
+    await render('account-a')
+
+    database.from.mockImplementationOnce(() => ({
+      update: () => ({ eq: async () => failed }),
+    }))
+
+    let saved: boolean | undefined
+    await act(async () => {
+      saved = await current.updateGoal({ goal: 'Renamed', deadline: '2027-03-31', name: 'New name', hue: 205 })
+    })
+
+    expect(saved).toBe(false)
+    expect(current.state).toMatchObject({ goal: 'Goal 1', deadline: '2026-12-31', name: 'Avatar 1', hue: 120 })
+  })
+})

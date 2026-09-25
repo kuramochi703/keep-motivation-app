@@ -60,6 +60,34 @@
   box-shadow: 0 1px 0 rgba(255, 255, 255, .9) inset, 0 24px 50px -30px rgba(92, 64, 28, .45);
 }
 
+/* 「目標」「アバター」の分類。見出しは小さめの色付きの字にして、下の項目名と並ばないようにする */
+.setup .setup-group {
+  padding-top: 22px;
+}
+
+.setup .setup-group + .setup-group {
+  border-top: 2px solid var(--line-warm);
+}
+
+.setup .setup-group-title {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 0;
+  font-size: 13px;
+  font-weight: 800;
+  letter-spacing: .12em;
+  color: hsl(var(--h) 40% 38%);
+}
+
+.setup .setup-group-title::before {
+  content: "";
+  width: 6px;
+  height: 16px;
+  border-radius: 99px;
+  background: hsl(var(--h) 55% 58%);
+}
+
 /* 項目ごとに線で区切る。見出しは本文と同じ濃さにして、灰色の小さい字にしない */
 .setup .setup-block {
   margin: 0;
@@ -137,6 +165,21 @@
   color: var(--ink-warm);
   border-color: #e3d0b3;
   background: #fffaf2;
+}
+
+.setup .seg:disabled {
+  cursor: default;
+}
+
+/* 修正画面ではペースを変えられない。選んでいないものは薄くする */
+.setup .seg:disabled:not(.active) {
+  opacity: .5;
+}
+
+.setup .seg:disabled:hover:not(.active) {
+  color: var(--text-warm);
+  border-color: var(--line-warm);
+  background: #fff;
 }
 
 .setup .preset.active,

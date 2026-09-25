@@ -11,7 +11,7 @@ const DebugPage = import.meta.env.DEV
   : null
 
 export default function App() {
-  const { user, ready, signIn, signOut, state, goals, currentGoalId, selectGoal, setDayOffset, reload, loaded, loadError, retryLoad, hasStarted, completeTutorial, screen, start, extendDeadline, markStageSeen, newGoal, cancelNewGoal, session, elapsed, running, reached, toggleTimer, finishTimer, recordOnly } = useApp()
+  const { user, ready, signIn, signOut, state, goals, currentGoalId, selectGoal, setDayOffset, reload, loaded, loadError, retryLoad, hasStarted, completeTutorial, screen, start, extendDeadline, markStageSeen, newGoal, cancelNewGoal, editGoal, saveGoal, cancelEdit, session, elapsed, running, reached, toggleTimer, finishTimer, recordOnly } = useApp()
 
   // ゲートは3段。セッションの確認 → ログイン → 目標の読み込み（AUTH_PLAN 4章）
   if (!ready) {
@@ -37,7 +37,7 @@ export default function App() {
   }
 
   return (
-    <div className={`shell${screen === 'main' ? ' dashboard-shell' : screen === 'setup' ? ' setup-shell' : ''}`}>
+    <div className={`shell${screen === 'main' ? ' dashboard-shell' : screen === 'setup' || screen === 'edit' ? ' setup-shell' : ''}`}>
       <AccountBar email={user.email ?? ''} onSignOut={signOut} />
       <main className="content">
         {screen === 'debug' && DebugPage ? (
@@ -46,12 +46,14 @@ export default function App() {
               session={session} elapsed={elapsed} running={running} reached={reached} onRecord={recordOnly}
               onSetDayOffset={setDayOffset} onReload={reload} onNewGoal={newGoal}
               app={{ email: user.email ?? '', onSignOut: signOut, goals, currentGoalId, onSelectGoal: selectGoal,
-                onToggleTimer: toggleTimer, onFinishTimer: finishTimer, onExtend: extendDeadline, onStageSeen: markStageSeen }} />
+                onToggleTimer: toggleTimer, onFinishTimer: finishTimer, onEditGoal: editGoal, onExtend: extendDeadline, onStageSeen: markStageSeen }} />
           </Suspense>
         ) : screen === 'top' ? (
           <TopPage onStart={completeTutorial} />
         ) : screen === 'setup' ? (
-          <SetupPage state={state} onStart={start} onBack={cancelNewGoal} />
+          <SetupPage key="setup" state={state} onStart={start} onBack={cancelNewGoal} />
+        ) : screen === 'edit' ? (
+          <SetupPage key="edit" state={state} onStart={saveGoal} onBack={cancelEdit} editing />
         ) : (
           <MainPage
             state={state}
@@ -65,6 +67,7 @@ export default function App() {
             onToggleTimer={toggleTimer}
             onFinishTimer={finishTimer}
             onNewGoal={newGoal}
+            onEditGoal={editGoal}
             onExtend={extendDeadline}
             onStageSeen={markStageSeen}
           />

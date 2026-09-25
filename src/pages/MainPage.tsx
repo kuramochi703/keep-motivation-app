@@ -43,6 +43,12 @@ const CalendarIcon = () => (
     <path d="M3.5 10h17M8 3v4M16 3v4" />
   </Icon>
 )
+const PencilIcon = () => (
+  <Icon>
+    <path d="M4 20h4L19 9l-4-4L4 16v4Z" />
+    <path d="M13.5 6.5l4 4" />
+  </Icon>
+)
 const PlayIcon = () => (
   <svg viewBox="0 0 24 24" width="1em" height="1em" fill="currentColor">
     <path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5Z" />
@@ -87,6 +93,8 @@ type Props = {
   /** 「完了」。ここで今日の記録が付く */
   onFinishTimer: () => void
   onNewGoal: () => void
+  /** 目標の修正画面を開く */
+  onEditGoal: () => void
   onExtend: () => void
   /** 進化の演出を流し終わったら呼ぶ。`avatars.seen_stage` を進める */
   onStageSeen: (stage: number) => void
@@ -107,6 +115,7 @@ export default function MainPage({
   onToggleTimer,
   onFinishTimer,
   onNewGoal,
+  onEditGoal,
   onExtend,
   onStageSeen,
 }: Props) {
@@ -248,7 +257,13 @@ export default function MainPage({
                 部屋の絵の上に文字だけ置くと、壁の柄に負けて浮いて見える */}
             <section className="stage-goal" aria-label="現在の目標と期限">
               <div className="hud-card goal-hud">
-                <small className="hud-label">GOAL</small>
+                <div className="goal-hud-head">
+                  <small className="hud-label">GOAL</small>
+                  <button type="button" className="goal-edit" onClick={onEditGoal}>
+                    <span aria-hidden="true" className="goal-edit-icon"><PencilIcon /></span>
+                    修正
+                  </button>
+                </div>
                 <p className="goal-hud-text" title={state.goal}>{state.goal}</p>
               </div>
 

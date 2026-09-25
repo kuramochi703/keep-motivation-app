@@ -30,7 +30,7 @@ import './debug-page.css'
 
 /** 上に埋め込むアプリ画面に渡すもの。デバッグ画面自身は使わない */
 type AppProps = Pick<ComponentProps<typeof MainPage>,
-  'goals' | 'currentGoalId' | 'onSelectGoal' | 'onToggleTimer' | 'onFinishTimer' | 'onExtend' | 'onStageSeen'> & {
+  'goals' | 'currentGoalId' | 'onSelectGoal' | 'onToggleTimer' | 'onFinishTimer' | 'onEditGoal' | 'onExtend' | 'onStageSeen'> & {
   email: string
   onSignOut: () => void
 }
@@ -178,6 +178,7 @@ export default function DebugPage({
             onToggleTimer={app.onToggleTimer}
             onFinishTimer={app.onFinishTimer}
             onNewGoal={onNewGoal}
+            onEditGoal={app.onEditGoal}
             onExtend={app.onExtend}
             onStageSeen={app.onStageSeen}
           />

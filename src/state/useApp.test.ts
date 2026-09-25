@@ -4,7 +4,7 @@ import { act, createElement } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import type { User } from '@supabase/supabase-js'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { initialState, type SetupInput } from './logic'
+import { initialState, type GoalEdit, type SetupInput } from './logic'
 import { useApp } from './useApp'
 
 const hooks = vi.hoisted(() => ({ auth: vi.fn(), goal: vi.fn() }))
@@ -39,6 +39,7 @@ function fixtures() {
     nextDay: vi.fn(),
     extendDeadline: vi.fn(),
     newGoal: vi.fn(),
+    updateGoal: vi.fn(async (_input: GoalEdit) => true),
   }
   return { auth, goal }
 }
@@ -146,6 +147,39 @@ describe('login and tutorial flow', () => {
     expect(goal.selectGoal).toHaveBeenCalledExactlyOnceWith(3)
     expect(app.screen).toBe('main')
     expect(app.cancelNewGoal).toBeNull()
+  })
+
+  it('opens the edit page for the open goal and returns to the dashboard after saving', async () => {
+    data.auth.tutorialCompleted = true
+    data.goal.hasStarted = true
+    data.goal.hasGoalHistory = true
+    data.goal.state.goalId = 3
+    await render()
+    expect(app.screen).toBe('main')
+
+    await act(async () => { app.editGoal() })
+    expect(app.screen).toBe('edit')
+
+    const edit = { goal: '週3で走る', deadline: '2027-02-01', hue: 205, name: 'あお' }
+    await act(async () => { await app.saveGoal(edit) })
+    expect(data.goal.updateGoal).toHaveBeenCalledExactlyOnceWith(edit)
+    expect(app.screen).toBe('main')
+  })
+
+  it('stays on the edit page when saving fails, and can go back without saving', async () => {
+    data.auth.tutorialCompleted = true
+    data.goal.hasStarted = true
+    data.goal.hasGoalHistory = true
+    data.goal.state.goalId = 3
+    data.goal.updateGoal.mockResolvedValueOnce(false)
+    await render()
+
+    await act(async () => { app.editGoal() })
+    await act(async () => { await app.saveGoal({ goal: 'x', deadline: '2027-02-01', hue: 150, name: 'y' }) })
+    expect(app.screen).toBe('edit')
+
+    await act(async () => { app.cancelEdit() })
+    expect(app.screen).toBe('main')
   })
 
   it('keeps loading failures out of the tutorial and exposes retry', async () => {

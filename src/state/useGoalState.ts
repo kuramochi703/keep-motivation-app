@@ -7,6 +7,7 @@ import {
   parseKey,
   resetGoal,
   today,
+  type GoalEdit,
   type SetupInput,
   type State,
 } from './logic'
@@ -378,6 +379,44 @@ export function useGoalState(userId: string | null) {
   }
 
   /**
+   * 開いている目標を直す。`goals`（目標・期限）→ `avatars`（名前・色）の2回。
+   * **ペース（`cycle_days`）は変えない。** 変えると過去の記録の数え方まで変わってしまう（README 2章）。
+   * 記録も進化の演出の進みもそのまま。
+   */
+  const updateGoal = async (input: GoalEdit) => {
+    const s = latest.current
+    if (!userId || s.goalId === null) return false
+    const id = s.goalId
+
+    const { error } = await supabase
+      .from('goals')
+      .update({ goal: input.goal, deadline: input.deadline })
+      .eq('id', id)
+
+    if (currentUserId.current !== userId) return false
+    if (error) {
+      console.error('目標更新エラー:', error)
+      return false
+    }
+
+    const { error: avatarError } = await supabase
+      .from('avatars')
+      .update({ name: input.name, hue: input.hue })
+      .eq('goal_id', id)
+
+    if (currentUserId.current !== userId) return false
+    if (avatarError) {
+      console.error('アバター更新エラー:', avatarError)
+      // 目標側は書けているので、画面もそこまでは合わせる
+      patch(id, (g) => ({ ...g, goal: input.goal, deadline: input.deadline }))
+      return false
+    }
+
+    patch(id, (g) => ({ ...g, ...input }))
+    return true
+  }
+
+  /**
    * 目標設定画面へ戻る。**前の目標は消えない。** 開いているものを外すだけなので、
    * 作るのをやめて目標一覧から前の目標へ戻れる。
    */
@@ -406,6 +445,7 @@ export function useGoalState(userId: string | null) {
     setDayOffset,
     nextDay,
     extendDeadline,
+    updateGoal,
     newGoal,
   }
 }
