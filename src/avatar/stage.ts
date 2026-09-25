@@ -28,10 +28,17 @@ export type Stage = {
 }
 
 /**
+ * 完全体（ステージ3）を出すか。**いまは OFF で、成体が最終ステージ。**
+ * 表・見た目（look.ts のマフラーと冠）・テストは残してあるので、
+ * 戻すときは true にするだけ。
+ */
+export const FINAL_FORM = false
+
+/**
  * 進化の条件はこの表1か所に閉じ込める。**きつすぎたら数字だけ動かす。**
  * （ステージ3の14サイクル連続は、週1回の人だと98日かかる）
  */
-export const STAGES: Stage[] = [
+const ALL_STAGES: Stage[] = [
   { id: 0, name: 'たまご', gains: '殻のまま。気分を持たない1状態だけ' },
   {
     id: 1,
@@ -52,6 +59,9 @@ export const STAGES: Stage[] = [
     to: { kind: 'run', need: 14 },
   },
 ]
+
+/** 実際に使うステージ。`FINAL_FORM` が false の間は完全体を外す */
+export const STAGES: Stage[] = FINAL_FORM ? ALL_STAGES : ALL_STAGES.filter((s) => s.id !== 3)
 
 /** 次のステージまでの進捗。`あと○` ではなく `have / need` で出す */
 export type NextGoal = {
