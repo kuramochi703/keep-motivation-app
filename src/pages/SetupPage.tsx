@@ -1,5 +1,6 @@
 import { useState, type CSSProperties } from 'react'
 import Avatar from '../avatar/Avatar'
+import './setup-page.css'
 import {
   CYCLES,
   HUES,
@@ -14,6 +15,8 @@ import {
 type Props = {
   state: State
   onStart: (input: SetupInput) => void
+  /** 前の目標へ戻る。初めての目標づくりでは戻り先が無いので null */
+  onBack: (() => void) | null
 }
 
 const PRESETS = [
@@ -26,7 +29,7 @@ const PRESETS = [
 /** 見本のアバター。**気分は「いきいき」で固定**。色で選べるように一番のびのびした姿を出す */
 const SAMPLE_MOOD = MOODS.find((m) => m.id === 'lively') ?? null
 
-export default function SetupPage({ state, onStart }: Props) {
+export default function SetupPage({ state, onStart, onBack }: Props) {
   const [draft, setDraft] = useState(state.goal)
   const [deadline, setDeadline] = useState(state.deadline ?? '')
   const [cycleDays, setCycleDays] = useState(state.cycleDays || 1)
@@ -48,18 +51,29 @@ export default function SetupPage({ state, onStart }: Props) {
 
   return (
     <div className="wrap setup">
-      <header>
-        <h1>がんばり畑</h1>
+      {onBack && (
+        <button type="button" className="setup-back" onClick={onBack}>
+          <svg viewBox="0 0 24 24" width="1em" height="1em" fill="none" stroke="currentColor"
+            strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+            <path d="M15 5l-7 7 7 7" />
+          </svg>
+          ダッシュボードに戻る
+        </button>
+      )}
+      <header className="setup-head">
+        <small className="setup-kicker">NEW GOAL</small>
+        <h1>目標をつくる</h1>
         <p>
           やることを細かく決めなくていい。決めたペースで机に向かえば、そのサイクルは達成。
           サイクルを続けるほどアバターは色づき、止まると色が抜けていく。
         </p>
       </header>
 
-      <section className="card setup-card">
+      {/* 選んだアバターの色をカードに持たせる。始めるボタンや入力欄の枠がその色になる */}
+      <section className="card setup-card" style={{ '--h': hue } as CSSProperties}>
         <div className="setup-block">
           <label className="setup-label" htmlFor="goal-input">
-            いま頑張っていることは？
+            いま頑張っていることは？ <em>必須</em>
           </label>
           <input
             className="setup-input"

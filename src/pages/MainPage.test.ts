@@ -69,14 +69,12 @@ it.each([false, true])('selects a goal inside the goal popup (expired = %s)', as
   expect(panel.querySelector('.goal-list')).toBeNull()
 })
 
-it('starts a new goal from the popup only after confirmation', async () => {
-  const confirm = vi.spyOn(window, 'confirm').mockReturnValueOnce(false).mockReturnValueOnce(true)
+it('starts a new goal from the popup without asking', async () => {
+  const confirm = vi.spyOn(window, 'confirm')
   await render()
   await clickButton('目標')
   await clickButton('新しい目標を作る')
-  expect(newGoal).not.toHaveBeenCalled()
-  await clickButton('新しい目標を作る')
-  expect(confirm).toHaveBeenCalledTimes(2)
+  expect(confirm).not.toHaveBeenCalled()
   expect(newGoal).toHaveBeenCalledOnce()
 })
 

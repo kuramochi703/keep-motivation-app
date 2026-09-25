@@ -161,20 +161,6 @@ export default function MainPage({
     setShowGoals(false)
   }
 
-  /**
-   * **押すと目標がもう1本増える。** 新しいアバターはたまごから育て直しになるので一度止める。
-   * いまの目標は終わらない（目標一覧に並んだまま）ので、そう読めるように書く。
-   */
-  const askNewGoal = () =>
-    window.confirm(
-      `新しい目標を始めますか？\n` +
-        `新しいアバターは たまご から育てることになります。\n` +
-        `いまの「${state.goal}」と${state.name || 'アバター'}はそのまま残るので、目標一覧からいつでも戻れます。`
-    )
-  const confirmNewGoal = () => {
-    if (askNewGoal()) onNewGoal()
-  }
-
   return (
     // 部屋の背景は画面いっぱいに敷く（dash-full）。期限切れの振り返りは部屋を出さないので、
     // 今までどおり余白のある枠に収める
@@ -261,9 +247,9 @@ export default function MainPage({
             {/* 目標と期限も左上の HUD と同じカード・同じ字体にそろえる。
                 部屋の絵の上に文字だけ置くと、壁の柄に負けて浮いて見える */}
             <section className="stage-goal" aria-label="現在の目標と期限">
-              <div className="hud-card goal-card">
+              <div className="hud-card goal-hud">
                 <small className="hud-label">GOAL</small>
-                <p className="goal-card-text" title={state.goal}>{state.goal}</p>
+                <p className="goal-hud-text" title={state.goal}>{state.goal}</p>
               </div>
 
               <div className={`hud-card deadline-card${deadlineDays !== null && deadlineDays <= 3 ? ' warn' : ''}`}>
@@ -420,7 +406,7 @@ export default function MainPage({
                 goals={goals}
                 currentGoalId={currentGoalId}
                 onSelect={(id) => { onSelectGoal(id); closePanel() }}
-                onNewGoal={confirmNewGoal}
+                onNewGoal={onNewGoal}
               />
             )}
           </dialog>
