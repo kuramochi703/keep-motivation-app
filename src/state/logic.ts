@@ -37,6 +37,9 @@ export type SetupInput = {
   name: string
 }
 
+/** 目標を直すときに変えられるもの。**ペース（`cycleDays`）は入らない** */
+export type GoalEdit = Omit<SetupInput, 'cycleDays'>
+
 /** 「n日に1回」の選択肢。**頻度が難易度設定として働く** */
 export const CYCLES: { days: number; label: string; note: string }[] = [
   { days: 1, label: '毎日', note: '1日に1回つける' },

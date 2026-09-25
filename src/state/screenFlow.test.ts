@@ -31,6 +31,11 @@ describe('ログイン後の画面遷移', () => {
     expect(allowedScreen('main', true, false)).toBe('setup')
   })
 
+  it('目標がない状態では目標の修正画面を表示しない', () => {
+    expect(allowedScreen('edit', true, false)).toBe('setup')
+    expect(allowedScreen('edit', true, true)).toBe('edit')
+  })
+
   it('現在の目標があっても、明示的に目標設定へ移動できる', () => {
     expect(allowedScreen('setup', true, true)).toBe('setup')
   })

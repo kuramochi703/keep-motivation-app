@@ -1,4 +1,4 @@
-import { SESSION, type SetupInput } from './logic'
+import { SESSION, type GoalEdit, type SetupInput } from './logic'
 import { useEffect, useRef, useState } from 'react'
 import { useAuth } from './useAuth'
 import { useGoalState } from './useGoalState'
@@ -115,6 +115,21 @@ export function useApp() {
     selectGoal(returnGoalId)
   }
 
+  /** 目標の修正画面を開く。**タイマーは止めない**（開いている目標は変わらない） */
+  const editGoal = () => {
+    if (!hasCurrentGoal) return
+    setScreen('edit')
+  }
+
+  const saveGoal = async (input: GoalEdit) => {
+    if (await goal.updateGoal(input) && currentUserId.current === userId) {
+      setScreen('main')
+    }
+  }
+
+  /** 修正をやめる。何も書いていないので、ダッシュボードへ戻るだけ */
+  const cancelEdit = () => setScreen('main')
+
   /** ログアウト。目標の状態は user が null になった useGoalState 側で戻る */
   const signOut = async () => {
     timer.reset()
@@ -146,6 +161,9 @@ export function useApp() {
     extendDeadline: goal.extendDeadline,
     markStageSeen: goal.markStageSeen,
     newGoal,
+    editGoal,
+    saveGoal,
+    cancelEdit,
     cancelNewGoal: returnGoalId !== null ? cancelNewGoal : null,
     session,
     elapsed: timer.elapsed,
