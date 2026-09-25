@@ -161,20 +161,6 @@ export default function MainPage({
     setShowGoals(false)
   }
 
-  /**
-   * **押すと目標がもう1本増える。** 新しいアバターはたまごから育て直しになるので一度止める。
-   * いまの目標は終わらない（目標一覧に並んだまま）ので、そう読めるように書く。
-   */
-  const askNewGoal = () =>
-    window.confirm(
-      `新しい目標を始めますか？\n` +
-        `新しいアバターは たまご から育てることになります。\n` +
-        `いまの「${state.goal}」と${state.name || 'アバター'}はそのまま残るので、目標一覧からいつでも戻れます。`
-    )
-  const confirmNewGoal = () => {
-    if (askNewGoal()) onNewGoal()
-  }
-
   return (
     // 部屋の背景は画面いっぱいに敷く（dash-full）。期限切れの振り返りは部屋を出さないので、
     // 今までどおり余白のある枠に収める
@@ -420,7 +406,7 @@ export default function MainPage({
                 goals={goals}
                 currentGoalId={currentGoalId}
                 onSelect={(id) => { onSelectGoal(id); closePanel() }}
-                onNewGoal={confirmNewGoal}
+                onNewGoal={onNewGoal}
               />
             )}
           </dialog>
