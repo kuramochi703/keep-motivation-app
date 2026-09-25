@@ -261,9 +261,9 @@ export default function MainPage({
             {/* 目標と期限も左上の HUD と同じカード・同じ字体にそろえる。
                 部屋の絵の上に文字だけ置くと、壁の柄に負けて浮いて見える */}
             <section className="stage-goal" aria-label="現在の目標と期限">
-              <div className="hud-card goal-card">
+              <div className="hud-card goal-hud">
                 <small className="hud-label">GOAL</small>
-                <p className="goal-card-text" title={state.goal}>{state.goal}</p>
+                <p className="goal-hud-text" title={state.goal}>{state.goal}</p>
               </div>
 
               <div className={`hud-card deadline-card${deadlineDays !== null && deadlineDays <= 3 ? ' warn' : ''}`}>
